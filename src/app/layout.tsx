@@ -5,6 +5,7 @@ import { SidebarProvider, Sidebar, SidebarInset } from "@/components/ui/sidebar"
 import { SidebarNav } from "@/components/sidebar-nav";
 import { Header } from "@/components/header";
 import { LanguageProvider } from "@/context/language-context";
+import { GlobalTranslationProvider } from "@/components/global-translation-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -27,6 +28,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <LanguageProvider>
+          <GlobalTranslationProvider />
           <SidebarProvider>
             <Sidebar>
               <SidebarNav />

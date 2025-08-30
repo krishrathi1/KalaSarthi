@@ -25,18 +25,39 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { useLanguage } from "@/context/language-context";
-import { menuItems, t } from "@/lib/i18n";
+import { menuItems, t, translateAsync } from "@/lib/i18n";
+import { useState, useEffect } from "react";
 
 export function SidebarNav() {
   const pathname = usePathname();
   const { language } = useLanguage();
+  const [translatedAppName, setTranslatedAppName] = useState('KalaMitra');
+  const [translatedTagline, setTranslatedTagline] = useState('From Kanchipuram to California...');
+
+  useEffect(() => {
+    const loadTranslations = async () => {
+      try {
+        const appName = await translateAsync('appName', language);
+        const tagline = await translateAsync('tagline', language);
+        setTranslatedAppName(appName);
+        setTranslatedTagline(tagline);
+      } catch (error) {
+        console.error('Sidebar translation loading failed:', error);
+        // Fallback to static translations
+        setTranslatedAppName(t('appName', language) || 'KalaMitra');
+        setTranslatedTagline(t('tagline', language) || 'From Kanchipuram to California...');
+      }
+    };
+
+    loadTranslations();
+  }, [language]);
 
   return (
     <>
       <SidebarHeader>
         <div className="flex items-center gap-2">
           <Logo className="size-8 text-primary" />
-          <h1 className="font-headline text-xl font-semibold">KalaMitra</h1>
+          <h1 className="font-headline text-xl font-semibold">{translatedAppName}</h1>
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -58,7 +79,7 @@ export function SidebarNav() {
       </SidebarContent>
       <SidebarFooter>
         <p className="px-2 text-xs text-muted-foreground">
-          {t('tagline', language)}
+          {translatedTagline}
         </p>
       </SidebarFooter>
     </>

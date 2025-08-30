@@ -17,15 +17,45 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "./ui/button";
 import { useLanguage } from "@/context/language-context";
-import { features, t } from "@/lib/i18n";
+import { features, t, translateAsync } from "@/lib/i18n";
+import { TranslationTest } from "./translation-test";
+import { TranslationShowcase } from "./translation-showcase";
+import { useState, useEffect } from "react";
 
 export function Dashboard() {
   const { language } = useLanguage();
+  const [translatedGreeting, setTranslatedGreeting] = useState('Namaste');
+  const [translatedWelcome, setTranslatedWelcome] = useState('Welcome to KalaMitra...');
+
+  useEffect(() => {
+    const loadTranslations = async () => {
+      try {
+        const greeting = await translateAsync('greeting', language);
+        const welcome = await translateAsync('welcome', language);
+        setTranslatedGreeting(greeting);
+        setTranslatedWelcome(welcome);
+      } catch (error) {
+        console.error('Translation loading failed:', error);
+        // Fallback to static translations
+        setTranslatedGreeting(t('greeting', language) || 'Namaste');
+        setTranslatedWelcome(t('welcome', language) || 'Welcome to KalaMitra...');
+      }
+    };
+
+    loadTranslations();
+  }, [language]);
+
   return (
     <div className="flex flex-col gap-8">
+      {/* Translation Test Component - Remove this after testing */}
+      <TranslationTest />
+
+      {/* Translation Showcase - Remove this after testing */}
+      <TranslationShowcase />
+
       <div>
-        <h1 className="text-4xl font-headline font-bold">{t('greeting', language)}, Ramu!</h1>
-        <p className="text-muted-foreground">{t('welcome', language)}</p>
+        <h1 className="text-4xl font-headline font-bold">{translatedGreeting}, Ramu!</h1>
+        <p className="text-muted-foreground">{translatedWelcome}</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {features.map((feature) => (

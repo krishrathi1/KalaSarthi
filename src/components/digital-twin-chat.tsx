@@ -12,8 +12,11 @@ import { useToast } from "@/hooks/use-toast";
 import { interactWithArtisanDigitalTwin } from "@/lib/actions";
 import type { ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/context/language-context";
+import { t, translateAsync } from "@/lib/i18n";
 
 export function DigitalTwinChat() {
+  const { language } = useLanguage();
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
@@ -22,8 +25,54 @@ export function DigitalTwinChat() {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [translatedTitle, setTranslatedTitle] = useState('Artisan Buddy');
+  const [translatedDescription, setTranslatedDescription] = useState('Chat with Ramu\'s AI assistant 24/7.');
+  const [translatedPlaceholder, setTranslatedPlaceholder] = useState('Ask about weaving techniques...');
+  const [translatedSend, setTranslatedSend] = useState('Send');
+  const [translatedYou, setTranslatedYou] = useState('You');
+  const [translatedAI, setTranslatedAI] = useState('AI');
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const loadTranslations = async () => {
+      try {
+        const [title, description, placeholder, send, you, ai, initialMsg] = await Promise.all([
+          translateAsync('chatTitle', language),
+          translateAsync('chatDescription', language),
+          translateAsync('chatPlaceholder', language),
+          translateAsync('send', language),
+          translateAsync('you', language),
+          translateAsync('ai', language),
+          translateAsync('chatInitialMessage', language),
+        ]);
+
+        setTranslatedTitle(title);
+        setTranslatedDescription(description);
+        setTranslatedPlaceholder(placeholder);
+        setTranslatedSend(send);
+        setTranslatedYou(you);
+        setTranslatedAI(ai);
+
+        // Update initial message
+        setMessages([{
+          role: "assistant",
+          content: initialMsg || "Namaste! I am Ramu's digital assistant. Ask me anything about his craft, story, or products.",
+        }]);
+      } catch (error) {
+        console.error('Chat translation loading failed:', error);
+        // Fallback to static translations
+        setTranslatedTitle(t('chatTitle', language) || 'Artisan Buddy');
+        setTranslatedDescription(t('chatDescription', language) || 'Chat with Ramu\'s AI assistant 24/7.');
+        setTranslatedPlaceholder(t('chatPlaceholder', language) || 'Ask about weaving techniques...');
+        setTranslatedSend(t('send', language) || 'Send');
+        setTranslatedYou(t('you', language) || 'You');
+        setTranslatedAI(t('ai', language) || 'AI');
+      }
+    };
+
+    loadTranslations();
+  }, [language]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -53,7 +102,7 @@ export function DigitalTwinChat() {
       setMessages((prev) => [...prev, assistantMessage]);
     } else {
       toast({
-        title: "Chat Error",
+        title: t('chatError', language) || "Chat Error",
         description: response.error,
         variant: "destructive",
       });
@@ -68,10 +117,10 @@ export function DigitalTwinChat() {
       <CardHeader>
         <CardTitle className="font-headline flex items-center gap-2">
           <BotMessageSquare className="size-6 text-primary" />
-          Artisan Buddy
+          {translatedTitle}
         </CardTitle>
         <CardDescription>
-          Chat with Ramu's AI assistant 24/7.
+          {translatedDescription}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col min-h-0">
@@ -87,8 +136,8 @@ export function DigitalTwinChat() {
               >
                 {message.role === "assistant" && (
                   <Avatar className="size-8 border">
-                     <AvatarImage src="https://placehold.co/100x100.png" alt="Artisan Ramu" data-ai-hint="indian man artisan"/>
-                    <AvatarFallback>AI</AvatarFallback>
+                      <AvatarImage src="https://placehold.co/100x100.png" alt="Artisan Ramu" data-ai-hint="indian man artisan"/>
+                    <AvatarFallback>{translatedAI}</AvatarFallback>
                   </Avatar>
                 )}
                 <div
@@ -103,7 +152,7 @@ export function DigitalTwinChat() {
                 </div>
                  {message.role === "user" && (
                   <Avatar className="size-8 border">
-                    <AvatarFallback>You</AvatarFallback>
+                    <AvatarFallback>{translatedYou}</AvatarFallback>
                   </Avatar>
                 )}
               </div>
@@ -128,14 +177,14 @@ export function DigitalTwinChat() {
         <form onSubmit={handleSubmit} className="flex w-full items-center space-x-2 relative">
           <Input
             id="chat-input"
-            placeholder="Ask about weaving techniques..."
+            placeholder={translatedPlaceholder}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={loading}
           />
           <Button type="submit" size="icon" disabled={loading || !input.trim()}>
             <Send className="h-4 w-4" />
-            <span className="sr-only">Send</span>
+            <span className="sr-only">{translatedSend}</span>
           </Button>
         </form>
       </CardFooter>
