@@ -1,0 +1,304 @@
+'use client';
+
+import { IProductDocument } from '@/lib/models/Product';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Eye, Edit, Package, IndianRupee, CheckCircle, Archive, RotateCcw, FileText, Trash2 } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { formatPrice, formatDate } from '@/lib/format-utils';
+import { useState } from 'react';
+import { useMounted } from '@/hooks/use-mounted';
+import ProductReviewDialog from './ProductReviewDialog';
+
+interface ProductGridProps {
+    products: IProductDocument[];
+    showActions?: boolean;
+    isDraft?: boolean;
+    isCompact?: boolean; // Renamed from isProfile to be more semantic
+    onStatusChange?: (productId: string, newStatus: 'published' | 'draft' | 'archived') => void;
+    onEdit?: (productId: string) => void;
+    onDelete?: (productId: string) => void;
+    updating?: string | null;
+    deleting?: string | null;
+}
+
+export default function ProductGrid({ 
+    products, 
+    showActions = false, 
+    isDraft = false,
+    isCompact = false, // Only use compact mode when explicitly needed
+    onStatusChange,
+    onEdit,
+    onDelete,
+    updating,
+    deleting
+}: ProductGridProps) {
+    const mounted = useMounted();
+    const [reviewProduct, setReviewProduct] = useState<IProductDocument | null>(null);
+    const [showReviewDialog, setShowReviewDialog] = useState(false);
+
+    if (products.length === 0) {
+        const emptyMessage = isDraft 
+            ? "No draft products found" 
+            : "No products found";
+        const emptyDescription = isDraft 
+            ? "Products you create will appear here as drafts before publishing."
+            : "Start creating your first product to showcase your craft.";
+
+        return (
+            <div className="text-center py-12">
+                <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">{emptyMessage}</h3>
+                <p className="text-muted-foreground mb-4">
+                    {emptyDescription}
+                </p>
+                <Link href="/story-generator">
+                    <Button>Create Product</Button>
+                </Link>
+            </div>
+        );
+    }
+
+    const handleStatusChange = (productId: string, newStatus: 'published' | 'draft' | 'archived') => {
+        if (onStatusChange) {
+            onStatusChange(productId, newStatus);
+        }
+    };
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'published':
+                return 'default';
+            case 'draft':
+                return 'secondary';
+            case 'archived':
+                return 'destructive';
+            default:
+                return 'outline';
+        }
+    };
+
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case 'published':
+                return 'Published';
+            case 'draft':
+                return 'Draft';
+            case 'archived':
+                return 'Archived';
+            default:
+                return status;
+        }
+    };
+
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {products.map((product) => (
+                <Card key={product.productId} className="overflow-hidden hover:shadow-lg transition-shadow">
+                    {/* Product Image */}
+                    <div className="relative aspect-square">
+                        {product.images && product.images.length > 0 ? (
+                            <Image
+                                src={product.images[0]}
+                                alt={product.name}
+                                fill
+                                className="object-cover"
+                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            />
+                        ) : (
+                            <div className="w-full h-full bg-muted flex items-center justify-center">
+                                <Package className="h-12 w-12 text-muted-foreground" />
+                            </div>
+                        )}
+                        
+                        {/* Status Badge */}
+                        <div className="absolute top-2 right-2">
+                            <Badge variant={getStatusColor(product.status)}>
+                                {getStatusLabel(product.status)}
+                            </Badge>
+                        </div>
+
+                        {/* Availability Badge */}
+                        {!product.inventory.isAvailable && (
+                            <div className="absolute top-2 left-2">
+                                <Badge variant="destructive">
+                                    Out of Stock
+                                </Badge>
+                            </div>
+                        )}
+                    </div>
+
+                    <CardContent className="p-4">
+                        {/* Product Info */}
+                        <div className="space-y-2">
+                            <h3 className="font-semibold line-clamp-2">{product.name}</h3>
+                            <p className="text-muted-foreground line-clamp-2 text-sm">
+                                {product.description}
+                            </p>
+                            
+                            {/* Category */}
+                            <Badge variant="outline" className="text-xs">
+                                {product.category}
+                            </Badge>
+
+                            {/* Price and Quantity */}
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1">
+                                    <IndianRupee className="h-4 w-4" />
+                                    <span className="font-semibold">
+                                        {formatPrice(product.price)}
+                                    </span>
+                                </div>
+                                <span className="text-muted-foreground text-sm">
+                                    Qty: {product.inventory.quantity}
+                                </span>
+                            </div>
+
+                            {/* Tags */}
+                            {product.tags && product.tags.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                    {product.tags.slice(0, 3).map((tag, index) => (
+                                        <Badge key={index} variant="secondary" className="text-xs">
+                                            {tag}
+                                        </Badge>
+                                    ))}
+                                    {product.tags.length > 3 && (
+                                        <Badge variant="secondary" className="text-xs">
+                                            +{product.tags.length - 3}
+                                        </Badge>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Actions */}
+                            <div className="flex flex-col gap-2 pt-2">
+                                {showActions ? (
+                                    <>
+                                        {/* Status-specific actions */}
+                                        {product.status === 'draft' && (
+                                            <div className="flex gap-2">
+                                                <Button 
+                                                    variant="default" 
+                                                    size="sm"
+                                                    className="flex-1"
+                                                    onClick={() => {
+                                                        setReviewProduct(product);
+                                                        setShowReviewDialog(true);
+                                                    }}
+                                                    disabled={updating === product.productId}
+                                                >
+                                                    <FileText className="h-4 w-4 mr-1" />
+                                                    Review
+                                                </Button>
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="sm"
+                                                    className="flex-1"
+                                                    onClick={() => handleStatusChange(product.productId, 'published')}
+                                                    disabled={updating === product.productId}
+                                                >
+                                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                                    Publish
+                                                </Button>
+                                            </div>
+                                        )}
+                                        
+                                        {product.status === 'published' && (
+                                            <div className="flex gap-2">
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="sm"
+                                                    className="flex-1"
+                                                    onClick={() => handleStatusChange(product.productId, 'archived')}
+                                                    disabled={updating === product.productId}
+                                                >
+                                                    <Archive className="h-4 w-4 mr-1" />
+                                                    Archive
+                                                </Button>
+                                            </div>
+                                        )}
+                                        
+                                        {product.status === 'archived' && (
+                                            <div className="flex gap-2">
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="sm"
+                                                    className="flex-1"
+                                                    onClick={() => handleStatusChange(product.productId, 'published')}
+                                                    disabled={updating === product.productId}
+                                                >
+                                                    <RotateCcw className="h-4 w-4 mr-1" />
+                                                    Restore
+                                                </Button>
+                                            </div>
+                                        )}
+                                        
+                                        {/* Edit and Delete actions - always available */}
+                                        <div className="flex gap-2">
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm"
+                                                className="flex-1"
+                                                onClick={() => onEdit && onEdit(product.productId)}
+                                                disabled={updating === product.productId || deleting === product.productId}
+                                            >
+                                                <Edit className="h-4 w-4 mr-1" />
+                                                Edit
+                                            </Button>
+                                            <Button 
+                                                variant="destructive" 
+                                                size="sm"
+                                                className="flex-1"
+                                                onClick={() => onDelete && onDelete(product.productId)}
+                                                disabled={updating === product.productId || deleting === product.productId}
+                                            >
+                                                <Trash2 className="h-4 w-4 mr-1" />
+                                                {deleting === product.productId ? 'Deleting...' : 'Delete'}
+                                            </Button>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="flex gap-2">
+                                        <Button variant="outline" size="sm" className="flex-1">
+                                            <Eye className="h-4 w-4 mr-1" />
+                                            View
+                                        </Button>
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            className="flex-1"
+                                            onClick={() => onEdit && onEdit(product.productId)}
+                                        >
+                                            <Edit className="h-4 w-4 mr-1" />
+                                            Edit
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Created Date */}
+                            <p className="text-xs text-muted-foreground mt-2">
+                                Created {formatDate(product.createdAt)}
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+            ))}
+            
+            {/* Review Dialog for Draft Products */}
+            <ProductReviewDialog
+                product={reviewProduct}
+                open={showReviewDialog}
+                onOpenChange={setShowReviewDialog}
+                onPublish={(productId) => {
+                    handleStatusChange(productId, 'published');
+                    setShowReviewDialog(false);
+                    setReviewProduct(null);
+                }}
+                isPublishing={updating === reviewProduct?.productId}
+            />
+        </div>
+    );
+}

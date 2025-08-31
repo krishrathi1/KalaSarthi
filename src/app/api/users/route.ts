@@ -7,25 +7,13 @@ export async function POST(request: NextRequest) {
         const userData: Partial<IUser> = await request.json();
 
         // Validate required fields
-        if (!userData.uid || !userData.name || !userData.role) {
+        if (!userData.uid || !userData.name || !userData.phone || !userData.role) {
             return NextResponse.json(
                 {
                     success: false,
-                    error: 'Missing required fields: uid, name, role'
+                    error: 'Missing required fields: uid, name, phone, role'
                 },
                 { status: 400 }
-            );
-        }
-
-        // Check if user already exists
-        const existingUser = await UserService.getUserByUid(userData.uid);
-        if (existingUser) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    error: 'User already exists'
-                },
-                { status: 409 }
             );
         }
 
@@ -33,7 +21,7 @@ export async function POST(request: NextRequest) {
 
         if (result.success) {
             return NextResponse.json(
-                { success: true, data: result },
+                { success: true, data: result.data },
                 { status: 201 }
             );
         } else {
@@ -57,23 +45,27 @@ export async function GET(request: NextRequest) {
         const role = searchParams.get('role');
         const search = searchParams.get('search');
 
+        if (search) {
+            const users = await UserService.searchArtisans(search);
+            return NextResponse.json(
+                { success: true, data: users },
+                { status: 200 }
+            );
+        }
+
         if (role === 'artisan') {
-            let artisans;
-            if (search) {
-                artisans = await UserService.searchArtisans(search);
-            } else {
-                artisans = await UserService.getAllArtisans();
-            }
+            const artisans = await UserService.getAllArtisans();
             return NextResponse.json(
                 { success: true, data: artisans },
                 { status: 200 }
             );
-        } else {
-            return NextResponse.json(
-                { success: false, error: 'Invalid role parameter' },
-                { status: 400 }
-            );
         }
+
+        return NextResponse.json(
+            { success: false, error: 'Invalid request parameters' },
+            { status: 400 }
+        );
+
     } catch (error) {
         console.error('API Error:', error);
         return NextResponse.json(

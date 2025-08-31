@@ -3,9 +3,9 @@ import { ProductService } from "@/lib/service/ProductService";
 import { NextRequest, NextResponse } from "next/server";
 
 interface RouteParams {
-    params: {
+    params: Promise<{
         productId: string;
-    };
+    }>;
 }
 
 export async function GET(
@@ -13,7 +13,7 @@ export async function GET(
     { params }: RouteParams
 ) {
     try {
-        const { productId } = params;
+        const { productId } = await params;
         const product = await ProductService.getProductById(productId);
 
         if (!product) {
@@ -41,7 +41,7 @@ export async function PUT(
     { params }: RouteParams
 ) {
     try {
-        const { productId } = params;
+        const { productId } = await params;
         const updateData: Partial<IProduct> = await request.json();
 
         const result = await ProductService.updateProduct(productId, updateData);
@@ -71,7 +71,7 @@ export async function DELETE(
     { params }: RouteParams
 ) {
     try {
-        const { productId } = params;
+        const { productId } = await params;
         const result = await ProductService.deleteProduct(productId);
 
         if (result.success) {

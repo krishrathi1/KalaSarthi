@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { ChevronsUpDown, Check, Mic, User, LogOut, Settings } from 'lucide-react';
+import { ChevronsUpDown, Check, Mic, User, LogOut, Settings, FileText, Archive, Package } from 'lucide-react';
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from '@/components/ui/button';
@@ -55,8 +55,8 @@ export function Header() {
     return 'User';
   };
 
-  const getRoleTitle = () => {
-    if (isArtisan) return 'artisanTitle';
+  const getRoleTitle = (): string => {
+    if (isArtisan) return userProfile?.artisticProfession || 'artisanTitle';
     if (isBuyer) return 'buyerTitle';
     return 'userTitle';
   };
@@ -80,8 +80,12 @@ export function Header() {
     const loadTranslations = async () => {
       try {
         const roleKey = getRoleTitle();
-        const title = await translateAsync(roleKey, language);
-        setTranslatedTitle(title);
+        if (roleKey) {
+          const title = await translateAsync(roleKey, language);
+          setTranslatedTitle(title);
+        } else {
+          setTranslatedTitle('User');
+        }
       } catch (error) {
         console.error('Header translation loading failed:', error);
         // Fallback to static translation
@@ -283,6 +287,23 @@ export function Header() {
               <User className="mr-2 h-4 w-4" />
               <span>Profile</span>
             </DropdownMenuItem>
+            {isArtisan && (
+              <>
+                <DropdownMenuItem onClick={() => router.push('/drafts')}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  <span>Draft Products</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push('/archived')}>
+                  <Archive className="mr-2 h-4 w-4" />
+                  <span>Archived Products</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push('/story-generator')}>
+                  <Package className="mr-2 h-4 w-4" />
+                  <span>Create Product</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuItem>
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>

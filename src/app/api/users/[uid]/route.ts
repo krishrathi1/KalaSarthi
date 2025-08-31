@@ -1,19 +1,20 @@
-import { IUser } from "@/lib/models/User";
 import { UserService } from "@/lib/service/UserService";
 import { NextRequest, NextResponse } from "next/server";
 
-interface RouteParams {
-    params: {
-        uid: string;
-    };
-}
-
 export async function GET(
     request: NextRequest,
-    { params }: RouteParams
+    { params }: { params: Promise<{ uid: string }> }
 ) {
     try {
-        const { uid } = params;
+        const { uid } = await params;
+
+        if (!uid) {
+            return NextResponse.json(
+                { success: false, error: 'User ID is required' },
+                { status: 400 }
+            );
+        }
+
         const user = await UserService.getUserByUid(uid);
 
         if (!user) {
@@ -27,6 +28,7 @@ export async function GET(
             { success: true, data: user },
             { status: 200 }
         );
+
     } catch (error) {
         console.error('API Error:', error);
         return NextResponse.json(
@@ -38,17 +40,24 @@ export async function GET(
 
 export async function PUT(
     request: NextRequest,
-    { params }: RouteParams
+    { params }: { params: Promise<{ uid: string }> }
 ) {
     try {
-        const { uid } = params;
-        const updateData: Partial<IUser> = await request.json();
+        const { uid } = await params;
+        const updateData = await request.json();
+
+        if (!uid) {
+            return NextResponse.json(
+                { success: false, error: 'User ID is required' },
+                { status: 400 }
+            );
+        }
 
         const result = await UserService.updateUser(uid, updateData);
 
         if (result.success) {
             return NextResponse.json(
-                { success: true, data: result },
+                { success: true, modifiedCount: result.modifiedCount },
                 { status: 200 }
             );
         } else {
@@ -57,6 +66,7 @@ export async function PUT(
                 { status: 500 }
             );
         }
+
     } catch (error) {
         console.error('API Error:', error);
         return NextResponse.json(
@@ -68,15 +78,23 @@ export async function PUT(
 
 export async function DELETE(
     request: NextRequest,
-    { params }: RouteParams
+    { params }: { params: Promise<{ uid: string }> }
 ) {
     try {
-        const { uid } = params;
+        const { uid } = await params;
+
+        if (!uid) {
+            return NextResponse.json(
+                { success: false, error: 'User ID is required' },
+                { status: 400 }
+            );
+        }
+
         const result = await UserService.deleteUser(uid);
 
         if (result.success) {
             return NextResponse.json(
-                { success: true, data: result },
+                { success: true, deletedCount: result.deletedCount },
                 { status: 200 }
             );
         } else {
@@ -85,6 +103,7 @@ export async function DELETE(
                 { status: 500 }
             );
         }
+
     } catch (error) {
         console.error('API Error:', error);
         return NextResponse.json(

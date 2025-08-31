@@ -3,9 +3,9 @@ import { ProductService } from "@/lib/service/ProductService";
 import { NextRequest, NextResponse } from "next/server";
 
 interface RouteParams {
-    params: {
+    params: Promise<{
         productId: string;
-    };
+    }>;
 }
 
 export async function PUT(
@@ -13,7 +13,7 @@ export async function PUT(
     { params }: RouteParams
 ) {
     try {
-        const { productId } = params;
+        const { productId } = await params;
         const storyData: IProduct['story'] = await request.json();
 
         // Validate that at least one story field is provided
