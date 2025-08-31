@@ -94,7 +94,11 @@ class TranslationService {
       const mappedTargetLanguage = googleCloudLanguageMap[targetLanguage] || 'en';
       const mappedSourceLanguage = googleCloudLanguageMap[sourceLanguage] || 'en';
 
-      const response = await fetch('/api/translate', {
+      // Use full URL for server-side API calls
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+      const apiUrl = `${baseUrl}/api/translate`;
+
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
