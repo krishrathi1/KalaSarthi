@@ -673,57 +673,172 @@ export function t(key: string | { [key: string]: string }, lang: LanguageCode) {
     return key;
 }
 
-// Enhanced async translation function with auto-translation
+// Translation cache for instant access
+const translationCache = new Map<string, string>();
+const pendingTranslations = new Set<string>();
+
+// Pre-load critical translations in background
+export const preloadCriticalTranslations = async (lang: LanguageCode) => {
+  if (lang === 'en') return; // No need to translate English
+
+  const criticalKeys = [
+    'greeting', 'welcome', 'appName', 'dashboard',
+    'artisanBuddy', 'heritageStorytelling', 'trendSpotter'
+  ];
+
+  // Batch translate critical keys
+  const untranslatedKeys = criticalKeys.filter(key => {
+    const cacheKey = `${key}_${lang}`;
+    return !translationCache.has(cacheKey) && !pendingTranslations.has(cacheKey);
+  });
+
+  if (untranslatedKeys.length > 0) {
+    try {
+      // Mark as pending to avoid duplicate requests
+      untranslatedKeys.forEach(key => {
+        pendingTranslations.add(`${key}_${lang}`);
+      });
+
+      // Batch translate
+      const batchTranslations = await Promise.allSettled(
+        untranslatedKeys.map(async (key) => {
+          const translation = translations[key];
+          if (translation?.['en']) {
+            const translated = await translationService.translateWithCache(
+              translation['en'],
+              lang,
+              'en'
+            );
+            return { key, translated };
+          }
+          return null;
+        })
+      );
+
+      // Store successful translations
+      batchTranslations.forEach(result => {
+        if (result.status === 'fulfilled' && result.value) {
+          const { key, translated } = result.value;
+          const cacheKey = `${key}_${lang}`;
+          translationCache.set(cacheKey, translated);
+          pendingTranslations.delete(cacheKey);
+
+          // Update translations object for persistence
+          if (translations[key]) {
+            translations[key][lang] = translated;
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Batch translation failed:', error);
+      // Clear pending flags on error
+      untranslatedKeys.forEach(key => {
+        pendingTranslations.delete(`${key}_${lang}`);
+      });
+    }
+  }
+};
+
+// Enhanced async translation function with instant cache access
 export async function translateAsync(key: string | { [key: string]: string }, lang: LanguageCode): Promise<string> {
+  // Handle object keys
   if (typeof key === 'object') {
     if (key[lang]) {
       return key[lang];
     }
 
-    // Try to translate from English
     if (key['en']) {
-      try {
-        const translation = await translationService.translateWithCache(key['en'], lang, 'en');
-        return translation;
-      } catch (error) {
-        console.error(`Translation failed for ${key['en']} to ${lang}:`, error);
-        return key['en']; // Fallback to English
+      const cacheKey = `obj_${key['en']}_${lang}`;
+
+      // Check cache first
+      if (translationCache.has(cacheKey)) {
+        return translationCache.get(cacheKey)!;
       }
+
+      // Check if translation is pending
+      if (pendingTranslations.has(cacheKey)) {
+        return key['en']; // Return English while translation is in progress
+      }
+
+      // Start background translation
+      pendingTranslations.add(cacheKey);
+      translationService.translateWithCache(key['en'], lang, 'en')
+        .then(translated => {
+          translationCache.set(cacheKey, translated);
+          pendingTranslations.delete(cacheKey);
+        })
+        .catch(error => {
+          console.error(`Background translation failed for ${key['en']} to ${lang}:`, error);
+          pendingTranslations.delete(cacheKey);
+        });
+
+      return key['en']; // Return English immediately
     }
 
     return key['en'] || key[Object.keys(key)[0]] || '';
   }
 
+  // Handle string keys
   const translation = translations[key];
   if (translation) {
     if (translation[lang]) {
       return translation[lang];
     }
 
-    // Auto-translate missing translations
-    if (translation['en']) {
-      try {
-        const autoTranslation = await translationService.translateWithCache(
-          translation['en'],
-          lang,
-          'en'
-        );
-        return autoTranslation;
-      } catch (error) {
-        console.error(`Auto-translation failed for ${key} to ${lang}:`, error);
-        return translation['en']; // Fallback
-      }
+    const cacheKey = `${key}_${lang}`;
+
+    // Check cache first
+    if (translationCache.has(cacheKey)) {
+      return translationCache.get(cacheKey)!;
     }
+
+    // Check if translation is pending
+    if (pendingTranslations.has(cacheKey)) {
+      return translation['en'] || key; // Return English while translation is in progress
+    }
+
+    // Start background translation
+    if (translation['en']) {
+      pendingTranslations.add(cacheKey);
+      translationService.translateWithCache(translation['en'], lang, 'en')
+        .then(translated => {
+          translationCache.set(cacheKey, translated);
+          translation[lang] = translated; // Update translations object
+          pendingTranslations.delete(cacheKey);
+        })
+        .catch(error => {
+          console.error(`Background translation failed for ${key} to ${lang}:`, error);
+          pendingTranslations.delete(cacheKey);
+        });
+    }
+
+    return translation['en'] || key; // Return English immediately
   }
 
-  // Try to translate the key itself if it's not found
-  try {
-    const autoTranslation = await translationService.translateWithCache(key, lang, 'en');
-    return autoTranslation;
-  } catch (error) {
-    console.error(`Translation failed for key ${key} to ${lang}:`, error);
-    return key; // Return original key if all else fails
+  // Handle unknown keys
+  const unknownCacheKey = `unknown_${key}_${lang}`;
+
+  if (translationCache.has(unknownCacheKey)) {
+    return translationCache.get(unknownCacheKey)!;
   }
+
+  if (pendingTranslations.has(unknownCacheKey)) {
+    return key; // Return original while translation is in progress
+  }
+
+  // Start background translation for unknown keys
+  pendingTranslations.add(unknownCacheKey);
+  translationService.translateWithCache(key, lang, 'en')
+    .then(translated => {
+      translationCache.set(unknownCacheKey, translated);
+      pendingTranslations.delete(unknownCacheKey);
+    })
+    .catch(error => {
+      console.error(`Translation failed for unknown key ${key} to ${lang}:`, error);
+      pendingTranslations.delete(unknownCacheKey);
+    });
+
+  return key; // Return original immediately
 }
 
 // Function to auto-fill missing translations for a specific language
@@ -793,22 +908,22 @@ export const menuItems = [
     },
     {
       label: {
-        en: 'Heritage Storytelling',
-        hi: 'विरासत की कहानी',
-        ta: 'பாரம்பரியக் கதைசொல்லல்',
-        bn: 'ঐতিহ্য গল্প বলা',
-        te: 'వారసత్వ కథనం',
-        gu: 'વારસો વાર્તા કહેવી',
-        mr: 'वारसा कथा सांगणे',
-        kn: 'ಹೆರಿಟೇಜ್ ಕಥೆ ಹೇಳುವುದು',
-        ml: 'ഹെറിറ്റേജ് സ്റ്റോറിടെല്ലിംഗ്',
-        pa: 'ਵਾਰਿਸਾਨੀ ਕਹਾਣੀ ਸੁਨਾਉਣਾ',
-        as: 'ঐতিহ্য গল্প বলা',
-        or: 'ବଂଶଗତ କାହାଣୀ କହିବା',
-        ur: 'وراثت کی کہانیاں',
+        en: 'Smart Product Creator',
+        hi: 'स्मार्ट उत्पाद निर्माता',
+        ta: 'ஸ்மார்ட் தயாரிப்பு உருவாக்கி',
+        bn: 'স্মার্ট প্রোডাক্ট ক্রিয়েটর',
+        te: 'స్మార్ట్ ప్రాడక్ట్ క్రియేటర్',
+        gu: 'સ્માર્ટ પ્રોડક્ટ ક્રિએટર',
+        mr: 'स्मार्ट प्रोडक्ट क्रिएटर',
+        kn: 'ಸ್ಮಾರ್ಟ್ ಪ್ರಾಡಕ್ಟ್ ಕ್ರಿಯೇಟರ್',
+        ml: 'സ്മാർട്ട് പ്രാഡക്ട് ക്രിയേറ്റർ',
+        pa: 'ਸਮਾਰਟ ਪ੍ਰਾਡਕਟ ਕ੍ਰਿਏਟਰ',
+        as: 'স্মার্ট প্রোডাক্ট ক্রিয়েটর',
+        or: 'ସ୍ମାର୍ଟ ଉତ୍ପାଦ ସୃଷ୍ଟିକର୍ତ୍ତା',
+        ur: 'سمارٹ پروڈکٹ کریٹر',
       },
       icon: Sparkles,
-      path: "/story-generator",
+      path: "/smart-product-creator",
     },
     {
       label: {
@@ -923,25 +1038,6 @@ export const menuItems = [
       },
       icon: IndianRupee,
       path: "/arth-saarthi",
-    },
-    {
-      label: {
-        en: 'Fair Price Engine',
-        hi: 'उचित मूल्य इंजन',
-        ta: 'நியாயமான விலை இயந்திரம்',
-        bn: 'ন্যায্য মূল্য ইঞ্জিন',
-        te: 'న్యాయమైన ధర ఇంజిన్',
-        gu: 'ન્યાયી કિંમત એંજિન',
-        mr: 'न्याय्य किंमत इंजिन',
-        kn: 'ನ್ಯಾಯ ಬೆಲೆ ಇಂಜಿನ್',
-        ml: 'ന്യായ വില എഞ്ചിൻ',
-        pa: 'ਨਿਆਇ ਮੁੱਲ ਇੰਜਣ',
-        as: 'ন্যায্য মূল্য ইঞ্জিন',
-        or: 'ନ୍ୟାୟ ମୂଲ୍ୟ ଇଞ୍ଜିନ୍',
-        ur: 'منصفانہ قیمت انجن',
-      },
-      icon: Calculator,
-      path: "/price-engine",
     },
 ];
 
