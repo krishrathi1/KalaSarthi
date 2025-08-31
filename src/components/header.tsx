@@ -1,7 +1,6 @@
-
 'use client';
 import React from 'react';
-import { ChevronsUpDown, Check, Mic } from 'lucide-react';
+import { ChevronsUpDown, Check, Mic, User, LogOut, Settings } from 'lucide-react';
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from '@/components/ui/button';
@@ -18,39 +17,83 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useLanguage } from "@/context/language-context";
 import { languages, LanguageCode, t, translateAsync } from "@/lib/i18n";
 import { useState, useEffect } from "react";
 import { GlobalTranslationToggle } from "./global-translation-toggle";
+import { cn } from '@/lib/utils';
+import { useVoiceNavigation } from '@/hooks/use-voice-navigation';
+import { useAuth } from '@/context/auth-context';
+import { useRouter } from 'next/navigation';
 
 // Group languages by region
 const indianLanguages = Object.entries(languages).filter(([_, lang]) => lang.region === 'indian');
 const foreignLanguages = Object.entries(languages).filter(([_, lang]) => lang.region === 'foreign');
-import { cn } from '@/lib/utils';
-import { useVoiceNavigation } from '@/hooks/use-voice-navigation';
-
 
 export function Header() {
   const { language, setLanguage } = useLanguage();
   const [open, setOpen] = React.useState(false);
   const [searchValue, setSearchValue] = React.useState('');
-  const [translatedTitle, setTranslatedTitle] = useState('Kanchipuram Weaver');
+  const [translatedTitle, setTranslatedTitle] = useState('');
   const { isListening, transcript, startListening, stopListening, error } = useVoiceNavigation();
+  const { user, userProfile, loading, logout, isArtisan, isBuyer } = useAuth();
+  const router = useRouter();
+
+  // Get user display name and role title
+  const getDisplayName = () => {
+    if (userProfile?.name) return userProfile.name;
+    if (user?.displayName) return user.displayName;
+    if (user?.email) return user.email.split('@')[0];
+    return 'User';
+  };
+
+  const getRoleTitle = () => {
+    if (isArtisan) return 'artisanTitle';
+    if (isBuyer) return 'buyerTitle';
+    return 'userTitle';
+  };
+
+  const getUserAvatar = () => {
+    if (userProfile?.profileImage) return userProfile.profileImage;
+    if (user?.photoURL) return user.photoURL;
+    return null;
+  };
+
+  const getUserInitials = () => {
+    const name = getDisplayName();
+    const words = name.split(' ');
+    if (words.length >= 2) {
+      return `${words[0][0]}${words[1][0]}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
 
   useEffect(() => {
     const loadTranslations = async () => {
       try {
-        const title = await translateAsync('artisanTitle', language);
+        const roleKey = getRoleTitle();
+        const title = await translateAsync(roleKey, language);
         setTranslatedTitle(title);
       } catch (error) {
         console.error('Header translation loading failed:', error);
         // Fallback to static translation
-        setTranslatedTitle(t('artisanTitle', language) || 'Kanchipuram Weaver');
+        const roleKey = getRoleTitle();
+        setTranslatedTitle(t(roleKey, language) || 'User');
       }
     };
 
-    loadTranslations();
-  }, [language]);
+    if (userProfile || user) {
+      loadTranslations();
+    }
+  }, [language, userProfile, user, isArtisan, isBuyer]);
 
   const mapCustomLanguage = (code: string): LanguageCode => {
     // Map common custom codes to known ones
@@ -69,6 +112,48 @@ export function Header() {
     };
     return customMap[code.toLowerCase()] || 'en';
   };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/auth'); // Redirect to login page after logout
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
+  };
+
+  const handleViewProfile = () => {
+    router.push('/profile');
+  };
+
+  // Show loading state or login prompt when no user
+  if (loading) {
+    return (
+      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-8">
+        <SidebarTrigger className="md:hidden" />
+        <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
+          <GlobalTranslationToggle />
+          <div className="animate-pulse">
+            <div className="h-8 w-8 bg-gray-300 rounded-full"></div>
+          </div>
+        </div>
+      </header>
+    );
+  }
+
+  if (!user) {
+    return (
+      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-8">
+        <SidebarTrigger className="md:hidden" />
+        <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
+          <GlobalTranslationToggle />
+          <Button variant="outline" onClick={() => router.push('/login')}>
+            Sign In
+          </Button>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-8">
@@ -171,14 +256,44 @@ export function Header() {
         </Popover>
         <div className="flex-1 sm:flex-initial max-w-fit">
           <div className="relative font-headline text-right">
-            <p className="font-semibold">Ramu</p>
+            <p className="font-semibold">{getDisplayName()}</p>
             <p className="text-sm text-muted-foreground">{translatedTitle}</p>
           </div>
         </div>
-        <Avatar>
-          <AvatarImage src="https://placehold.co/100x100.png" alt="Artisan Ramu" data-ai-hint="indian man artisan" />
-          <AvatarFallback>R</AvatarFallback>
-        </Avatar>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+              <Avatar>
+                <AvatarImage src={getUserAvatar() || undefined} alt={getDisplayName()} />
+                <AvatarFallback>{getUserInitials()}</AvatarFallback>
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56" align="end" forceMount>
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">{getDisplayName()}</p>
+                <p className="text-xs leading-none text-muted-foreground">
+                  {user.email}
+                </p>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleViewProfile}>
+              <User className="mr-2 h-4 w-4" />
+              <span>Profile</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Settings</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Log out</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );

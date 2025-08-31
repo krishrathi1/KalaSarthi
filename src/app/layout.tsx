@@ -1,12 +1,12 @@
 
 import type { Metadata } from "next";
 import { Toaster } from "@/components/ui/toaster"
-import { SidebarProvider, Sidebar, SidebarInset } from "@/components/ui/sidebar";
-import { SidebarNav } from "@/components/sidebar-nav";
-import { Header } from "@/components/header";
 import { LanguageProvider } from "@/context/language-context";
 import { GlobalTranslationProvider } from "@/components/global-translation-provider";
+import { AuthProvider } from "@/context/auth-context";
+import LayoutWrapper from "@/components/layout/LayoutWrapper";
 import "./globals.css";
+
 
 export const metadata: Metadata = {
   title: "KalaMitra - Your Artisan Digital Twin",
@@ -27,22 +27,14 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        <LanguageProvider>
-          <GlobalTranslationProvider />
-          <SidebarProvider>
-            <Sidebar>
-              <SidebarNav />
-            </Sidebar>
-            <SidebarInset>
-              <div className="flex flex-col min-h-screen bg-background">
-                <Header />
-                <main className="flex-1 p-4 md:p-8">
-                  {children}
-                </main>
-              </div>
-            </SidebarInset>
-          </SidebarProvider>
-        </LanguageProvider>
+        <AuthProvider>
+          <LanguageProvider>
+            <GlobalTranslationProvider />
+            <LayoutWrapper>
+              {children}
+            </LayoutWrapper>
+          </LanguageProvider>
+        </AuthProvider>
         <Toaster />
       </body>
     </html>
