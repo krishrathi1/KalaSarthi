@@ -54,7 +54,7 @@ export default function ProductGrid({
                 <p className="text-muted-foreground mb-4">
                     {emptyDescription}
                 </p>
-                <Link href="/story-generator">
+                <Link href="/smart-product-creator">
                     <Button>Create Product</Button>
                 </Link>
             </div>

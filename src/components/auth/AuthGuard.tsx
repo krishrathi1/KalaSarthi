@@ -22,7 +22,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     const buyerRestrictedRoutes = [
         '/arth-saarthi',
         '/price-engine',
-        '/story-generator',
+        '/smart-product-creator',
         '/yojana-mitra'
     ];
 
@@ -149,7 +149,7 @@ export function canAccessRoute(pathname: string, userRole?: 'artisan' | 'buyer')
         '/artisan-buddy',
         '/arth-saarthi',
         '/price-engine',
-        '/story-generator',
+        '/smart-product-creator',
         '/yojana-mitra'
     ];
 
@@ -184,7 +184,7 @@ export function useRouteAccess() {
     const { userProfile } = useAuth();
     const pathname = usePathname();
 
-    const buyerRestrictedRoutes = ['/artisan-buddy', '/arth-saarthi', '/price-engine', '/story-generator', '/yojana-mitra'];
+    const buyerRestrictedRoutes = ['/artisan-buddy', '/arth-saarthi', '/price-engine', '/smart-product-creator', '/yojana-mitra'];
 
     return {
         canAccess: canAccessRoute(pathname, userProfile?.role),

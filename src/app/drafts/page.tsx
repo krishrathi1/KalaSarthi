@@ -215,7 +215,7 @@ export default function DraftsPage() {
                                     View Archived
                                 </Button>
                             </Link>
-                            <Link href="/story-generator">
+                            <Link href="/smart-product-creator">
                                 <Button>
                                     <Package className="h-4 w-4 mr-2" />
                                     Create New Product

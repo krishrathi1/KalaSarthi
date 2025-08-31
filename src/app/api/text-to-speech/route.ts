@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Note: This is a placeholder for Google Text-to-Speech integration
-// In production, you would integrate with Google's Cloud Text-to-Speech API
+// Google Cloud Text-to-Speech integration
+// This provides realistic buyer voices for product narration
 
 export async function POST(request: NextRequest) {
   try {
-    const { text, language = 'en', voiceType = 'artisan_female', speed = 1.0 } = await request.json();
+    const { text, language = 'en', voiceType = 'buyer_female', speed = 1.0 } = await request.json();
 
     if (!text || text.trim().length === 0) {
       return NextResponse.json(
@@ -14,28 +14,116 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Integrate with Google Cloud Text-to-Speech API
-    // For now, return mock audio data
+    console.log(`🎵 Synthesizing speech: ${text.length} chars, language: ${language}, voice: ${voiceType}`);
 
-    // Simulate processing time
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Map voice types to Google Cloud TTS voices
+    const voiceMapping = {
+      // Buyer voices (more neutral, professional)
+      'buyer_female': { name: 'en-US-Neural2-F', languageCode: 'en-US', ssmlGender: 'FEMALE' },
+      'buyer_male': { name: 'en-US-Neural2-D', languageCode: 'en-US', ssmlGender: 'MALE' },
+      'buyer_neutral': { name: 'en-US-Neural2-C', languageCode: 'en-US', ssmlGender: 'NEUTRAL' },
 
-    // Generate mock audio data (base64 encoded)
-    const mockAudioData = generateMockAudioData(text.length);
+      // Artisan voices (maintained for compatibility)
+      'artisan_female': { name: 'en-US-Neural2-F', languageCode: 'en-US', ssmlGender: 'FEMALE' },
+      'artisan_male': { name: 'en-US-Neural2-D', languageCode: 'en-US', ssmlGender: 'MALE' },
 
-    return NextResponse.json({
-      success: true,
-      audioData: mockAudioData,
-      metadata: {
-        textLength: text.length,
-        language,
-        voiceType,
-        speed,
-        duration: Math.max(3, Math.ceil(text.length / 15)), // Rough estimate
-        format: 'mp3',
-        sampleRate: 24000
+      // International buyer voices
+      'buyer_hindi_female': { name: 'hi-IN-Neural2-A', languageCode: 'hi-IN', ssmlGender: 'FEMALE' },
+      'buyer_hindi_male': { name: 'hi-IN-Neural2-B', languageCode: 'hi-IN', ssmlGender: 'MALE' },
+      'buyer_spanish_female': { name: 'es-ES-Neural2-F', languageCode: 'es-ES', ssmlGender: 'FEMALE' },
+      'buyer_french_female': { name: 'fr-FR-Neural2-E', languageCode: 'fr-FR', ssmlGender: 'FEMALE' },
+      'buyer_arabic_female': { name: 'ar-XA-Wavenet-A', languageCode: 'ar-XA', ssmlGender: 'FEMALE' }
+    };
+
+    const selectedVoice = voiceMapping[voiceType as keyof typeof voiceMapping] || voiceMapping.buyer_female;
+
+    // Prepare the request for Google Cloud TTS
+    const ttsRequest = {
+      input: { text: text },
+      voice: {
+        languageCode: selectedVoice.languageCode,
+        name: selectedVoice.name,
+        ssmlGender: selectedVoice.ssmlGender
+      },
+      audioConfig: {
+        audioEncoding: 'MP3',
+        speakingRate: Math.max(0.25, Math.min(4.0, speed)), // Clamp speed between 0.25 and 4.0
+        pitch: voiceType.startsWith('buyer') ? 0 : 2.0, // Buyers have neutral pitch, artisans slightly higher
+        volumeGainDb: voiceType.startsWith('buyer') ? 0 : 1.0 // Buyers speak normally, artisans with slight enthusiasm
       }
-    });
+    };
+
+    try {
+      // Call Google Cloud Text-to-Speech API
+      const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${process.env.GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(ttsRequest)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Google TTS API error: ${response.status} ${response.statusText}`);
+      }
+
+      const ttsResult = await response.json();
+
+      if (!ttsResult.audioContent) {
+        throw new Error('No audio content received from Google TTS');
+      }
+
+      // Calculate approximate duration based on text length and speaking rate
+      const wordsPerMinute = 150 * speed; // Average speaking rate
+      const wordCount = text.split(/\s+/).length;
+      const durationSeconds = Math.max(2, (wordCount / wordsPerMinute) * 60);
+
+      return NextResponse.json({
+        success: true,
+        audioData: `data:audio/mp3;base64,${ttsResult.audioContent}`,
+        metadata: {
+          textLength: text.length,
+          wordCount: wordCount,
+          language: selectedVoice.languageCode,
+          voiceType: voiceType,
+          voiceName: selectedVoice.name,
+          speed: speed,
+          duration: Math.round(durationSeconds),
+          format: 'mp3',
+          sampleRate: 24000,
+          ssmlGender: selectedVoice.ssmlGender,
+          isBuyerVoice: voiceType.startsWith('buyer')
+        }
+      });
+
+    } catch (ttsError) {
+      console.error('❌ Google TTS API failed:', ttsError);
+
+      // Fallback to mock data if TTS fails
+      console.log('⚠️ Falling back to mock audio generation');
+      const mockAudioData = generateMockAudioData(text.length);
+      const wordCount = text.split(/\s+/).length;
+      const durationSeconds = Math.max(2, Math.ceil(wordCount / 15));
+
+      return NextResponse.json({
+        success: true,
+        audioData: mockAudioData,
+        metadata: {
+          textLength: text.length,
+          wordCount: wordCount,
+          language,
+          voiceType,
+          speed,
+          duration: durationSeconds,
+          format: 'mp3',
+          sampleRate: 24000,
+          isBuyerVoice: voiceType.startsWith('buyer'),
+          fallback: true,
+          error: 'Google TTS temporarily unavailable'
+        },
+        message: 'Generated with fallback audio synthesis'
+      });
+    }
 
   } catch (error) {
     console.error('Text-to-speech error:', error);
@@ -65,29 +153,51 @@ function generateMockAudioData(textLength: number): string {
 // Get available voices endpoint
 export async function GET(request: NextRequest) {
   try {
-    // Mock voice options - in production, get from TTS service
+    // Comprehensive voice options for buyers and artisans
     const voices = {
-      english: [
-        { id: 'artisan_female', name: 'Artisan Female', language: 'en', gender: 'female' },
-        { id: 'artisan_male', name: 'Artisan Male', language: 'en', gender: 'male' },
-        { id: 'storyteller', name: 'Storyteller', language: 'en', gender: 'neutral' }
-      ],
-      hindi: [
-        { id: 'artisan_hindi_female', name: 'Indian Artisan Female', language: 'hi', gender: 'female' },
-        { id: 'artisan_hindi_male', name: 'Indian Artisan Male', language: 'hi', gender: 'male' }
-      ],
-      spanish: [
-        { id: 'artisan_spanish', name: 'Spanish Artisan', language: 'es', gender: 'neutral' }
-      ],
-      french: [
-        { id: 'artisan_french', name: 'French Artisan', language: 'fr', gender: 'neutral' }
-      ]
+      buyer: {
+        english: [
+          { id: 'buyer_female', name: 'Professional Buyer (Female)', language: 'en', gender: 'female', description: 'Neutral, professional tone for marketplace buyers' },
+          { id: 'buyer_male', name: 'Professional Buyer (Male)', language: 'en', gender: 'male', description: 'Confident, business-like tone for buyers' },
+          { id: 'buyer_neutral', name: 'Market Analyst', language: 'en', gender: 'neutral', description: 'Analytical, informative tone for product reviews' }
+        ],
+        hindi: [
+          { id: 'buyer_hindi_female', name: 'व्यावसायिक खरीदार (महिला)', language: 'hi', gender: 'female', description: 'Professional buyer voice in Hindi' },
+          { id: 'buyer_hindi_male', name: 'व्यावसायिक खरीदार (पुरुष)', language: 'hi', gender: 'male', description: 'Professional buyer voice in Hindi' }
+        ],
+        spanish: [
+          { id: 'buyer_spanish_female', name: 'Comprador Profesional', language: 'es', gender: 'female', description: 'Professional buyer voice in Spanish' }
+        ],
+        french: [
+          { id: 'buyer_french_female', name: 'Acheteur Professionnel', language: 'fr', gender: 'female', description: 'Professional buyer voice in French' }
+        ],
+        arabic: [
+          { id: 'buyer_arabic_female', name: 'مشتري محترف', language: 'ar', gender: 'female', description: 'Professional buyer voice in Arabic' }
+        ]
+      },
+      artisan: {
+        english: [
+          { id: 'artisan_female', name: 'Artisan Storyteller (Female)', language: 'en', gender: 'female', description: 'Warm, passionate voice for artisan stories' },
+          { id: 'artisan_male', name: 'Artisan Storyteller (Male)', language: 'en', gender: 'male', description: 'Authentic, experienced craftsman voice' },
+          { id: 'storyteller', name: 'Master Storyteller', language: 'en', gender: 'neutral', description: 'Wise, traditional storytelling voice' }
+        ],
+        hindi: [
+          { id: 'artisan_hindi_female', name: 'कारीगर कथाकार (महिला)', language: 'hi', gender: 'female', description: 'Indian artisan storyteller in Hindi' },
+          { id: 'artisan_hindi_male', name: 'कारीगर कथाकार (पुरुष)', language: 'hi', gender: 'male', description: 'Indian artisan storyteller in Hindi' }
+        ]
+      }
     };
 
     return NextResponse.json({
       success: true,
       voices,
-      defaultVoice: 'artisan_female'
+      defaultVoice: 'buyer_female',
+      recommendedForBuyers: ['buyer_female', 'buyer_male', 'buyer_neutral'],
+      recommendedForArtisans: ['artisan_female', 'artisan_male'],
+      categories: {
+        buyer: 'Professional, neutral voices for marketplace buyers and reviewers',
+        artisan: 'Warm, authentic voices for artisan storytelling and product narratives'
+      }
     });
 
   } catch (error) {

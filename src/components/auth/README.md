@@ -27,7 +27,7 @@ The main authentication guard that protects routes based on user authentication 
   - `/artisan-buddy` - Digital twin chat for artisans
   - `/arth-saarthi` - Government scheme advisor
   - `/price-engine` - Pricing suggestions
-  - `/story-generator` - Product story generation
+  - `/smart-product-creator` - Smart product creation with AI
   - `/yojana-mitra` - Scheme recommendations
 
 **Shared Routes (Both Roles):**
@@ -184,7 +184,7 @@ const buyerRestrictedRoutes = [
   '/artisan-buddy',
   '/arth-saarthi',
   '/price-engine',
-  '/story-generator',
+  '/smart-product-creator',
   '/yojana-mitra',
   '/your-new-artisan-tool'  // Add here
 ];
