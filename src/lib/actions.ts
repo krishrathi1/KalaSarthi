@@ -2,10 +2,6 @@
 "use server";
 
 import {
-  generateProductStory as generateProductStoryFlow,
-  type GenerateProductStoryInput,
-} from "@/ai/flows/generate-product-story";
-import {
   interactWithArtisanDigitalTwin as interactWithArtisanDigitalTwinFlow,
   type InteractWithArtisanDigitalTwinInput,
 } from "@/ai/flows/ai-digital-twin-chatbot";
@@ -18,15 +14,6 @@ import {
   type MatchBuyersWithArtisansInput,
 } from "@/ai/flows/buyer-artisan-matchmaking";
 
-export async function generateProductStory(input: GenerateProductStoryInput) {
-  try {
-    const result = await generateProductStoryFlow(input);
-    return { success: true, data: result };
-  } catch (error) {
-    console.error("Error in generateProductStory:", error);
-    return { success: false, error: "Failed to generate product story." };
-  }
-}
 
 export async function interactWithArtisanDigitalTwin(
   input: InteractWithArtisanDigitalTwinInput

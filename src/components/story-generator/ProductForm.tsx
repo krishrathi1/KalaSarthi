@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TagManager } from "./TagManager";
 import { DimensionsForm } from "./DimensionsForm";
-import type { GenerateProductStoryOutput } from "@/ai/flows/generate-product-story";
+// import type { GenerateProductStoryOutput } from "@/ai/flows/generate-product-story";
 
 export interface ProductFormData {
   name: string;
@@ -31,7 +31,7 @@ export interface ProductFormData {
 interface ProductFormProps {
   productForm: ProductFormData;
   setProductForm: React.Dispatch<React.SetStateAction<ProductFormData>>;
-  result: GenerateProductStoryOutput;
+  result:String;
   uploadingProduct: boolean;
   onSubmit: () => void;
   onCancel: () => void;

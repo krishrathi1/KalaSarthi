@@ -20,7 +20,6 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
     // Routes restricted for buyers (artisans can access everything)
     const buyerRestrictedRoutes = [
-        '/artisan-buddy',
         '/arth-saarthi',
         '/price-engine',
         '/story-generator',

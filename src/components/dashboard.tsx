@@ -16,14 +16,12 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "./ui/button";
+import { useState, useEffect } from "react";
 import { useLanguage } from "@/context/language-context";
 import { features, t, translateAsync } from "@/lib/i18n";
-import { TranslationTest } from "./translation-test";
-import { TranslationShowcase } from "./translation-showcase";
-import { useState, useEffect } from "react";
 
 export function Dashboard() {
-  const { language } = useLanguage();
+  const { language, isTranslating } = useLanguage();
   const [translatedGreeting, setTranslatedGreeting] = useState('Namaste');
   const [translatedWelcome, setTranslatedWelcome] = useState('Welcome to KalaMitra...');
 
@@ -47,15 +45,24 @@ export function Dashboard() {
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Translation Test Component - Remove this after testing */}
-      <TranslationTest />
-
-      {/* Translation Showcase - Remove this after testing */}
-      <TranslationShowcase />
 
       <div>
-        <h1 className="text-4xl font-headline font-bold">{translatedGreeting}, Ramu!</h1>
-        <p className="text-muted-foreground">{translatedWelcome}</p>
+        <h1 className="text-4xl font-headline font-bold">
+          {translatedGreeting}, Ramu!
+          {isTranslating && (
+            <span className="ml-2 inline-flex items-center">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+            </span>
+          )}
+        </h1>
+        <p className="text-muted-foreground">
+          {translatedWelcome}
+          {isTranslating && (
+            <span className="ml-2 text-xs text-blue-500 animate-pulse">
+              Translating...
+            </span>
+          )}
+        </p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {features.map((feature) => (
