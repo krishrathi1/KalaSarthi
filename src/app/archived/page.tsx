@@ -117,8 +117,8 @@ export default function ArchivedPage() {
     };
 
     const handleEditProduct = (productId: string) => {
-        // Navigate to story generator with edit mode
-        router.push(`/story-generator?edit=${productId}`);
+        // Navigate to smart product creator with edit mode
+        router.push(`/smart-product-creator?edit=${productId}`);
     };
 
     const handleDeleteProduct = async (productId: string) => {
@@ -215,7 +215,7 @@ export default function ArchivedPage() {
                                     View Drafts
                                 </Button>
                             </Link>
-                            <Link href="/story-generator">
+                            <Link href="/smart-product-creator">
                                 <Button>
                                     <Package className="h-4 w-4 mr-2" />
                                     Create New Product

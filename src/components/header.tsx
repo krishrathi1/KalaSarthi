@@ -297,7 +297,7 @@ export function Header() {
                   <Archive className="mr-2 h-4 w-4" />
                   <span>Archived Products</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/story-generator')}>
+                <DropdownMenuItem onClick={() => router.push('/smart-product-creator')}>
                   <Package className="mr-2 h-4 w-4" />
                   <span>Create Product</span>
                 </DropdownMenuItem>

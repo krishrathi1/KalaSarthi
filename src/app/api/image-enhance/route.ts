@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
+import { uploadToCloudinary, getCloudinaryConfig } from '@/lib/cloudinary';
 
 // Note: Using Gemini Vision API for image enhancement since Nano Banana
 // is not directly available. This provides similar functionality.
@@ -57,64 +58,91 @@ export async function POST(request: NextRequest) {
 
     const startTime = Date.now();
 
-    // Use Gemini Vision for comprehensive image analysis and enhancement
-    const enhancementPrompt = ai.definePrompt({
-      name: 'imageEnhancementPrompt',
-      input: { schema: ImageEnhanceInputSchema },
-      output: { schema: ImageEnhanceOutputSchema },
-      prompt: `You are an expert image enhancement AI specializing in artisan product photography.
+    try {
+      // First, upload the original image to Cloudinary
+      const uploadResult = await uploadToCloudinary(imageFile, {
+        folder: 'artisan-products',
+        tags: ['original', 'artisan', 'product']
+      });
 
-Analyze this product image and provide comprehensive enhancement recommendations:
+      console.log('✅ Original image uploaded to Cloudinary:', uploadResult.secure_url);
 
-1. **Product Analysis**: Identify the product type, materials, craftsmanship style, and cultural significance
-2. **Background Assessment**: Evaluate if background removal would improve the image
-3. **Quality Enhancement**: Suggest improvements for lighting, sharpness, and professional appearance
-4. **Color Preservation**: Ensure original colors and patterns are maintained
-5. **Categorization**: Classify into appropriate product categories
+      // Get Cloudinary config for URL transformations
+      const config = getCloudinaryConfig();
 
-Based on your analysis, provide:
-- Enhanced image description (since we can't actually modify pixels)
-- Product category classification
-- Detailed product description for marketplace
-- Enhancement metadata
+      // Apply AI-powered enhancements using Cloudinary transformations
+      const enhancedImageUrl = `https://res.cloudinary.com/${config.cloudName}/image/upload/`;
+
+      // Build transformation string for comprehensive enhancement
+      const transformations = [
+        'e_gen_background_replace:prompt_a_clean_white_background', // AI background removal
+        'e_gen_restore', // AI restoration
+        'e_sharpen:100', // Sharpening
+        'e_improve', // Auto improvement
+        'e_vibrance:20', // Enhance colors
+        'q_auto', // Auto quality
+        'f_auto' // Auto format
+      ];
+
+      const enhancedUrl = `${enhancedImageUrl}${transformations.join('/')}/${uploadResult.public_id}`;
+
+      console.log('🎨 Applying AI enhancements:', enhancedUrl);
+
+      // Use Gemini Vision for analysis and description generation
+      const analysisPrompt = ai.definePrompt({
+        name: 'imageAnalysisPrompt',
+        input: { schema: z.object({ imageData: z.string() }) },
+        output: { schema: z.object({
+          productCategory: z.string(),
+          productDescription: z.string(),
+          materials: z.array(z.string()),
+          colors: z.array(z.string()),
+          culturalSignificance: z.string()
+        }) },
+        prompt: `Analyze this artisan product image and provide detailed information:
 
 Product Image: {{media url=${imageDataUrl}}}
 
-Focus on:
-- Maintaining authentic artisan craftsmanship appearance
-- Professional marketplace presentation
-- Cultural and traditional element preservation
-- Clear product visibility and appeal`
-    });
+Provide:
+1. **Product Category**: Main category (textiles, jewelry, pottery, handicrafts, metalwork, woodwork)
+2. **Detailed Description**: Comprehensive marketplace description
+3. **Materials**: List of materials used
+4. **Colors**: Dominant colors in the product
+5. **Cultural Significance**: Traditional and cultural importance
 
-    try {
-      const enhancementResult = await enhancementPrompt({
-        imageData: imageDataUrl,
-        enhancementType: 'professional_styling'
+Focus on authentic artisan craftsmanship and cultural heritage.`
       });
+
+      const analysisResult = await analysisPrompt({ imageData: imageDataUrl });
+      const analysis = analysisResult as any;
 
       const processingTime = Date.now() - startTime;
 
-      // Create enhanced image metadata (simulating actual enhancement)
+      // Create comprehensive enhancement metadata
       const enhancedMetadata = {
         originalSize: buffer.length,
-        enhancedSize: buffer.length, // Would be different with actual processing
+        enhancedSize: buffer.length, // Cloudinary transformations don't change file size in response
         processingTime,
-        confidence: 0.95
+        confidence: 0.95,
+        cloudinaryPublicId: uploadResult.public_id,
+        originalUrl: uploadResult.secure_url,
+        enhancedUrl: enhancedUrl
       };
 
-      // For now, return the original image with enhancement metadata
-      // In production, this would be the actually enhanced image
       const enhancedImageData = {
-        enhancedImage: imageDataUrl, // Would be enhanced version
-        productCategory: (enhancementResult as any).productCategory || 'Handicraft',
-        productDescription: (enhancementResult as any).productDescription || 'Beautiful handcrafted product',
+        enhancedImage: enhancedUrl,
+        productCategory: analysis.productCategory || 'Handicraft',
+        productDescription: analysis.productDescription || 'Beautiful handcrafted artisan product',
+        materials: analysis.materials || ['Natural materials'],
+        colors: analysis.colors || ['Natural tones'],
+        culturalSignificance: analysis.culturalSignificance || 'Preserves traditional craftsmanship',
         enhancements: {
           backgroundRemoved: true,
           colorsPreserved: true,
           patternsEnhanced: true,
           qualityImproved: true,
-          professionalStyling: true
+          professionalStyling: true,
+          aiPowered: true
         },
         metadata: enhancedMetadata
       };
@@ -122,36 +150,78 @@ Focus on:
       return NextResponse.json({
         success: true,
         ...enhancedImageData,
-        message: 'Image enhanced with professional styling and background optimization'
+        message: 'Image enhanced with AI-powered background removal, restoration, and professional styling'
       });
 
-    } catch (aiError) {
-      console.error('AI Enhancement failed:', aiError);
+    } catch (enhancementError) {
+      console.error('❌ Image enhancement failed:', enhancementError);
 
-      // Fallback: return original image with basic metadata
-      const base64Image = buffer.toString('base64');
-      const dataUrl = `data:${imageFile.type};base64,${base64Image}`;
+      // Fallback: Upload original image without enhancement
+      try {
+        const fallbackUpload = await uploadToCloudinary(imageFile, {
+          folder: 'artisan-products',
+          tags: ['original', 'fallback']
+        });
 
-      return NextResponse.json({
-        success: true,
-        enhancedImage: dataUrl,
-        productCategory: 'Handicraft',
-        productDescription: 'Beautiful handcrafted artisan product',
-        enhancements: {
-          backgroundRemoved: false,
-          colorsPreserved: true,
-          patternsEnhanced: false,
-          qualityImproved: false,
-          professionalStyling: false
-        },
-        metadata: {
-          originalSize: buffer.length,
-          enhancedSize: buffer.length,
-          processingTime: Date.now() - startTime,
-          confidence: 0.5
-        },
-        message: 'Basic image processing completed (AI enhancement temporarily unavailable)'
-      });
+        const base64Image = buffer.toString('base64');
+        const dataUrl = `data:${imageFile.type};base64,${base64Image}`;
+
+        return NextResponse.json({
+          success: true,
+          enhancedImage: fallbackUpload.secure_url,
+          productCategory: 'Handicraft',
+          productDescription: 'Beautiful handcrafted artisan product',
+          materials: ['Natural materials'],
+          colors: ['Natural tones'],
+          culturalSignificance: 'Traditional craftsmanship',
+          enhancements: {
+            backgroundRemoved: false,
+            colorsPreserved: true,
+            patternsEnhanced: false,
+            qualityImproved: false,
+            professionalStyling: false,
+            aiPowered: false
+          },
+          metadata: {
+            originalSize: buffer.length,
+            enhancedSize: buffer.length,
+            processingTime: Date.now() - startTime,
+            confidence: 0.7,
+            cloudinaryPublicId: fallbackUpload.public_id,
+            originalUrl: fallbackUpload.secure_url,
+            enhancedUrl: fallbackUpload.secure_url
+          },
+          message: 'Original image uploaded (AI enhancement temporarily unavailable)'
+        });
+      } catch (fallbackError) {
+        console.error('❌ Fallback upload also failed:', fallbackError);
+
+        // Final fallback: return base64 data URL
+        const base64Image = buffer.toString('base64');
+        const dataUrl = `data:${imageFile.type};base64,${base64Image}`;
+
+        return NextResponse.json({
+          success: true,
+          enhancedImage: dataUrl,
+          productCategory: 'Handicraft',
+          productDescription: 'Beautiful handcrafted artisan product',
+          enhancements: {
+            backgroundRemoved: false,
+            colorsPreserved: true,
+            patternsEnhanced: false,
+            qualityImproved: false,
+            professionalStyling: false,
+            aiPowered: false
+          },
+          metadata: {
+            originalSize: buffer.length,
+            enhancedSize: buffer.length,
+            processingTime: Date.now() - startTime,
+            confidence: 0.5
+          },
+          message: 'Basic image processing completed'
+        });
+      }
     }
 
   } catch (error) {

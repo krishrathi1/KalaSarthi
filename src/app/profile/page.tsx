@@ -110,8 +110,8 @@ export default function ProfilePage() {
     };
 
     const handleEditProduct = (productId: string) => {
-        // Navigate to story generator with edit mode
-        router.push(`/story-generator?edit=${productId}`);
+        // Navigate to smart product creator with edit mode
+        router.push(`/smart-product-creator?edit=${productId}`);
     };
 
     const handleDeleteProduct = async (productId: string) => {
