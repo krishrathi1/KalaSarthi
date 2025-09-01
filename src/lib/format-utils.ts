@@ -6,12 +6,14 @@
  * Format price with Indian Rupee symbol
  */
 export function formatPrice(price: number): string {
-    return new Intl.NumberFormat('en-IN', {
-        style: 'currency',
-        currency: 'INR',
+    // Use direct Unicode character with proper encoding
+    const formattedNumber = new Intl.NumberFormat('en-IN', {
         minimumFractionDigits: 0,
         maximumFractionDigits: 2,
     }).format(price);
+
+    // Use the Unicode rupee symbol directly (U+20B9)
+    return `\u20B9${formattedNumber}`;
 }
 
 /**

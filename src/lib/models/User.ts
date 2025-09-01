@@ -74,9 +74,6 @@ const userSchema = new Schema<IUserDocument>(
 );
 
 // Create indexes
-userSchema.index({ uid: 1 });
-userSchema.index({ email: 1 });
-userSchema.index({ phone: 1 });
 userSchema.index({ role: 1 });
 userSchema.index({
     name: "text",
