@@ -15,11 +15,12 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     const pathname = usePathname();
 
     // Public routes that don't need authentication
-    const publicRoutes = ['/auth'];
+    const publicRoutes = ['/auth', '/'];
     const isPublicRoute = publicRoutes.includes(pathname);
 
     // Routes restricted for buyers (artisans can access everything)
     const buyerRestrictedRoutes = [
+        '/artisan-buddy',
         '/arth-saarthi',
         '/price-engine',
         '/smart-product-creator',

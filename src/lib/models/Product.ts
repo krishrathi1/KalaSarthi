@@ -118,7 +118,6 @@ const productSchema = new Schema<IProductDocument>(
 );
 
 // Create indexes
-productSchema.index({ productId: 1 });
 productSchema.index({ artisanId: 1 });
 productSchema.index({ status: 1 });
 productSchema.index({ category: 1 });

@@ -136,7 +136,7 @@ export function DigitalTwinChat() {
               >
                 {message.role === "assistant" && (
                   <Avatar className="size-8 border">
-                      <AvatarImage src="https://placehold.co/100x100.png" alt="Artisan Ramu" data-ai-hint="indian man artisan"/>
+                      <AvatarImage src="/api/placeholder/100/100/artisan" alt="Artisan Avatar" />
                     <AvatarFallback>{translatedAI}</AvatarFallback>
                   </Avatar>
                 )}
@@ -160,7 +160,7 @@ export function DigitalTwinChat() {
              {loading && (
               <div className="flex items-start gap-3">
                 <Avatar className="size-8 border">
-                  <AvatarImage src="https://placehold.co/100x100.png" alt="Artisan Ramu" data-ai-hint="indian man artisan"/>
+                  <AvatarImage src="/api/placeholder/100/100/artisan" alt="Artisan Avatar" />
                   <AvatarFallback>AI</AvatarFallback>
                 </Avatar>
                 <div className="max-w-xs md:max-w-md rounded-lg p-3 text-sm bg-muted flex items-center space-x-2">

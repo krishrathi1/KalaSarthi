@@ -7,7 +7,6 @@
  */
 export function formatPrice(price: number): string {
     return new Intl.NumberFormat('en-IN', {
-        currency: 'INR',
         minimumFractionDigits: 0,
         maximumFractionDigits: 2,
     }).format(price);

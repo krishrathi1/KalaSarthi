@@ -13,7 +13,39 @@ import {
   matchBuyersWithArtisans as matchBuyersWithArtisansFlow,
   type MatchBuyersWithArtisansInput,
 } from "@/ai/flows/buyer-artisan-matchmaking";
+import {
+  generateProductStory as generateProductStoryFlow,
+  type GenerateProductStoryInput,
+} from "@/ai/flows/generate-product-story";
 
+
+export async function analyzeTrends(artisanProfession: string, limit: number = 20, userProfile?: any, selectedCategories?: string[]) {
+  try {
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:9002';
+    const response = await fetch(`${baseUrl}/api/trend-analysis`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        artisanProfession,
+        limit,
+        userProfile,
+        selectedCategories,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error in analyzeTrends:", error);
+    return { success: false, error: "Failed to analyze trends." };
+  }
+}
 
 export async function interactWithArtisanDigitalTwin(
   input: InteractWithArtisanDigitalTwinInput
@@ -48,5 +80,17 @@ export async function matchBuyersWithArtisans(
   } catch (error) {
     console.error("Error in matchBuyersWithArtisans:", error);
     return { success: false, error: "Failed to find matches." };
+  }
+}
+
+export async function generateProductStory(
+  input: GenerateProductStoryInput
+) {
+  try {
+    const result = await generateProductStoryFlow(input);
+    return { success: true, data: result };
+  } catch (error) {
+    console.error("Error in generateProductStory:", error);
+    return { success: false, error: "Failed to generate product story." };
   }
 }
