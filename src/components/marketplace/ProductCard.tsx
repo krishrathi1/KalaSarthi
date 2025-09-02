@@ -34,7 +34,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
     return (
         <Link href={`/marketplace/products/${product.productId}`}>
-            <Card className="group overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white border-0 shadow-md">
+            <Card className="group overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white border-0 shadow-md h-full flex flex-col">
                 {/* Product Image */}
                 <div className="relative aspect-square overflow-hidden">
                     {product.images && product.images.length > 0 && !imageError ? (
@@ -82,37 +82,42 @@ export default function ProductCard({ product }: ProductCardProps) {
                     </div>
                 </div>
 
-                <CardContent className="p-4 space-y-3">
+                <CardContent className="p-4 space-y-3 flex-1 flex flex-col">
                     {/* Category Badge */}
                     <Badge variant="outline" className="text-xs w-fit">
                         {product.category}
                     </Badge>
 
-                    {/* Product Name */}
-                    <h3 className="font-semibold text-lg line-clamp-2 group-hover:text-orange-600 transition-colors">
+                    {/* Product Name - Fixed height */}
+                    <h3 className="font-semibold text-lg line-clamp-2 group-hover:text-orange-600 transition-colors min-h-[3.5rem] flex items-start">
                         {product.name}
                     </h3>
 
-                    {/* Description */}
-                    <p className="text-gray-600 line-clamp-2 text-sm">
+                    {/* Description - Fixed height */}
+                    <p className="text-gray-600 line-clamp-2 text-sm min-h-[2.5rem] flex items-start">
                         {product.description}
                     </p>
 
-                    {/* Tags */}
-                    {product.tags && product.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                            {product.tags.slice(0, 2).map((tag, index) => (
-                                <Badge key={index} variant="secondary" className="text-xs">
-                                    {tag}
-                                </Badge>
-                            ))}
-                            {product.tags.length > 2 && (
-                                <Badge variant="secondary" className="text-xs">
-                                    +{product.tags.length - 2}
-                                </Badge>
-                            )}
-                        </div>
-                    )}
+                    {/* Tags - Fixed height */}
+                    <div className="min-h-[1.75rem] flex items-start">
+                        {product.tags && product.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                                {product.tags.slice(0, 2).map((tag, index) => (
+                                    <Badge key={index} variant="secondary" className="text-xs">
+                                        {tag}
+                                    </Badge>
+                                ))}
+                                {product.tags.length > 2 && (
+                                    <Badge variant="secondary" className="text-xs">
+                                        +{product.tags.length - 2}
+                                    </Badge>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Spacer to push content to bottom */}
+                    <div className="flex-1" />
 
                     {/* Price and Availability */}
                     <div className="flex items-center justify-between">

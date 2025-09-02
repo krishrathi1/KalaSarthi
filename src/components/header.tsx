@@ -1,9 +1,10 @@
 'use client';
 import React from 'react';
-import { ChevronsUpDown, Check, Mic, User, LogOut, Settings, FileText, Archive, Package } from 'lucide-react';
+import { ChevronsUpDown, Check, Mic, User, LogOut, Settings, FileText, Archive, Package, ShoppingCart, Heart } from 'lucide-react';
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Command,
   CommandEmpty,
@@ -25,6 +26,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useLanguage } from "@/context/language-context";
 import { languages, LanguageCode, t, translateAsync } from "@/lib/i18n";
 import { useState, useEffect } from "react";
@@ -33,6 +40,8 @@ import { cn } from '@/lib/utils';
 import { useVoiceNavigation } from '@/hooks/use-voice-navigation';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
+import { useCart } from '@/hooks/use-cart';
+import { useWishlist } from '@/hooks/use-wishlist';
 
 // Group languages by region
 const indianLanguages = Object.entries(languages).filter(([_, lang]) => lang.region === 'indian');
@@ -46,6 +55,17 @@ export function Header() {
   const { isListening, transcript, startListening, stopListening, error } = useVoiceNavigation();
   const { user, userProfile, loading, logout, isArtisan, isBuyer } = useAuth();
   const router = useRouter();
+  
+  // Add cart and wishlist hooks
+  const { cart, getCartCount } = useCart(user?.uid || null);
+  const { wishlist, getWishlistCount } = useWishlist(user?.uid || null);
+
+  // Get cart and wishlist counts
+  const cartCount = getCartCount();
+  const wishlistCount = getWishlistCount();
+
+  console.log('Cart Count:', cartCount);
+  console.log('Wishlist Count:', wishlistCount);
 
   // Get user display name and role title
   const getDisplayName = () => {
@@ -130,6 +150,55 @@ export function Header() {
     router.push('/profile');
   };
 
+  const handleCartClick = () => {
+    router.push('/marketplace/cart');
+  };
+
+  const handleWishlistClick = () => {
+    router.push('/marketplace/wishlist');
+  };
+
+  // Cart/Wishlist Button Component
+  const CartWishlistButton = ({ 
+    icon: Icon, 
+    count, 
+    onClick, 
+    tooltip,
+    variant = "outline"
+  }: {
+    icon: React.ElementType;
+    count: number;
+    onClick: () => void;
+    tooltip: string;
+    variant?: "outline" | "ghost";
+  }) => (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant={variant}
+            size="icon"
+            className="relative"
+            onClick={onClick}
+          >
+            <Icon className="h-4 w-4" />
+            {count > 0 && (
+              <Badge 
+                className="absolute -top-2 -right-2 h-5 w-5 p-0 text-xs flex items-center justify-center bg-red-500 hover:bg-red-500"
+                variant="destructive"
+              >
+                {count > 99 ? '99+' : count}
+              </Badge>
+            )}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{tooltip} {count > 0 && `(${count})`}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+
   // Show loading state or login prompt when no user
   if (loading) {
     return (
@@ -164,6 +233,21 @@ export function Header() {
       <SidebarTrigger className="md:hidden" />
       <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
         <GlobalTranslationToggle />
+        
+        {/* Cart and Wishlist buttons - show for all authenticated users */}
+        <CartWishlistButton
+          icon={ShoppingCart}
+          count={cartCount}
+          onClick={handleCartClick}
+          tooltip="Shopping Cart"
+        />
+        <CartWishlistButton
+          icon={Heart}
+          count={wishlistCount}
+          onClick={handleWishlistClick}
+          tooltip="Wishlist"
+        />
+
         <Button
           variant="outline"
           size="icon"
@@ -287,6 +371,28 @@ export function Header() {
               <User className="mr-2 h-4 w-4" />
               <span>Profile</span>
             </DropdownMenuItem>
+            
+            {/* Cart and Wishlist in dropdown menu for all users */}
+            <DropdownMenuItem onClick={handleCartClick}>
+              <ShoppingCart className="mr-2 h-4 w-4" />
+              <span>Cart</span>
+              {cartCount > 0 && (
+                <Badge className="ml-auto text-xs" variant="secondary">
+                  {cartCount}
+                </Badge>
+              )}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleWishlistClick}>
+              <Heart className="mr-2 h-4 w-4" />
+              <span>Wishlist</span>
+              {wishlistCount > 0 && (
+                <Badge className="ml-auto text-xs" variant="secondary">
+                  {wishlistCount}
+                </Badge>
+              )}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            
             {isArtisan && (
               <>
                 <DropdownMenuItem onClick={() => router.push('/drafts')}>

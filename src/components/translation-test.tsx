@@ -69,7 +69,7 @@ export function TranslationTest() {
           <label className="block text-sm font-medium mb-2">
             Translated Text ({languages[language as keyof typeof languages]?.name || language})
           </label>
-          <div className="w-full p-2 border rounded-md bg-gray-50 min-h-[60px]">
+          <div className="w-full p-2 border rounded-md  min-h-[60px]">
             {isTranslating ? 'Translating...' : translatedText}
           </div>
         </div>

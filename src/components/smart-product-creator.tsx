@@ -2458,7 +2458,7 @@ export function SmartProductCreator() {
           </Button>
 
           {showDebug && (
-            <div className="mt-2 p-3 bg-gray-50 border rounded text-xs font-mono">
+            <div className="mt-2 p-3  border rounded text-xs font-mono">
               <div className="font-bold mb-2">🎯 Recording Debug Info:</div>
               <div>Browser Support: {browserSupported ? "✅" : "❌"}</div>
               <div>MediaDevices API: {typeof navigator.mediaDevices !== 'undefined' ? "✅" : "❌"}</div>
