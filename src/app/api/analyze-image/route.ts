@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
       output: { schema: ImageAnalysisOutputSchema },
       prompt: `You are an expert in Indian handicrafts and artisan products. Analyze this product image and provide comprehensive details for marketplace listing.
 
-Product Image: {{media url=${imageDataUrl}}}
+Product Image: {{media url="${imageDataUrl}"}}
 
 Provide detailed analysis including:
 1. **Product Identification**: Exact product type and category

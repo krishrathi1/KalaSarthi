@@ -14,25 +14,61 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`🎵 Synthesizing speech: ${text.length} chars, language: ${language}, voice: ${voiceType}`);
+    // Check API key availability
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error('❌ GEMINI_API_KEY not found in environment variables');
+      return NextResponse.json(
+        { error: 'API key not configured. Please set GEMINI_API_KEY environment variable.' },
+        { status: 500 }
+      );
+    }
 
-    // Map voice types to Google Cloud TTS voices
+    console.log(`🎵 Synthesizing speech: ${text.length} chars, language: ${language}, voice: ${voiceType}`);
+    console.log(`🔑 API Key available: ${apiKey ? 'Yes' : 'No'}`);
+
+    // Enhanced voice mapping with better models and voice cloning
     const voiceMapping = {
-      // Buyer voices (more neutral, professional)
+      // Professional buyer voices (enhanced models)
       'buyer_female': { name: 'en-US-Neural2-F', languageCode: 'en-US', ssmlGender: 'FEMALE' },
       'buyer_male': { name: 'en-US-Neural2-D', languageCode: 'en-US', ssmlGender: 'MALE' },
       'buyer_neutral': { name: 'en-US-Neural2-C', languageCode: 'en-US', ssmlGender: 'NEUTRAL' },
 
-      // Artisan voices (maintained for compatibility)
+      // Authentic artisan voices (culturally appropriate)
       'artisan_female': { name: 'en-US-Neural2-F', languageCode: 'en-US', ssmlGender: 'FEMALE' },
       'artisan_male': { name: 'en-US-Neural2-D', languageCode: 'en-US', ssmlGender: 'MALE' },
+      'storyteller': { name: 'en-US-Neural2-H', languageCode: 'en-US', ssmlGender: 'FEMALE' },
 
-      // International buyer voices
+      // Enhanced Indian voices with better models
       'buyer_hindi_female': { name: 'hi-IN-Neural2-A', languageCode: 'hi-IN', ssmlGender: 'FEMALE' },
       'buyer_hindi_male': { name: 'hi-IN-Neural2-B', languageCode: 'hi-IN', ssmlGender: 'MALE' },
+      'artisan_hindi_female': { name: 'hi-IN-Neural2-C', languageCode: 'hi-IN', ssmlGender: 'FEMALE' },
+      'artisan_hindi_male': { name: 'hi-IN-Neural2-D', languageCode: 'hi-IN', ssmlGender: 'MALE' },
+
+      // Regional Indian languages with enhanced models
+      'buyer_tamil_female': { name: 'ta-IN-Neural2-A', languageCode: 'ta-IN', ssmlGender: 'FEMALE' },
+      'buyer_telugu_female': { name: 'te-IN-Neural2-A', languageCode: 'te-IN', ssmlGender: 'FEMALE' },
+      'buyer_bengali_female': { name: 'bn-IN-Neural2-A', languageCode: 'bn-IN', ssmlGender: 'FEMALE' },
+      'buyer_gujarati_female': { name: 'gu-IN-Neural2-A', languageCode: 'gu-IN', ssmlGender: 'FEMALE' },
+      'buyer_marathi_female': { name: 'mr-IN-Neural2-A', languageCode: 'mr-IN', ssmlGender: 'FEMALE' },
+      'buyer_punjabi_female': { name: 'pa-IN-Neural2-A', languageCode: 'pa-IN', ssmlGender: 'FEMALE' },
+      'buyer_urdu_female': { name: 'ur-IN-Neural2-A', languageCode: 'ur-IN', ssmlGender: 'FEMALE' },
+
+      // International voices with enhanced models
       'buyer_spanish_female': { name: 'es-ES-Neural2-F', languageCode: 'es-ES', ssmlGender: 'FEMALE' },
       'buyer_french_female': { name: 'fr-FR-Neural2-E', languageCode: 'fr-FR', ssmlGender: 'FEMALE' },
-      'buyer_arabic_female': { name: 'ar-XA-Wavenet-A', languageCode: 'ar-XA', ssmlGender: 'FEMALE' }
+      'buyer_arabic_female': { name: 'ar-XA-Neural2-A', languageCode: 'ar-XA', ssmlGender: 'FEMALE' },
+      'buyer_german_female': { name: 'de-DE-Neural2-F', languageCode: 'de-DE', ssmlGender: 'FEMALE' },
+      'buyer_italian_female': { name: 'it-IT-Neural2-E', languageCode: 'it-IT', ssmlGender: 'FEMALE' },
+      'buyer_portuguese_female': { name: 'pt-BR-Neural2-A', languageCode: 'pt-BR', ssmlGender: 'FEMALE' },
+
+      // Voice cloning simulation (maps to similar enhanced voices)
+      'clone_artisan_warm': { name: 'en-US-Neural2-G', languageCode: 'en-US', ssmlGender: 'FEMALE' },
+      'clone_artisan_deep': { name: 'en-US-Neural2-I', languageCode: 'en-US', ssmlGender: 'MALE' },
+      'clone_artisan_young': { name: 'en-US-Neural2-F', languageCode: 'en-US', ssmlGender: 'FEMALE' },
+
+      // Dynamic cloned voices (these would be generated at runtime)
+      // In production, these would be actual custom voice models
     };
 
     const selectedVoice = voiceMapping[voiceType as keyof typeof voiceMapping] || voiceMapping.buyer_female;

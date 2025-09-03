@@ -11,6 +11,54 @@ const nextConfig: NextConfig = {
   webpack: (config, { isServer }) => {
     // Suppress handlebars require.extensions warning
     config.module.exprContextCritical = false;
+
+    // Add handlebars loader to handle .hbs files
+    config.module.rules.push({
+      test: /\.hbs$/,
+      loader: 'handlebars-loader'
+    });
+
+    // Resolve handlebars extensions
+    config.resolve.extensions.push('.hbs');
+
+    // Suppress specific handlebars warnings from node_modules
+    config.module.rules.push({
+      test: /node_modules\/handlebars\/lib\/index\.js$/,
+      use: [{
+        loader: 'imports-loader',
+        options: {
+          additionalCode: 'require.extensions = {};'
+        }
+      }]
+    });
+
+    // Ignore handlebars warnings
+    config.ignoreWarnings = [
+      { module: /node_modules\/handlebars/ },
+      { message: /require\.extensions is not supported by webpack/ },
+      { message: /require\.extensions/ }
+    ];
+
+    // Additional handlebars configuration
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      handlebars: 'handlebars/dist/handlebars.min.js'
+    };
+
+    // Exclude Node.js modules from client-side bundle
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        crypto: false,
+        stream: false,
+        util: false,
+        buffer: false,
+        process: false
+      };
+    }
+
     return config;
   },
   images: {

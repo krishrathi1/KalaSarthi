@@ -26,13 +26,17 @@ export const getCloudinaryConfig = (): CloudinaryConfig => {
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
     const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
-    if (!cloudName || !uploadPreset) {
+    if (!cloudName) {
         throw new Error(
-            'Missing Cloudinary configuration. Please set NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME and NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET in your environment variables.'
+            'Missing Cloudinary cloud name. Please set NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME in your environment variables.'
         );
     }
 
-    return { cloudName, uploadPreset };
+    // If no upload preset is configured, we'll use unsigned uploads
+    return {
+        cloudName,
+        uploadPreset: uploadPreset || 'unsigned_upload'
+    };
 };
 
 // Upload image to Cloudinary
@@ -44,8 +48,14 @@ export const uploadToCloudinary = async (
         const config = getCloudinaryConfig();
 
         const formData = new FormData();
+
+        // Handle unsigned uploads (when no preset is configured or preset doesn't exist)
+        if (config.uploadPreset && config.uploadPreset !== 'unsigned_upload' && config.uploadPreset !== '') {
+            formData.append('upload_preset', config.uploadPreset);
+        }
+        // For unsigned uploads, don't include upload_preset parameter at all
+
         formData.append('file', file);
-        formData.append('upload_preset', config.uploadPreset);
 
         if (options.folder) {
             formData.append('folder', options.folder);
@@ -69,6 +79,45 @@ export const uploadToCloudinary = async (
 
         if (!response.ok) {
             const errorData = await response.json();
+            console.error('Cloudinary API Error:', errorData);
+
+            // If upload preset error, try without preset (unsigned upload)
+            if (errorData.error?.message?.includes('Upload preset') && config.uploadPreset) {
+                console.log('Retrying upload without preset (unsigned upload)...');
+
+                // Remove the preset and retry
+                const retryFormData = new FormData();
+                retryFormData.append('file', file);
+
+                if (options.folder) {
+                    retryFormData.append('folder', options.folder);
+                }
+
+                if (options.tags && options.tags.length > 0) {
+                    retryFormData.append('tags', options.tags.join(','));
+                }
+
+                if (options.public_id) {
+                    retryFormData.append('public_id', options.public_id);
+                }
+
+                const retryResponse = await fetch(
+                    `https://api.cloudinary.com/v1_1/${config.cloudName}/image/upload`,
+                    {
+                        method: 'POST',
+                        body: retryFormData,
+                    }
+                );
+
+                if (!retryResponse.ok) {
+                    const retryErrorData = await retryResponse.json();
+                    throw new Error(`Cloudinary upload failed: ${retryErrorData.error?.message || 'Unknown error'}`);
+                }
+
+                const retryResult: CloudinaryUploadResult = await retryResponse.json();
+                return retryResult;
+            }
+
             throw new Error(`Cloudinary upload failed: ${errorData.error?.message || 'Unknown error'}`);
         }
 
