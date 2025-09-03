@@ -6,9 +6,12 @@ import { IProductDocument } from '@/lib/models/Product';
 import AuthGuard from '@/components/auth/AuthGuard';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Loader2, Search, TrendingUp } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ProductGrid, ProfileHeader, ProfileInfo } from '@/components/profile';
+import ScrapedProductGrid from '@/components/profile/ScrapedProductGrid';
 import { useToast } from '@/hooks/use-toast';
 
 export default function ProfilePage() {
@@ -18,6 +21,9 @@ export default function ProfilePage() {
     const [error, setError] = useState<string | null>(null);
     const [updating, setUpdating] = useState<string | null>(null);
     const [deleting, setDeleting] = useState<string | null>(null);
+    const [scrapedProducts, setScrapedProducts] = useState<any>({});
+    const [scrapingLoading, setScrapingLoading] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('handicraft');
     const { toast } = useToast();
     const router = useRouter();
 
@@ -156,6 +162,33 @@ export default function ProfilePage() {
         }
     };
 
+    const fetchScrapedProducts = async (query: string = 'handicraft') => {
+        try {
+            setScrapingLoading(true);
+            const response = await fetch(`/api/scrape-products?query=${encodeURIComponent(query)}`);
+            const result = await response.json();
+
+            if (result.success) {
+                setScrapedProducts(result.data);
+            } else {
+                toast({
+                    title: 'Scraping Failed',
+                    description: result.error || 'Failed to fetch competitor products',
+                    variant: 'destructive',
+                });
+            }
+        } catch (err) {
+            console.error('Error fetching scraped products:', err);
+            toast({
+                title: 'Scraping Failed',
+                description: 'Failed to fetch competitor products',
+                variant: 'destructive',
+            });
+        } finally {
+            setScrapingLoading(false);
+        }
+    };
+
     if (authLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -212,7 +245,7 @@ export default function ProfilePage() {
                                     </div>
                                 ) : userProfile.role === 'artisan' ? (
                                     <Tabs defaultValue="published" className="w-full">
-                                        <TabsList className="grid w-full grid-cols-3">
+                                        <TabsList className="grid w-full grid-cols-4">
                                             <TabsTrigger value="published">
                                                 Published ({publishedProducts.length})
                                             </TabsTrigger>
@@ -221,6 +254,10 @@ export default function ProfilePage() {
                                             </TabsTrigger>
                                             <TabsTrigger value="archived">
                                                 Archived ({archivedProducts.length})
+                                            </TabsTrigger>
+                                            <TabsTrigger value="market-research">
+                                                <TrendingUp className="h-4 w-4 mr-1" />
+                                                Market Research
                                             </TabsTrigger>
                                         </TabsList>
 
@@ -250,8 +287,8 @@ export default function ProfilePage() {
                                         </TabsContent>
 
                                         <TabsContent value="archived" className="mt-6">
-                                            <ProductGrid 
-                                                products={archivedProducts} 
+                                            <ProductGrid
+                                                products={archivedProducts}
                                                 showActions={true}
                                                 onStatusChange={handleProductStatusChange}
                                                 onEdit={handleEditProduct}
@@ -259,6 +296,98 @@ export default function ProfilePage() {
                                                 updating={updating}
                                                 deleting={deleting}
                                             />
+                                        </TabsContent>
+
+                                        <TabsContent value="market-research" className="mt-6">
+                                            <div className="space-y-6">
+                                                {/* Search Section */}
+                                                <div className="flex gap-4">
+                                                    <Input
+                                                        placeholder="Search for products (e.g., handicraft, jewelry, textiles)"
+                                                        value={searchQuery}
+                                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                                        className="flex-1"
+                                                    />
+                                                    <Button
+                                                        onClick={() => fetchScrapedProducts(searchQuery)}
+                                                        disabled={scrapingLoading}
+                                                    >
+                                                        {scrapingLoading ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                        ) : (
+                                                            <Search className="h-4 w-4 mr-2" />
+                                                        )}
+                                                        Search Market
+                                                    </Button>
+                                                </div>
+
+                                                {/* Results Section */}
+                                                {scrapingLoading ? (
+                                                    <div className="flex justify-center py-8">
+                                                        <Loader2 className="h-6 w-6 animate-spin" />
+                                                        <p className="text-sm text-muted-foreground mt-2 ml-2">
+                                                            Analyzing market data...
+                                                        </p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-8">
+                                                        {scrapedProducts.amazon && scrapedProducts.amazon.length > 0 && (
+                                                            <div>
+                                                                <h3 className="text-lg font-semibold mb-4 flex items-center">
+                                                                    <span className="text-orange-600 mr-2">Amazon</span>
+                                                                    Products ({scrapedProducts.amazon.length})
+                                                                </h3>
+                                                                <ScrapedProductGrid
+                                                                    products={scrapedProducts.amazon}
+                                                                    platform="Amazon"
+                                                                />
+                                                            </div>
+                                                        )}
+
+                                                        {scrapedProducts.flipkart && scrapedProducts.flipkart.length > 0 && (
+                                                            <div>
+                                                                <h3 className="text-lg font-semibold mb-4 flex items-center">
+                                                                    <span className="text-blue-600 mr-2">Flipkart</span>
+                                                                    Products ({scrapedProducts.flipkart.length})
+                                                                </h3>
+                                                                <ScrapedProductGrid
+                                                                    products={scrapedProducts.flipkart}
+                                                                    platform="Flipkart"
+                                                                />
+                                                            </div>
+                                                        )}
+
+                                                        {scrapedProducts.meesho && scrapedProducts.meesho.length > 0 && (
+                                                            <div>
+                                                                <h3 className="text-lg font-semibold mb-4 flex items-center">
+                                                                    <span className="text-pink-600 mr-2">Meesho</span>
+                                                                    Products ({scrapedProducts.meesho.length})
+                                                                </h3>
+                                                                <ScrapedProductGrid
+                                                                    products={scrapedProducts.meesho}
+                                                                    platform="Meesho"
+                                                                />
+                                                            </div>
+                                                        )}
+
+                                                        {(!scrapedProducts.amazon || scrapedProducts.amazon.length === 0) &&
+                                                         (!scrapedProducts.flipkart || scrapedProducts.flipkart.length === 0) &&
+                                                         (!scrapedProducts.meesho || scrapedProducts.meesho.length === 0) && (
+                                                            <div className="text-center py-12">
+                                                                <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                                                                <h3 className="text-lg font-medium mb-2">No Market Data</h3>
+                                                                <p className="text-muted-foreground mb-4">
+                                                                    Search for products to analyze market trends and competitor pricing.
+                                                                </p>
+                                                                <Button onClick={() => fetchScrapedProducts(searchQuery)}>
+                                                                    <Search className="h-4 w-4 mr-2" />
+                                                                    Start Market Research
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </TabsContent>
                                     </Tabs>
                                 ) : (

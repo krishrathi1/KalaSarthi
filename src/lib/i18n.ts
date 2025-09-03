@@ -942,7 +942,7 @@ export const menuItems = [
         ur: 'ٹرینڈ سپاٹٹر',
       },
       icon: Palette,
-      path: "/trend-mapper",
+      path: "/trend-spotter",
     },
     {
       label: {
