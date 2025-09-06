@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
         }) },
         prompt: `Analyze this artisan product image and provide detailed information:
 
-Product Image: {{media url=${imageDataUrl}}}
+Product Image: {{media url="${imageDataUrl}"}}
 
 Provide:
 1. **Product Category**: Main category (textiles, jewelry, pottery, handicrafts, metalwork, woodwork)
