@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aggregation-worker
+  namespace: finance
+  labels:
+    app: aggregation-worker
+    component: worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: aggregation-worker
+  template:
+    metadata:
+      labels:
+        app: aggregation-worker
+        component: worker
+    spec:
+      containers:
+      - name: aggregation-worker
+        image: finance-api:latest
+        command: ["npm", "run", "worker:aggregation"]
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: MONGODB_URI
+          valueFrom:
+            secretKeyRef:
+              name: finance-secrets
+              key: mongodb-uri
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: finance-secrets
+              key: redis-url
+        - name: WORKER_TYPE
+          value: "aggregation"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        volumeMounts:
+        - name: logs
+          mountPath: /app/logs
+      volumes:
+      - name: logs
+        emptyDir: {}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: daily-aggregation-job
+  namespace: finance
+spec:
+  schedule: "0 2 * * *"  # Run daily at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: daily-aggregation
+            image: finance-api:latest
+            command: ["npm", "run", "job:daily-aggregation"]
+            env:
+            - name: NODE_ENV
+              value: "production"
+            - name: MONGODB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: finance-secrets
+                  key: mongodb-uri
+            resources:
+              requests:
+                memory: "1Gi"
+                cpu: "1000m"
+              limits:
+                memory: "2Gi"
+                cpu: "2000m"
+          restartPolicy: OnFailure
