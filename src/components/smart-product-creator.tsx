@@ -4,8 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { Camera, Upload, Sparkles, Mic, MicOff, Play, Pause } from "lucide-react";
 import {
-  Card, CardContent, CardDes
-  cription, CardHeader, CardTitle
+  Card, CardContent, CardDescription, CardHeader, CardTitle
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -2489,16 +2488,12 @@ export function SmartProductCreator() {
         <div className="mt-2 flex flex-wrap gap-2">
           <Badge variant="outline" className="text-xs">
           </Badge>
-            )}
           <Badge variant="outline" className="text-xs">
           </Badge>
-            )}
           <Badge variant="outline" className="text-xs">
           </Badge>
-            )}
         </div>
       </div>
-      )}
 
       {/* Voice Input Section */}
       {inputMode === 'voice' && (
