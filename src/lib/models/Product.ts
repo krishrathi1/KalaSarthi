@@ -27,6 +27,18 @@ export interface IProduct {
         };
         colors?: string[];
     };
+    amazonListing?: {
+        isListed?: boolean;
+        asin?: string;
+        sku?: string;
+        listingId?: string;
+        submissionId?: string;
+        status?: 'ACCEPTED' | 'INVALID' | 'SUBMITTED' | 'PROCESSING' | 'BUYABLE' | 'DISCOVERABLE' | 'DELETED' | 'ACTIVE' | 'INACTIVE' | 'ERROR';
+        lastSync?: Date;
+        createdAt?: Date;
+        errors?: string[];
+        marketplace?: string;
+    };
     inventory: {
         quantity: number;
         isAvailable: boolean;
@@ -38,7 +50,7 @@ export interface IProduct {
 }
 
 // Product document interface (extends Document)
-export interface IProductDocument extends IProduct, Document {}
+export interface IProductDocument extends IProduct, Document { }
 
 // Product schema
 const productSchema = new Schema<IProductDocument>(
@@ -92,6 +104,22 @@ const productSchema = new Schema<IProductDocument>(
                 weight: Number,
             },
             colors: [String],
+        },
+        amazonListing: {
+            isListed: { type: Boolean, default: false },
+            asin: { type: String, index: true }, // Index for faster queries
+            sku: { type: String, unique: true, sparse: true }, // Unique SKU
+            listingId: { type: String },
+            submissionId: { type: String },
+            status: {
+                type: String,
+                enum: ['ACCEPTED', 'INVALID', 'SUBMITTED', 'PROCESSING', 'BUYABLE', 'DISCOVERABLE', 'DELETED', 'ACTIVE', 'INACTIVE', 'ERROR'],
+                default: 'SUBMITTED'
+            },
+            lastSync: { type: Date, default: Date.now },
+            createdAt: { type: Date, default: Date.now },
+            errors: [{ type: String }],
+            marketplace: { type: String, default: 'ATVPDKIKX0DER' } // US marketplace
         },
         inventory: {
             quantity: {

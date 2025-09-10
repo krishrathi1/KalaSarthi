@@ -10,6 +10,7 @@ import {
   ScrollText,
   IndianRupee,
   Calculator,
+  ShoppingCart,
 } from "lucide-react";
 import { translationService } from './translation-service';
 
@@ -965,22 +966,22 @@ export const menuItems = [
     },
     {
       label: {
-        en: 'Market Bridge',
-        hi: 'मार्केट ब्रिज',
-        ta: 'சந்தை பாலம்',
-        bn: 'মার্কেট ব্রিজ',
-        te: 'మార్కెట్ వంతెన',
-        gu: 'માર્કેટ બ્રિજ',
-        mr: 'मार्केट ब्रिज',
-        kn: 'ಮಾರ್ಕೆಟ್ ಬ್ರಿಜ್',
-        ml: 'മാർക്കറ്റ് ബ്രിഡ്ജ്',
-        pa: 'ਮਾਰਕੀਟ ਬ੍ਰਿਜ',
-        as: 'মার্কেট ব্রিজ',
-        or: 'ମାର୍କେଟ ବ୍ରିଜ',
-        ur: 'مارکیٹ بریج',
+        en: 'Inventory',
+        hi: 'इन्वेंटरी',
+        ta: 'சரக்கு',
+        bn: 'ইনভেন্টরি',
+        te: 'ఇన్వెంటరీ',
+        gu: 'ઇન્વેન્ટરી',
+        mr: 'इन्व्हेंटरी',
+        kn: 'ඉන්ವೆಂಟರಿ',
+        ml: 'ഇൻവെന്ററി',
+        pa: 'ਇਨਵੈਂਟਰੀ',
+        as: 'ইনভেন্টরি',
+        or: 'ଇନଭେଣ୍ଟୋରୀ',
+        ur: 'انوینٹری',
       },
       icon: Package,
-      path: "/multi-marketplace",
+      path: "/dashboard/inventory",
     },
     {
       label: {
@@ -1019,6 +1020,25 @@ export const menuItems = [
       },
       icon: ScrollText,
       path: "/yojana-mitra",
+    },
+    {
+      label: {
+        en: 'Shop',
+        hi: 'दुकान',
+        ta: 'அந்தரங்கம்',
+        bn: 'দোকান',
+        te: 'అంగడీ',
+        gu: 'દુકાન',
+        mr: 'दुकान',
+        kn: 'ಅಂಗಡಿ',
+        ml: 'അംഗടി',
+        pa: 'ਦੁਕਾਨ',
+        as: 'দোকান',
+        or: 'ଦୋକାନ',
+        ur: 'دکان',
+      },
+      icon: ShoppingCart,
+      path: "/marketplace",
     },
     {
       label: {
