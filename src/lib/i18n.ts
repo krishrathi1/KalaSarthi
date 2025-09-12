@@ -18,6 +18,7 @@ import {
   Mic,
   UserPlus,
   DollarSign,
+  Volume2,
 } from "lucide-react";
 import { translationService } from './translation-service';
 
@@ -1250,5 +1251,12 @@ export const features = [
     icon: Calculator,
     path: "/finance/dashboard",
     color: "text-emerald-500",
+  },
+  {
+    title: {en: 'Voice Demo', hi: 'वॉयस डेमो', ta: 'குரல் டெமோ', bn: 'ভয়েস ডেমো', te: 'వాయిస్ డెమో'},
+    description: {en: "Experience high-quality multilingual text-to-speech with intelligent voice selection.", hi: "बुद्धिमान आवाज़ चयन के साथ उच्च-गुणवत्ता वाली बहुभाषी टेक्स्ट-टू-स्पीच का अनुभव करें।", ta: "புத்திசாலி குரல் தேர்வுடன் உயர்-தர பலமொழி உரை-க்குரல் அனுபவிக்கவும்।", bn: "বুদ্ধিমান কণ্ঠ নির্বাচনের সাথে উচ্চ-মানের বহুভাষিক টেক্সট-টু-স্পিচের অভিজ্ঞতা নিন।", te: "తెలివైన వాయిస్ ఎంపికతో అధిక-నాణ్యత బహుభాషా టెక్స్ట్-టు-స్పీచ్ అనుభవించండి."},
+    icon: Volume2,
+    path: "/voice-demo",
+    color: "text-purple-500",
   },
 ];

@@ -279,7 +279,7 @@ Audio data: ${audioBase64}
   }
 
   /**
-   * Convert text to speech using Google Cloud Text-to-Speech via API
+   * Convert text to speech using Enhanced TTS API with intelligent voice selection
    */
   public async textToSpeech(
     text: string,
@@ -292,33 +292,41 @@ Audio data: ${audioBase64}
       pitch = 0.0
     } = options;
 
-    // Try Google Cloud TTS API first
+    // Try Enhanced TTS API first
     if (this.googleCloudAvailable) {
       try {
-        console.log('🎵 Using Google Cloud TTS API for:', text.substring(0, 50) + '...');
+        console.log('🎵 Using Enhanced TTS API for:', text.substring(0, 50) + '...');
 
-        const response = await fetch('/api/google-cloud-tts', {
+        const response = await fetch('/api/tts/enhanced', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             text,
             language,
             voice,
+            gender: 'FEMALE', // Default to female voice
+            quality: 'Neural2', // Use Neural2 quality
             speed,
-            pitch
+            pitch,
+            volume: 1.0,
+            enableTranslation: false
           })
         });
 
         if (response.ok) {
           const result = await response.json();
-          if (result.audioContent) {
+          if (result.success && result.audio?.data) {
             // Convert base64 audio back to ArrayBuffer
-            const audioBuffer = Uint8Array.from(atob(result.audioContent), c => c.charCodeAt(0));
+            const audioBuffer = Uint8Array.from(atob(result.audio.data), c => c.charCodeAt(0));
+            console.log('✅ Enhanced TTS synthesis successful');
             return audioBuffer.buffer.slice(audioBuffer.byteOffset, audioBuffer.byteOffset + audioBuffer.byteLength);
           }
+        } else {
+          const errorData = await response.json();
+          console.warn('Enhanced TTS API failed:', errorData);
         }
       } catch (error) {
-        console.warn('Google Cloud TTS API failed, falling back to Web Speech API:', error);
+        console.warn('Enhanced TTS API failed, falling back to Web Speech API:', error);
       }
     }
 
@@ -517,7 +525,7 @@ Audio data: ${audioBase64}
         resolve(voices.map(voice => ({
           name: voice.name,
           languageCode: voice.lang,
-          ssmlGender: voice.name.includes('Female') ? 'FEMALE' : voice.name.includes('Male') ? 'MALE' : 'NEUTRAL'
+          ssmlGender: voice.name.includes('Female') ? 'FEMALE' : voice.name.includes('Male') ? 'MALE' : 'FEMALE'
         })));
       } else {
         // Wait for voices to load
@@ -526,7 +534,7 @@ Audio data: ${audioBase64}
           resolve(webVoices.map(voice => ({
             name: voice.name,
             languageCode: voice.lang,
-            ssmlGender: voice.name.includes('Female') ? 'FEMALE' : voice.name.includes('Male') ? 'MALE' : 'NEUTRAL'
+            ssmlGender: voice.name.includes('Female') ? 'FEMALE' : voice.name.includes('Male') ? 'MALE' : 'FEMALE'
           })));
         };
       }
