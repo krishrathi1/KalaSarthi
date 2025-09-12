@@ -27,13 +27,11 @@ const cartSchema = new Schema<ICartDocument>(
         cartId: {
             type: String,
             required: true,
-            unique: true,
         },
         userId: {
             type: String,
             required: true,
             ref: 'User',
-            unique: true, // One cart per user
         },
         items: [{
             productId: {
@@ -73,12 +71,12 @@ const cartSchema = new Schema<ICartDocument>(
 );
 
 // Create indexes
-cartSchema.index({ cartId: 1 });
-cartSchema.index({ userId: 1 });
+cartSchema.index({ cartId: 1 }, { unique: true });
+cartSchema.index({ userId: 1 }, { unique: true }); // One cart per user
 cartSchema.index({ "items.productId": 1 });
 
 // Middleware to update totalItems before saving
-cartSchema.pre('save', function(next) {
+cartSchema.pre('save', function (next) {
     this.totalItems = this.items.reduce((total, item) => total + item.quantity, 0);
     next();
 });

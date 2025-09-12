@@ -51,16 +51,15 @@ export default function ProductCard({ product }: ProductCardProps) {
                             <Package className="h-16 w-16 text-gray-400" />
                         </div>
                     )}
-                    
+
                     {/* Wishlist Button */}
                     <button
                         onClick={handleWishlistToggle}
                         className="absolute top-3 right-3 p-2 bg-white/90 hover:bg-white rounded-full shadow-md transition-all duration-200 opacity-0 group-hover:opacity-100"
                     >
-                        <Heart 
-                            className={`h-4 w-4 transition-colors ${
-                                isWishlisted ? 'fill-red-500 text-red-500' : 'text-gray-600'
-                            }`} 
+                        <Heart
+                            className={`h-4 w-4 transition-colors ${isWishlisted ? 'fill-red-500 text-red-500' : 'text-gray-600'
+                                }`}
                         />
                     </button>
 
@@ -122,7 +121,6 @@ export default function ProductCard({ product }: ProductCardProps) {
                     {/* Price and Availability */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1">
-                            <IndianRupee className="h-4 w-4 text-orange-600" />
                             <span className="font-bold text-lg text-orange-600">
                                 {formatPrice(product.price)}
                             </span>
@@ -136,9 +134,9 @@ export default function ProductCard({ product }: ProductCardProps) {
                     <div className="flex items-center gap-1">
                         <div className="flex items-center">
                             {[1, 2, 3, 4, 5].map((star) => (
-                                <Star 
-                                    key={star} 
-                                    className="h-3 w-3 fill-yellow-400 text-yellow-400" 
+                                <Star
+                                    key={star}
+                                    className="h-3 w-3 fill-yellow-400 text-yellow-400"
                                 />
                             ))}
                         </div>
@@ -147,9 +145,9 @@ export default function ProductCard({ product }: ProductCardProps) {
 
                     {/* Action Buttons */}
                     <div className="flex gap-2 pt-2">
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
+                        <Button
+                            variant="outline"
+                            size="sm"
                             className="flex-1"
                             onClick={handleAddToCart}
                             disabled={!product.inventory.isAvailable}

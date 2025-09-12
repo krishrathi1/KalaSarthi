@@ -23,7 +23,7 @@ import { features, t, translateAsync } from "@/lib/i18n";
 export function Dashboard() {
   const { language, isTranslating } = useLanguage();
   const [translatedGreeting, setTranslatedGreeting] = useState('Namaste');
-  const [translatedWelcome, setTranslatedWelcome] = useState('Welcome to KalaMitra...');
+  const [translatedWelcome, setTranslatedWelcome] = useState('Welcome to KalaSarthi...');
 
   useEffect(() => {
     const loadTranslations = async () => {
@@ -36,7 +36,7 @@ export function Dashboard() {
         console.error('Translation loading failed:', error);
         // Fallback to static translations
         setTranslatedGreeting(t('greeting', language) || 'Namaste');
-        setTranslatedWelcome(t('welcome', language) || 'Welcome to KalaMitra...');
+        setTranslatedWelcome(t('welcome', language) || 'Welcome to KalaSarthi...');
       }
     };
 
@@ -69,7 +69,7 @@ export function Dashboard() {
           <Card key={feature.title.en} className="flex flex-col hover:shadow-lg transition-shadow">
             <CardHeader>
               <div className="flex items-center gap-4">
-                 <feature.icon className={`size-8 ${feature.color}`} />
+                <feature.icon className={`size-8 ${feature.color}`} />
                 <CardTitle className="font-headline">{t(feature.title, language)}</CardTitle>
               </div>
             </CardHeader>
@@ -77,7 +77,7 @@ export function Dashboard() {
               <CardDescription>{t(feature.description, language)}</CardDescription>
             </CardContent>
             <div className="p-6 pt-0">
-               <Button asChild variant="outline" className="w-full">
+              <Button asChild variant="outline" className="w-full">
                 <Link href={feature.path}>
                   {t('open', language)} <ArrowRight className="ml-2" />
                 </Link>

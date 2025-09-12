@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
+import { useRoleBasedAccess } from '@/hooks/useRoleBasedAccess';
 import { Loader2 } from 'lucide-react';
 
 interface AuthGuardProps {
@@ -11,23 +12,15 @@ interface AuthGuardProps {
 
 export default function AuthGuard({ children }: AuthGuardProps) {
     const { user, userProfile, loading } = useAuth();
+    const { 
+        pathname, 
+        isPublicRoute, 
+        isBuyerRestrictedRoute, 
+        isBuyer, 
+        isArtisan, 
+        getDefaultPath 
+    } = useRoleBasedAccess();
     const router = useRouter();
-    const pathname = usePathname();
-
-    // Public routes that don't need authentication
-    const publicRoutes = ['/auth', '/'];
-    const isPublicRoute = publicRoutes.includes(pathname);
-
-    // Routes restricted for buyers (artisans can access everything)
-    const buyerRestrictedRoutes = [
-        '/artisan-buddy',
-        '/arth-saarthi',
-        '/price-engine',
-        '/smart-product-creator',
-        '/yojana-mitra'
-    ];
-
-    const isBuyerRestrictedRoute = buyerRestrictedRoutes.some(route => pathname.startsWith(route));
 
     useEffect(() => {
         if (loading) return;
@@ -35,9 +28,9 @@ export default function AuthGuard({ children }: AuthGuardProps) {
         // If on public route, no need to check auth
         if (isPublicRoute) return;
 
-        // If not authenticated, redirect to auth
+        // If not authenticated, redirect to marketplace (public access)
         if (!user) {
-            router.push('/auth');
+            router.push('/marketplace');
             return;
         }
 
@@ -47,21 +40,27 @@ export default function AuthGuard({ children }: AuthGuardProps) {
             return;
         }
 
-        // If on auth page but already authenticated with profile, redirect to dashboard
+        // If on auth page but already authenticated with profile, redirect based on role
         if (pathname === '/auth' && user && userProfile) {
-            router.push('/dashboard');
+            router.push(getDefaultPath());
             return;
         }
 
-        // Role-based route protection - only restrict buyers
+        // Role-based route protection and redirection
         if (userProfile) {
             // Redirect buyer trying to access artisan tools
-            if (isBuyerRestrictedRoute && userProfile.role === 'buyer') {
-                router.push('/dashboard');
+            if (isBuyerRestrictedRoute && isBuyer) {
+                router.push('/marketplace');
+                return;
+            }
+
+            // Handle root path redirection based on role
+            if (pathname === '/dashboard') {
+                router.push(getDefaultPath());
                 return;
             }
         }
-    }, [user, userProfile, loading, pathname, router, isPublicRoute, isBuyerRestrictedRoute]);
+    }, [user, userProfile, loading, pathname, router, isPublicRoute, isBuyerRestrictedRoute, isBuyer, getDefaultPath]);
 
     // Show loading for protected routes
     if (loading && !isPublicRoute) {
@@ -84,7 +83,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
     // Show access denied message only for buyers accessing restricted routes
     if (userProfile && !isPublicRoute) {
-        if (isBuyerRestrictedRoute && userProfile.role === 'buyer') {
+        if (isBuyerRestrictedRoute && isBuyer) {
             return (
                 <div className="min-h-screen flex items-center justify-center">
                     <div className="text-center p-8 max-w-md">
@@ -93,10 +92,10 @@ export default function AuthGuard({ children }: AuthGuardProps) {
                             This feature is designed for artisans to manage their craft and business.
                         </p>
                         <button
-                            onClick={() => router.push('/dashboard')}
+                            onClick={() => router.push('/marketplace')}
                             className="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90"
                         >
-                            Go to Dashboard
+                            Go to Marketplace
                         </button>
                     </div>
                 </div>
@@ -147,14 +146,17 @@ export function BuyerGuard({ children }: AuthGuardProps) {
 // Utility function to check route access
 export function canAccessRoute(pathname: string, userRole?: 'artisan' | 'buyer'): boolean {
     const buyerRestrictedRoutes = [
-        '/artisan-buddy',
         '/arth-saarthi',
         '/price-engine',
         '/smart-product-creator',
-        '/yojana-mitra'
+        '/yojana-mitra',
+        '/dashboard/inventory',
+        '/trend-spotter',
+        '/trend-mapper',
+        '/voice-enrollment'
     ];
 
-    const publicRoutes = ['/auth'];
+    const publicRoutes = ['/auth', '/marketplace'];
 
     // Public routes are accessible to everyone
     if (publicRoutes.includes(pathname)) {
@@ -180,12 +182,21 @@ export function canAccessRoute(pathname: string, userRole?: 'artisan' | 'buyer')
     return true;
 }
 
-// Hook to check current route access
+// Hook to check current route access (deprecated - use useRoleBasedAccess instead)
 export function useRouteAccess() {
     const { userProfile } = useAuth();
     const pathname = usePathname();
 
-    const buyerRestrictedRoutes = ['/artisan-buddy', '/arth-saarthi', '/price-engine', '/smart-product-creator', '/yojana-mitra'];
+    const buyerRestrictedRoutes = [
+        '/arth-saarthi', 
+        '/price-engine', 
+        '/smart-product-creator', 
+        '/yojana-mitra',
+        '/dashboard/inventory',
+        '/trend-spotter',
+        '/trend-mapper',
+        '/voice-enrollment'
+    ];
 
     return {
         canAccess: canAccessRoute(pathname, userProfile?.role),

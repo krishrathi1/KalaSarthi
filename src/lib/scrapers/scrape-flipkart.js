@@ -89,12 +89,12 @@ async function retryOperation(operation, maxRetries = 3, baseDelay = 2000) {
 // Enhanced page setup for Flipkart
 async function setupPage(browser) {
     const page = await browser.newPage();
-    
+
     await page.setViewport({ width: 1366, height: 864 });
     await page.setUserAgent(
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     );
-    
+
     await page.setExtraHTTPHeaders({
         'accept-language': 'en-IN,en-US;q=0.9,en;q=0.8,hi;q=0.7',
         'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -135,7 +135,7 @@ async function handleLoginPopup(page) {
             '._3057Eg',
             'button[data-testid="cross-button"]'
         ];
-        
+
         for (const selector of loginPopupSelectors) {
             const element = await page.$(selector);
             if (element) {
@@ -154,7 +154,7 @@ async function handleLoginPopup(page) {
 // Extract products from Flipkart Samarth
 async function extractProducts(page) {
     await page.waitForSelector('.slAVV4, [data-id], ._1AtVbE, ._13oc-S', { timeout: 25000 });
-    
+
     return await page.evaluate(() => {
         const selectors = {
             container: [
@@ -217,9 +217,9 @@ async function extractProducts(page) {
             for (const selector of selectorArray) {
                 const element = card.querySelector(selector);
                 if (element) {
-                    return element.textContent?.trim() || 
-                           element.getAttribute('title')?.trim() || 
-                           element.getAttribute('alt')?.trim() || null;
+                    return element.textContent?.trim() ||
+                        element.getAttribute('title')?.trim() ||
+                        element.getAttribute('alt')?.trim() || null;
                 }
             }
             return null;
@@ -245,18 +245,18 @@ async function extractProducts(page) {
         return Array.from(cards).map(card => {
             const title = getTextBySelectorArray(card, selectors.title);
             let href = getAttributeBySelectorArray(card, selectors.link, 'href');
-            
+
             if (href && !href.startsWith('http')) {
                 href = 'https://www.flipkart.com' + href;
             }
-            
+
             const priceText = getTextBySelectorArray(card, selectors.price);
             const originalPriceText = getTextBySelectorArray(card, selectors.originalPrice);
             const ratingText = getTextBySelectorArray(card, selectors.rating);
             const reviewCountText = getTextBySelectorArray(card, selectors.reviewCount);
             const image = getAttributeBySelectorArray(card, selectors.image, 'src');
             const discountText = getTextBySelectorArray(card, selectors.discount);
-            
+
             return {
                 title: title || '',
                 url: href,
@@ -305,9 +305,9 @@ async function scrapeFlipkartSamarth(categoryQuery, options = {}) {
     try {
         for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
             Logger.info(`Processing page ${pageNum}/${maxPages}`);
-            
+
             const page = await setupPage(browser);
-            
+
             try {
                 // Navigate to Flipkart Samarth search (without price filter - we'll filter manually)
                 await retryOperation(async () => {
@@ -343,8 +343,8 @@ async function scrapeFlipkartSamarth(categoryQuery, options = {}) {
                         if (saveDebugFiles) {
                             const html = await page.content();
                             fs.writeFileSync(
-                                path.join(process.cwd(), `flipkart_captcha_page${pageNum}.html`), 
-                                html, 
+                                path.join(process.cwd(), `flipkart_captcha_page${pageNum}.html`),
+                                html,
                                 'utf8'
                             );
                         }
@@ -393,8 +393,8 @@ async function scrapeFlipkartSamarth(categoryQuery, options = {}) {
                 if (products.length === 0 && saveDebugFiles) {
                     const html = await page.content();
                     fs.writeFileSync(
-                        path.join(process.cwd(), `flipkart_debug_page${pageNum}.html`), 
-                        html, 
+                        path.join(process.cwd(), `flipkart_debug_page${pageNum}.html`),
+                        html,
                         'utf8'
                     );
                     Logger.warn(`No products found on page ${pageNum}, debug file saved`);
@@ -410,9 +410,9 @@ async function scrapeFlipkartSamarth(categoryQuery, options = {}) {
                     discount: p.discountText,
                     page: pageNum,
                     platform: 'flipkart'
-                })).filter(p => 
-                    p.price !== null && 
-                    p.price >= minPrice && 
+                })).filter(p =>
+                    p.price !== null &&
+                    p.price >= minPrice &&
                     p.price <= maxPrice &&
                     p.title.length > 0
                 );
@@ -448,19 +448,19 @@ async function scrapeFlipkartSamarth(categoryQuery, options = {}) {
         allProducts.sort((a, b) => {
             const ratingA = a.rating || 0;
             const ratingB = b.rating || 0;
-            
+
             if (ratingB !== ratingA) return ratingB - ratingA;
-            
+
             const reviewsA = a.reviewCount || 0;
             const reviewsB = b.reviewCount || 0;
-            
+
             if (reviewsB !== reviewsA) return reviewsB - reviewsA;
-            
+
             return (a.price || 0) - (b.price || 0);
         });
 
         // Remove duplicates based on URL
-        const uniqueProducts = allProducts.filter((product, index, array) => 
+        const uniqueProducts = allProducts.filter((product, index, array) =>
             array.findIndex(p => p.url === product.url) === index
         );
 
@@ -485,14 +485,14 @@ async function scrapeFlipkartSamarth(categoryQuery, options = {}) {
 // Helper function for bulk scraping
 async function scrapeMultipleCategories(categories, options = {}) {
     const results = {};
-    
+
     for (let i = 0; i < categories.length; i++) {
         const category = categories[i];
         Logger.info(`Processing category ${i + 1}/${categories.length}: ${category}`);
-        
+
         try {
             results[category] = await scrapeFlipkartSamarth(category, options);
-            
+
             if (i < categories.length - 1) {
                 const delay = 10000 + Math.random() * 10000;
                 Logger.info(`Waiting ${Math.round(delay)}ms before next category...`);
@@ -503,7 +503,7 @@ async function scrapeMultipleCategories(categories, options = {}) {
             results[category] = [];
         }
     }
-    
+
     return results;
 }
 
@@ -525,7 +525,7 @@ if (require.main === module) {
                 headless: true,
                 saveDebugFiles: true
             });
-            
+
             console.log('\nFlipkart Samarth Results:');
             results.forEach((product, index) => {
                 console.log(`\n${index + 1}. ${product.title}`);

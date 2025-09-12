@@ -37,6 +37,10 @@ export async function POST(request: NextRequest) {
 }
 
 function generateViralAlerts(profession: string) {
+  // Get current trends and viral data
+  const currentTrends = getCurrentViralTrends();
+  const professionLower = profession.toLowerCase();
+
   const professionAlerts: Record<string, any[]> = {
     weaver: [
       {
@@ -142,5 +146,38 @@ function generateViralAlerts(profession: string) {
 
   // Return profession-specific alerts or general alerts
   return professionAlerts[profession.toLowerCase()] ||
-         professionAlerts['weaver']; // Default fallback
+    professionAlerts['weaver']; // Default fallback
+}
+
+// Helper function to get current viral trends
+function getCurrentViralTrends() {
+  const now = new Date();
+  const hour = now.getHours();
+  const day = now.getDay();
+
+  return {
+    // Time-based viral patterns
+    isPeakHours: hour >= 19 && hour <= 22, // Evening peak
+    isWeekend: day === 0 || day === 6,
+
+    // Current viral categories
+    viralCategories: [
+      'sustainable fashion', 'handmade gifts', 'traditional crafts',
+      'eco-friendly products', 'vintage items', 'artisan jewelry'
+    ],
+
+    // Platform-specific trends
+    platformTrends: {
+      instagram: ['reels', 'stories', 'shopping'],
+      tiktok: ['diy', 'crafts', 'artisan'],
+      youtube: ['tutorials', 'reviews', 'unboxing'],
+      pinterest: ['inspiration', 'boards', 'shopping']
+    },
+
+    // Trending hashtags
+    trendingHashtags: [
+      '#handmade', '#artisan', '#traditional', '#sustainable',
+      '#crafts', '#indian', '#heritage', '#local'
+    ]
+  };
 }

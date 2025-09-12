@@ -569,13 +569,18 @@ export function TrendMapper() {
                                           // Handle different price formats and ensure proper rupee symbol
                                           let priceText = product.price;
 
-                                          // If price already has rupee symbol, use as is
-                                          if (priceText.includes('₹') || priceText.includes('Rs') || priceText.includes('INR')) {
+                                          // If price is already a number, format it
+                                          if (typeof priceText === 'number') {
+                                            return formatPrice(priceText);
+                                          }
+
+                                          // If price is a string with rupee symbol, use as is
+                                          if (typeof priceText === 'string' && (priceText.includes('₹') || priceText.includes('Rs') || priceText.includes('INR'))) {
                                             return priceText;
                                           }
 
                                           // Extract numeric value and format with proper rupee symbol
-                                          const numericPrice = parseFloat(priceText.replace(/[^\d.]/g, '')) || 0;
+                                          const numericPrice = parseFloat(priceText.toString().replace(/[^\d.]/g, '')) || 0;
                                           if (numericPrice > 0) {
                                             return formatPrice(numericPrice);
                                           }

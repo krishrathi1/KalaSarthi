@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { params: string[] } }
+  { params }: { params: Promise<{ params: string[] }> }
 ) {
   try {
-    const [width, height, type] = params.params;
+    const resolvedParams = await params;
+    const [width, height, type] = resolvedParams.params;
 
     // For artisan avatars, return a proper artisan-themed placeholder
     if (type === 'artisan') {

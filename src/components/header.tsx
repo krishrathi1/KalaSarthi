@@ -42,6 +42,7 @@ import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/hooks/use-cart';
 import { useWishlist } from '@/hooks/use-wishlist';
+import { SimpleOfflineStatus } from './simple-offline-status';
 
 // Group languages by region
 const indianLanguages = Object.entries(languages).filter(([_, lang]) => lang.region === 'indian');
@@ -55,7 +56,7 @@ export function Header() {
   const { isListening, transcript, startListening, stopListening, error } = useVoiceNavigation();
   const { user, userProfile, loading, logout, isArtisan, isBuyer } = useAuth();
   const router = useRouter();
-  
+
   // Add cart and wishlist hooks
   const { cart, getCartCount } = useCart(user?.uid || null);
   const { wishlist, getWishlistCount } = useWishlist(user?.uid || null);
@@ -159,10 +160,10 @@ export function Header() {
   };
 
   // Cart/Wishlist Button Component
-  const CartWishlistButton = ({ 
-    icon: Icon, 
-    count, 
-    onClick, 
+  const CartWishlistButton = ({
+    icon: Icon,
+    count,
+    onClick,
     tooltip,
     variant = "outline"
   }: {
@@ -183,7 +184,7 @@ export function Header() {
           >
             <Icon className="h-4 w-4" />
             {count > 0 && (
-              <Badge 
+              <Badge
                 className="absolute -top-2 -right-2 h-5 w-5 p-0 text-xs flex items-center justify-center bg-red-500 hover:bg-red-500"
                 variant="destructive"
               >
@@ -233,7 +234,10 @@ export function Header() {
       <SidebarTrigger className="md:hidden" />
       <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
         <GlobalTranslationToggle />
-        
+
+        {/* Offline Status */}
+        <SimpleOfflineStatus className="hidden md:flex" />
+
         {/* Cart and Wishlist buttons - show for all authenticated users */}
         <CartWishlistButton
           icon={ShoppingCart}
@@ -371,7 +375,7 @@ export function Header() {
               <User className="mr-2 h-4 w-4" />
               <span>Profile</span>
             </DropdownMenuItem>
-            
+
             {/* Cart and Wishlist in dropdown menu for all users */}
             <DropdownMenuItem onClick={handleCartClick}>
               <ShoppingCart className="mr-2 h-4 w-4" />
@@ -392,7 +396,7 @@ export function Header() {
               )}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            
+
             {isArtisan && (
               <>
                 <DropdownMenuItem onClick={() => router.push('/drafts')}>

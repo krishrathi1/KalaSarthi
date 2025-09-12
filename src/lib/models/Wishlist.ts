@@ -13,7 +13,7 @@ export interface IWishlist {
 }
 
 // Wishlist document interface (extends Document)
-export interface IWishlistDocument extends IWishlist, Document {}
+export interface IWishlistDocument extends IWishlist, Document { }
 
 // Wishlist schema
 const wishlistSchema = new Schema<IWishlistDocument>(
@@ -21,13 +21,11 @@ const wishlistSchema = new Schema<IWishlistDocument>(
         wishlistId: {
             type: String,
             required: true,
-            unique: true,
         },
         userId: {
             type: String,
             required: true,
             ref: 'User',
-            unique: true, // One wishlist per user
         },
         products: [{
             productId: {
@@ -47,8 +45,8 @@ const wishlistSchema = new Schema<IWishlistDocument>(
 );
 
 // Create indexes
-wishlistSchema.index({ wishlistId: 1 });
-wishlistSchema.index({ userId: 1 });
+wishlistSchema.index({ wishlistId: 1 }, { unique: true });
+wishlistSchema.index({ userId: 1 }, { unique: true }); // One wishlist per user
 wishlistSchema.index({ "products.productId": 1 });
 
 // Wishlist model

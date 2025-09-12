@@ -89,12 +89,12 @@ async function retryOperation(operation, maxRetries = 3, baseDelay = 2000) {
 // Enhanced page setup for Meesho
 async function setupPage(browser) {
     const page = await browser.newPage();
-    
+
     await page.setViewport({ width: 1366, height: 864 });
     await page.setUserAgent(
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     );
-    
+
     await page.setExtraHTTPHeaders({
         'accept-language': 'en-IN,en-US;q=0.9,en;q=0.8,hi;q=0.7',
         'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -111,7 +111,7 @@ async function setupPage(browser) {
     page.on('request', (req) => {
         const resourceType = req.resourceType();
         const url = req.url();
-        
+
         // Block specific resource types and analytics
         if (['stylesheet', 'font', 'media'].includes(resourceType) ||
             url.includes('google-analytics') ||
@@ -142,9 +142,9 @@ async function handleLocationPopup(page) {
             '[class*="close"]',
             'svg[class*="close"]'
         ];
-        
+
         await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for popup to appear
-        
+
         for (const selector of locationPopupSelectors) {
             const element = await page.$(selector);
             if (element) {
@@ -154,11 +154,11 @@ async function handleLocationPopup(page) {
                 return true;
             }
         }
-        
+
         // Try pressing Escape key as fallback
         await page.keyboard.press('Escape');
         Logger.info('Attempted to close popup with Escape key');
-        
+
     } catch (error) {
         Logger.debug('No location popup found or failed to close', { error: error.message });
     }
@@ -169,10 +169,10 @@ async function handleLocationPopup(page) {
 async function extractProducts(page) {
     // Wait for product grid to load
     await page.waitForSelector('div[data-testid], .ProductList__GridCol, [class*="product"], [class*="card"]', { timeout: 25000 });
-    
+
     // Wait a bit more for dynamic content to load
     await new Promise(resolve => setTimeout(resolve, 3000));
-    
+
     return await page.evaluate(() => {
         const selectors = {
             container: [
@@ -235,9 +235,9 @@ async function extractProducts(page) {
             for (const selector of selectorArray) {
                 const element = card.querySelector(selector);
                 if (element) {
-                    return element.textContent?.trim() || 
-                           element.getAttribute('title')?.trim() || 
-                           element.getAttribute('alt')?.trim() || null;
+                    return element.textContent?.trim() ||
+                        element.getAttribute('title')?.trim() ||
+                        element.getAttribute('alt')?.trim() || null;
                 }
             }
             return null;
@@ -266,18 +266,18 @@ async function extractProducts(page) {
         return Array.from(cards).map((card, index) => {
             const title = getTextBySelectorArray(card, selectors.title);
             let href = getAttributeBySelectorArray(card, selectors.link, 'href');
-            
+
             if (href && !href.startsWith('http')) {
                 href = 'https://www.meesho.com' + href;
             }
-            
+
             const priceText = getTextBySelectorArray(card, selectors.price);
             const originalPriceText = getTextBySelectorArray(card, selectors.originalPrice);
             const ratingText = getTextBySelectorArray(card, selectors.rating);
             const reviewCountText = getTextBySelectorArray(card, selectors.reviewCount);
             const image = getAttributeBySelectorArray(card, selectors.image, 'src');
             const discountText = getTextBySelectorArray(card, selectors.discount);
-            
+
             return {
                 title: title || '',
                 url: href,
@@ -327,16 +327,16 @@ async function scrapeMeesho(categoryQuery, options = {}) {
     try {
         for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
             Logger.info(`Processing page ${pageNum}/${maxPages}`);
-            
+
             const page = await setupPage(browser);
-            
+
             try {
                 // Navigate to Meesho search
                 await retryOperation(async () => {
                     // Meesho search URL structure
                     const searchQuery = `${categoryQuery} handicraft handmade`;
                     const url = `https://www.meesho.com/search?q=${encodeURIComponent(searchQuery)}&searchType=manual&searchIdentifier=text_search`;
-                    
+
                     await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
                     Logger.info(`Loaded page ${pageNum}`, { url: page.url() });
                 });
@@ -355,7 +355,7 @@ async function scrapeMeesho(categoryQuery, options = {}) {
                         'input[placeholder*="Min"]',
                         '[data-testid*="price-min"]'
                     ];
-                    
+
                     for (const selector of priceFilterSelectors) {
                         const minPriceInput = await page.$(selector);
                         if (minPriceInput) {
@@ -371,21 +371,21 @@ async function scrapeMeesho(categoryQuery, options = {}) {
                         'input[placeholder*="Max"]',
                         '[data-testid*="price-max"]'
                     ];
-                    
+
                     for (const selector of maxPriceFilterSelectors) {
                         const maxPriceInput = await page.$(selector);
                         if (maxPriceInput) {
                             await maxPriceInput.click();
                             await maxPriceInput.type(maxPrice.toString());
                             Logger.info(`Set maximum price filter: ${maxPrice}`);
-                            
+
                             // Look for apply/submit button
                             const applyButtonSelectors = [
                                 'button[data-testid*="apply"]',
                                 'button[type="submit"]',
                                 'button:contains("Apply")'
                             ];
-                            
+
                             for (const btnSelector of applyButtonSelectors) {
                                 const applyBtn = await page.$(btnSelector);
                                 if (applyBtn) {
@@ -410,7 +410,7 @@ async function scrapeMeesho(categoryQuery, options = {}) {
                         const scrollDelay = 500;
                         let scrollCount = 0;
                         const maxScrolls = 10;
-                        
+
                         const timer = setInterval(() => {
                             const scrollHeight = document.body.scrollHeight;
                             window.scrollBy(0, distance);
@@ -438,7 +438,7 @@ async function scrapeMeesho(categoryQuery, options = {}) {
                             `a:contains("${pageNum}")`,
                             'a[aria-label="Next"]'
                         ];
-                        
+
                         for (const selector of nextPageSelectors) {
                             const pageLink = await page.$(selector);
                             if (pageLink) {
@@ -460,8 +460,8 @@ async function scrapeMeesho(categoryQuery, options = {}) {
                 if (products.length === 0 && saveDebugFiles) {
                     const html = await page.content();
                     fs.writeFileSync(
-                        path.join(process.cwd(), `meesho_debug_page${pageNum}.html`), 
-                        html, 
+                        path.join(process.cwd(), `meesho_debug_page${pageNum}.html`),
+                        html,
                         'utf8'
                     );
                     Logger.warn(`No products found on page ${pageNum}, debug file saved`);
@@ -477,9 +477,9 @@ async function scrapeMeesho(categoryQuery, options = {}) {
                     discount: p.discountText,
                     page: pageNum,
                     platform: 'meesho'
-                })).filter(p => 
-                    p.price !== null && 
-                    p.price >= minPrice && 
+                })).filter(p =>
+                    p.price !== null &&
+                    p.price >= minPrice &&
                     p.price <= maxPrice &&
                     p.title.length > 0
                 );
@@ -515,19 +515,19 @@ async function scrapeMeesho(categoryQuery, options = {}) {
         allProducts.sort((a, b) => {
             const ratingA = a.rating || 0;
             const ratingB = b.rating || 0;
-            
+
             if (ratingB !== ratingA) return ratingB - ratingA;
-            
+
             const reviewsA = a.reviewCount || 0;
             const reviewsB = b.reviewCount || 0;
-            
+
             if (reviewsB !== reviewsA) return reviewsB - reviewsA;
-            
+
             return (a.price || 0) - (b.price || 0);
         });
 
         // Remove duplicates based on URL
-        const uniqueProducts = allProducts.filter((product, index, array) => 
+        const uniqueProducts = allProducts.filter((product, index, array) =>
             array.findIndex(p => p.url === product.url) === index
         );
 
@@ -552,14 +552,14 @@ async function scrapeMeesho(categoryQuery, options = {}) {
 // Helper function for bulk scraping
 async function scrapeMultipleCategories(categories, options = {}) {
     const results = {};
-    
+
     for (let i = 0; i < categories.length; i++) {
         const category = categories[i];
         Logger.info(`Processing category ${i + 1}/${categories.length}: ${category}`);
-        
+
         try {
             results[category] = await scrapeMeesho(category, options);
-            
+
             if (i < categories.length - 1) {
                 const delay = 12000 + Math.random() * 8000; // Longer delay for Meesho
                 Logger.info(`Waiting ${Math.round(delay)}ms before next category...`);
@@ -570,7 +570,7 @@ async function scrapeMultipleCategories(categories, options = {}) {
             results[category] = [];
         }
     }
-    
+
     return results;
 }
 
@@ -592,7 +592,7 @@ if (require.main === module) {
                 headless: true,
                 saveDebugFiles: true
             });
-            
+
             console.log('\nMeesho Results:');
             results.forEach((product, index) => {
                 console.log(`\n${index + 1}. ${product.title}`);

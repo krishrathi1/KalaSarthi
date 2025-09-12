@@ -211,7 +211,6 @@ export default function WishlistPage() {
                                     </h3>
 
                                     <div className="flex items-center mb-3">
-                                        <IndianRupee className="h-4 w-4 text-orange-600" />
                                         <span className="text-xl font-bold text-orange-600">
                                             {formatPrice(item.product?.price || 0)}
                                         </span>

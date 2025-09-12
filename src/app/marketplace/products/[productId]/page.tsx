@@ -42,7 +42,7 @@ export default function ProductDetailsPage() {
     const [quantity, setQuantity] = useState(1);
     const { toast } = useToast();
 
-    const {  user} = useAuth();
+    const { user } = useAuth();
 
     const userId = user?.uid;
 
@@ -240,8 +240,8 @@ export default function ProductDetailsPage() {
                                         key={index}
                                         onClick={() => setSelectedImageIndex(index)}
                                         className={`relative aspect-square rounded-md overflow-hidden border-2 transition-all ${selectedImageIndex === index
-                                                ? 'border-orange-500 ring-2 ring-orange-200'
-                                                : 'border-gray-200 hover:border-gray-300'
+                                            ? 'border-orange-500 ring-2 ring-orange-200'
+                                            : 'border-gray-200 hover:border-gray-300'
                                             }`}
                                     >
                                         <Image
@@ -285,7 +285,6 @@ export default function ProductDetailsPage() {
                         {/* Price */}
                         <div className="bg-orange-50 p-4 rounded-lg">
                             <div className="flex items-center gap-2">
-                                <IndianRupee className="h-6 w-6 text-orange-600" />
                                 <span className="text-3xl font-bold text-orange-600">
                                     {formatPrice(product.price)}
                                 </span>

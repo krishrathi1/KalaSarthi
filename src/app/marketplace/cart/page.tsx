@@ -39,12 +39,12 @@ export default function CartPage() {
 
     const { cart, loading, error, updateCartItem, removeFromCart, clearCart } = useCart(userId!);
     const { createOrder, loading: orderLoading, error: orderError } = useOrders(userId);
-    
+
     const [updatingItems, setUpdatingItems] = useState<Set<string>>(new Set());
     const [showCheckout, setShowCheckout] = useState(false);
     const [orderPlaced, setOrderPlaced] = useState(false);
     const [placedOrder, setPlacedOrder] = useState(null);
-    
+
     // Shipping address state
     const [shippingAddress, setShippingAddress] = useState({
         fullName: '',
@@ -55,7 +55,7 @@ export default function CartPage() {
         country: 'India',
         phone: ''
     });
-    
+
     const [orderNotes, setOrderNotes] = useState('');
     const [addressErrors, setAddressErrors] = useState({});
 
@@ -102,7 +102,7 @@ export default function CartPage() {
     const validateAddress = () => {
         const errors = {};
         const required = ['fullName', 'street', 'city', 'state', 'zipCode', 'phone'];
-        
+
         required.forEach(field => {
             if (!shippingAddress[field].trim()) {
                 errors[field] = `${field.charAt(0).toUpperCase() + field.slice(1).replace(/([A-Z])/g, ' $1')} is required`;
@@ -147,7 +147,7 @@ export default function CartPage() {
         };
 
         const result = await createOrder(orderData);
-        
+
         if (result.success) {
             setPlacedOrder(result.order);
             setOrderPlaced(true);
@@ -230,7 +230,6 @@ export default function CartPage() {
                                     <div className="flex justify-between">
                                         <span className="font-medium">Total Amount:</span>
                                         <div className="flex items-center font-bold">
-                                            <IndianRupee className="h-4 w-4" />
                                             <span>{formatPrice(total)}</span>
                                         </div>
                                     </div>
@@ -399,7 +398,6 @@ export default function CartPage() {
                                                     {/* Price */}
                                                     <div className="text-right">
                                                         <div className="flex items-center">
-                                                            <IndianRupee className="h-4 w-4" />
                                                             <span className="text-lg font-bold">
                                                                 {formatPrice(item.subtotal || 0)}
                                                             </span>
@@ -426,7 +424,6 @@ export default function CartPage() {
                                         <div className="flex justify-between">
                                             <span>Subtotal ({cart.totalItems} items)</span>
                                             <div className="flex items-center">
-                                                <IndianRupee className="h-4 w-4" />
                                                 <span>{formatPrice(subtotal)}</span>
                                             </div>
                                         </div>
@@ -434,7 +431,6 @@ export default function CartPage() {
                                         <div className="flex justify-between">
                                             <span>Tax (GST 18%)</span>
                                             <div className="flex items-center">
-                                                <IndianRupee className="h-4 w-4" />
                                                 <span>{formatPrice(tax)}</span>
                                             </div>
                                         </div>
@@ -445,7 +441,6 @@ export default function CartPage() {
                                                 <span className="text-green-600">Free</span>
                                             ) : (
                                                 <div className="flex items-center">
-                                                    <IndianRupee className="h-4 w-4" />
                                                     <span>{formatPrice(shippingCost)}</span>
                                                 </div>
                                             )}
@@ -456,14 +451,13 @@ export default function CartPage() {
                                         <div className="flex justify-between text-lg font-semibold">
                                             <span>Total</span>
                                             <div className="flex items-center">
-                                                <IndianRupee className="h-5 w-5" />
                                                 <span>{formatPrice(total)}</span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <Button 
-                                        className="w-full mt-6 bg-orange-600 hover:bg-orange-700" 
+                                    <Button
+                                        className="w-full mt-6 bg-orange-600 hover:bg-orange-700"
                                         size="lg"
                                         onClick={handleProceedToCheckout}
                                     >
@@ -651,7 +645,6 @@ export default function CartPage() {
                                                     <div className="text-xs text-gray-500">Qty: {item.quantity}</div>
                                                 </div>
                                                 <div className="flex items-center text-sm">
-                                                    <IndianRupee className="h-3 w-3" />
                                                     <span>{formatPrice(item.subtotal || 0)}</span>
                                                 </div>
                                             </div>
@@ -670,14 +663,12 @@ export default function CartPage() {
                                         <div className="flex justify-between text-sm">
                                             <span>Subtotal</span>
                                             <div className="flex items-center">
-                                                <IndianRupee className="h-3 w-3" />
                                                 <span>{formatPrice(subtotal)}</span>
                                             </div>
                                         </div>
                                         <div className="flex justify-between text-sm">
                                             <span>Tax (GST)</span>
                                             <div className="flex items-center">
-                                                <IndianRupee className="h-3 w-3" />
                                                 <span>{formatPrice(tax)}</span>
                                             </div>
                                         </div>
@@ -687,7 +678,6 @@ export default function CartPage() {
                                                 <span className="text-green-600">Free</span>
                                             ) : (
                                                 <div className="flex items-center">
-                                                    <IndianRupee className="h-3 w-3" />
                                                     <span>{formatPrice(shippingCost)}</span>
                                                 </div>
                                             )}
@@ -696,7 +686,6 @@ export default function CartPage() {
                                         <div className="flex justify-between font-semibold">
                                             <span>Total</span>
                                             <div className="flex items-center">
-                                                <IndianRupee className="h-4 w-4" />
                                                 <span>{formatPrice(total)}</span>
                                             </div>
                                         </div>
