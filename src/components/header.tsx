@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { ChevronsUpDown, Check, Mic, User, LogOut, Settings, FileText, Archive, Package, ShoppingCart, Heart } from 'lucide-react';
+import { ChevronsUpDown, Check, User, LogOut, Settings, FileText, Archive, Package, ShoppingCart, Heart } from 'lucide-react';
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from '@/components/ui/button';
@@ -37,7 +37,7 @@ import { languages, LanguageCode, t, translateAsync } from "@/lib/i18n";
 import { useState, useEffect } from "react";
 import { GlobalTranslationToggle } from "./global-translation-toggle";
 import { cn } from '@/lib/utils';
-import { useVoiceNavigation } from '@/hooks/use-voice-navigation';
+import { IntelligentVoiceButton } from '@/components/ui/IntelligentVoiceButton';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/hooks/use-cart';
@@ -53,7 +53,6 @@ export function Header() {
   const [open, setOpen] = React.useState(false);
   const [searchValue, setSearchValue] = React.useState('');
   const [translatedTitle, setTranslatedTitle] = useState('');
-  const { isListening, transcript, startListening, stopListening, error } = useVoiceNavigation();
   const { user, userProfile, loading, logout, isArtisan, isBuyer } = useAuth();
   const router = useRouter();
 
@@ -252,14 +251,10 @@ export function Header() {
           tooltip="Wishlist"
         />
 
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={isListening ? stopListening : startListening}
-          className={cn('', isListening && 'bg-primary text-primary-foreground animate-pulse')}
-        >
-          <Mic className="size-4" />
-        </Button>
+        <IntelligentVoiceButton
+          size="md"
+          context="header"
+        />
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <Button

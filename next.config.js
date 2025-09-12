@@ -55,15 +55,27 @@ const nextConfig = {
         buffer: false,
         process: false,
         os: false,
+        net: false,
+        tls: false,
+        crypto: false,
+        stream: false,
+        url: false,
+        zlib: false,
+        http: false,
+        https: false,
+        assert: false,
+        querystring: false,
       };
     }
 
-    // Ignore puppeteer modules during client-side build
+    // Ignore server-side modules during client-side build
     config.externals = config.externals || [];
     config.externals.push({
       'puppeteer': 'commonjs puppeteer',
       'puppeteer-extra': 'commonjs puppeteer-extra',
       'puppeteer-extra-plugin-stealth': 'commonjs puppeteer-extra-plugin-stealth',
+      '@google-cloud/text-to-speech': 'commonjs @google-cloud/text-to-speech',
+      '@google-cloud/speech': 'commonjs @google-cloud/speech',
     });
 
     return config;
@@ -181,7 +193,13 @@ const nextConfig = {
       },
     ],
   },
-  serverExternalPackages: ['puppeteer', 'puppeteer-extra', 'puppeteer-extra-plugin-stealth'],
+  serverExternalPackages: [
+    'puppeteer',
+    'puppeteer-extra',
+    'puppeteer-extra-plugin-stealth',
+    '@google-cloud/text-to-speech',
+    '@google-cloud/speech'
+  ],
   images: {
     remotePatterns: [
       {

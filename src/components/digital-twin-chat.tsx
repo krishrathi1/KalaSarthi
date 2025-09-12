@@ -2,77 +2,150 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { BotMessageSquare, Send, CornerDownLeft } from "lucide-react";
+import { BotMessageSquare, Send, CornerDownLeft, Volume2, VolumeX, Mic, MicOff } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { interactWithArtisanDigitalTwin } from "@/lib/actions";
 import type { ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
+import { useAuth } from "@/context/auth-context";
 import { t, translateAsync } from "@/lib/i18n";
+
+interface EnhancedChatMessage extends ChatMessage {
+  id?: string;
+  timestamp?: Date;
+  language?: string;
+  isVoice?: boolean;
+  audioUrl?: string;
+}
 
 export function DigitalTwinChat() {
   const { language } = useLanguage();
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: "assistant",
-      content: "Namaste! I am Ramu's digital assistant. Ask me anything about his craft, story, or products.",
-    },
-  ]);
+  const { user } = useAuth();
+  const [messages, setMessages] = useState<EnhancedChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
+  const [isTranslationEnabled, setIsTranslationEnabled] = useState(false);
   const [translatedTitle, setTranslatedTitle] = useState('Artisan Buddy');
-  const [translatedDescription, setTranslatedDescription] = useState('Chat with Ramu\'s AI assistant 24/7.');
+  const [translatedDescription, setTranslatedDescription] = useState('Chat with your AI assistant 24/7.');
   const [translatedPlaceholder, setTranslatedPlaceholder] = useState('Ask about weaving techniques...');
   const [translatedSend, setTranslatedSend] = useState('Send');
   const [translatedYou, setTranslatedYou] = useState('You');
   const [translatedAI, setTranslatedAI] = useState('AI');
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const synthRef = useRef<SpeechSynthesis | null>(null);
 
   useEffect(() => {
-    const loadTranslations = async () => {
-      try {
-        const [title, description, placeholder, send, you, ai, initialMsg] = await Promise.all([
-          translateAsync('chatTitle', language),
-          translateAsync('chatDescription', language),
-          translateAsync('chatPlaceholder', language),
-          translateAsync('send', language),
-          translateAsync('you', language),
-          translateAsync('ai', language),
-          translateAsync('chatInitialMessage', language),
-        ]);
+    // Initialize speech synthesis
+    if (typeof window !== 'undefined') {
+      synthRef.current = window.speechSynthesis;
+    }
 
-        setTranslatedTitle(title);
-        setTranslatedDescription(description);
-        setTranslatedPlaceholder(placeholder);
-        setTranslatedSend(send);
-        setTranslatedYou(you);
-        setTranslatedAI(ai);
+    // Load chat history
+    loadChatHistory();
 
-        // Update initial message
-        setMessages([{
-          role: "assistant",
-          content: initialMsg || "Namaste! I am Ramu's digital assistant. Ask me anything about his craft, story, or products.",
-        }]);
-      } catch (error) {
-        console.error('Chat translation loading failed:', error);
-        // Fallback to static translations
-        setTranslatedTitle(t('chatTitle', language) || 'Artisan Buddy');
-        setTranslatedDescription(t('chatDescription', language) || 'Chat with Ramu\'s AI assistant 24/7.');
-        setTranslatedPlaceholder(t('chatPlaceholder', language) || 'Ask about weaving techniques...');
-        setTranslatedSend(t('send', language) || 'Send');
-        setTranslatedYou(t('you', language) || 'You');
-        setTranslatedAI(t('ai', language) || 'AI');
+    // Load translations
+    loadTranslations();
+
+    // Listen for voice input from universal microphone
+    const handleVoiceInput = (event: CustomEvent) => {
+      const { transcript, isVoice } = event.detail;
+      if (transcript && isVoice) {
+        // Add voice input as user message
+        const voiceMessage: EnhancedChatMessage = {
+          role: 'user',
+          content: transcript,
+          timestamp: new Date(),
+          language: language,
+          isVoice: true
+        };
+        setMessages(prev => [...prev, voiceMessage]);
+        
+        // Process the voice input
+        handleVoiceSubmit(transcript);
       }
     };
 
-    loadTranslations();
-  }, [language]);
+    // Listen for voice recognition events
+    const handleVoiceStart = () => setIsListening(true);
+    const handleVoiceEnd = () => setIsListening(false);
+
+    // Add event listeners
+    window.addEventListener('voiceInput' as any, handleVoiceInput);
+    window.addEventListener('voiceStart' as any, handleVoiceStart);
+    window.addEventListener('voiceEnd' as any, handleVoiceEnd);
+
+    return () => {
+      window.removeEventListener('voiceInput' as any, handleVoiceInput);
+      window.removeEventListener('voiceStart' as any, handleVoiceStart);
+      window.removeEventListener('voiceEnd' as any, handleVoiceEnd);
+    };
+  }, [language, user]);
+
+  const loadChatHistory = async () => {
+    try {
+      const userId = user?.uid || 'default-user';
+      const response = await fetch(`/api/artisan-buddy/chat?limit=50&userId=${userId}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.messages && data.messages.length > 0) {
+          setMessages(data.messages);
+        } else {
+          // Set initial message if no history
+          setMessages([{
+            role: "assistant",
+            content: "Namaste! I am your Artisan Buddy. Ask me anything about your craft, business, or how I can help you today.",
+          }]);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load chat history:', error);
+      // Set initial message on error
+      setMessages([{
+        role: "assistant",
+        content: "Namaste! I am your Artisan Buddy. Ask me anything about your craft, business, or how I can help you today.",
+      }]);
+    }
+  };
+
+  const loadTranslations = async () => {
+    try {
+      const [title, description, placeholder, send, you, ai, initialMsg] = await Promise.all([
+        translateAsync('chatTitle', language),
+        translateAsync('chatDescription', language),
+        translateAsync('chatPlaceholder', language),
+        translateAsync('send', language),
+        translateAsync('you', language),
+        translateAsync('ai', language),
+        translateAsync('chatInitialMessage', language),
+      ]);
+
+      setTranslatedTitle(title);
+      setTranslatedDescription(description);
+      setTranslatedPlaceholder(placeholder);
+      setTranslatedSend(send);
+      setTranslatedYou(you);
+      setTranslatedAI(ai);
+    } catch (error) {
+      console.error('Chat translation loading failed:', error);
+      // Fallback to static translations
+      setTranslatedTitle(t('chatTitle', language) || 'Artisan Buddy');
+      setTranslatedDescription(t('chatDescription', language) || 'Chat with your AI assistant 24/7.');
+      setTranslatedPlaceholder(t('chatPlaceholder', language) || 'Ask about weaving techniques...');
+      setTranslatedSend(t('send', language) || 'Send');
+      setTranslatedYou(t('you', language) || 'You');
+      setTranslatedAI(t('ai', language) || 'AI');
+    }
+  };
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -83,31 +156,127 @@ export function DigitalTwinChat() {
     }
   }, [messages]);
 
+  const speakText = (text: string) => {
+    if (synthRef.current && isVoiceEnabled) {
+      setIsSpeaking(true);
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = language === 'hi' ? 'hi-IN' : 'en-US';
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+      synthRef.current.speak(utterance);
+    }
+  };
+
+  const handleVoiceSubmit = async (transcript: string) => {
+    if (!transcript.trim() || loading) return;
+
+    setLoading(true);
+
+    try {
+      const userId = user?.uid || 'default-user';
+      const response = await fetch('/api/artisan-buddy/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: transcript,
+          language: language,
+          enableTranslation: isTranslationEnabled,
+          enableVoice: isVoiceEnabled,
+          isVoice: true,
+          userId: userId
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const assistantMessage: EnhancedChatMessage = { 
+          role: "assistant", 
+          content: data.response,
+          timestamp: new Date(),
+          language: data.language || language,
+          isVoice: false
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+
+        // Speak the response if voice is enabled
+        if (isVoiceEnabled && data.response) {
+          speakText(data.response);
+        }
+      } else {
+        throw new Error('Failed to get response');
+      }
+    } catch (error) {
+      console.error('Voice chat error:', error);
+      toast({
+        title: t('chatError', language) || "Chat Error",
+        description: "Failed to get response. Please try again.",
+        variant: "destructive",
+      });
+    }
+    setLoading(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || loading) return;
 
-    const userMessage: ChatMessage = { role: "user", content: input };
+    const userMessage: EnhancedChatMessage = { 
+      role: "user", 
+      content: input,
+      timestamp: new Date(),
+      language: language,
+      isVoice: false
+    };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setLoading(true);
 
-    const response = await interactWithArtisanDigitalTwin({
-      artisanId: "ramu-kanchipuram-weaver",
-      buyerQuery: input,
-    });
+    try {
+      const userId = user?.uid || 'default-user';
+      const response = await fetch('/api/artisan-buddy/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: input,
+          language: language,
+          enableTranslation: isTranslationEnabled,
+          enableVoice: isVoiceEnabled,
+          isVoice: false,
+          userId: userId
+        }),
+      });
 
-    if (response.success && response.data) {
-      const assistantMessage: ChatMessage = { role: "assistant", content: response.data.response };
-      setMessages((prev) => [...prev, assistantMessage]);
-    } else {
+      if (response.ok) {
+        const data = await response.json();
+        const assistantMessage: EnhancedChatMessage = { 
+          role: "assistant", 
+          content: data.response,
+          timestamp: new Date(),
+          language: data.language || language,
+          isVoice: false
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+
+        // Speak the response if voice is enabled
+        if (isVoiceEnabled && data.response) {
+          speakText(data.response);
+        }
+      } else {
+        throw new Error('Failed to get response');
+      }
+    } catch (error) {
+      console.error('Chat error:', error);
       toast({
         title: t('chatError', language) || "Chat Error",
-        description: response.error,
+        description: "Failed to get response. Please try again.",
         variant: "destructive",
       });
-       // Restore user message if AI fails
-       setMessages(prev => prev.slice(0, -1));
+      // Restore user message if AI fails
+      setMessages(prev => prev.slice(0, -1));
     }
     setLoading(false);
   };
@@ -115,10 +284,37 @@ export function DigitalTwinChat() {
   return (
     <Card id="chat" className="h-full flex flex-col">
       <CardHeader>
-        <CardTitle className="font-headline flex items-center gap-2">
-          <BotMessageSquare className="size-6 text-primary" />
-          {translatedTitle}
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="font-headline flex items-center gap-2">
+            <BotMessageSquare className="size-6 text-primary" />
+            {translatedTitle}
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsVoiceEnabled(!isVoiceEnabled)}
+              className={cn(
+                "flex items-center gap-2",
+                isVoiceEnabled ? "bg-primary text-primary-foreground" : ""
+              )}
+            >
+              {isVoiceEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+              Voice
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsTranslationEnabled(!isTranslationEnabled)}
+              className={cn(
+                "flex items-center gap-2",
+                isTranslationEnabled ? "bg-primary text-primary-foreground" : ""
+              )}
+            >
+              🌐 Translate
+            </Button>
+          </div>
+        </div>
         <CardDescription>
           {translatedDescription}
         </CardDescription>
@@ -126,9 +322,17 @@ export function DigitalTwinChat() {
       <CardContent className="flex-1 flex flex-col min-h-0">
         <ScrollArea className="flex-1 pr-4 -mr-4" ref={scrollAreaRef}>
           <div className="space-y-4">
+            {isListening && (
+              <div className="flex justify-center mb-4">
+                <div className="bg-red-100 border border-red-300 rounded-lg p-3 flex items-center gap-2">
+                  <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm text-red-700">Listening... Speak now</span>
+                </div>
+              </div>
+            )}
             {messages.map((message, index) => (
               <div
-                key={index}
+                key={message.id || index}
                 className={cn(
                   "flex items-start gap-3",
                   message.role === "user" && "justify-end"
@@ -148,7 +352,25 @@ export function DigitalTwinChat() {
                       : "bg-primary text-primary-foreground"
                   )}
                 >
-                  {message.content}
+                  <div className="flex items-center gap-2 mb-1">
+                    {message.isVoice && (
+                      <Badge variant="secondary" className="text-xs">
+                        <Mic className="h-3 w-3 mr-1" />
+                        Voice
+                      </Badge>
+                    )}
+                    {message.language && message.language !== language && (
+                      <Badge variant="outline" className="text-xs">
+                        {message.language}
+                      </Badge>
+                    )}
+                  </div>
+                  <div>{message.content}</div>
+                  {message.timestamp && (
+                    <div className="text-xs opacity-70 mt-1">
+                      {new Date(message.timestamp).toLocaleTimeString()}
+                    </div>
+                  )}
                 </div>
                  {message.role === "user" && (
                   <Avatar className="size-8 border">
@@ -181,7 +403,29 @@ export function DigitalTwinChat() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={loading}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e as any);
+              }
+            }}
           />
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => {
+              // Voice input will be handled by universal microphone
+              toast({
+                title: "Voice Input",
+                description: "Use the universal microphone to speak your message",
+              });
+            }}
+            disabled={loading}
+          >
+            <Mic className="h-4 w-4" />
+            <span className="sr-only">Voice Input</span>
+          </Button>
           <Button type="submit" size="icon" disabled={loading || !input.trim()}>
             <Send className="h-4 w-4" />
             <span className="sr-only">{translatedSend}</span>

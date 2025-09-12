@@ -19,7 +19,10 @@ import {
   Activity,
   Target,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  FileSpreadsheet,
+  Download,
+  ExternalLink
 } from 'lucide-react';
 
 interface SalesData {
@@ -64,6 +67,11 @@ export default function FinanceDashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Google Sheets integration
+  const [exportingToSheets, setExportingToSheets] = useState(false);
+  const [sheetsUrl, setSheetsUrl] = useState<string | null>(null);
+  const [lastExportDate, setLastExportDate] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDashboardData();
@@ -134,6 +142,76 @@ export default function FinanceDashboard() {
 
   const formatPercentage = (value: number) => {
     return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
+  };
+
+  // Google Sheets export functionality
+  const exportToGoogleSheets = async () => {
+    try {
+      setExportingToSheets(true);
+
+      const exportData = {
+        summary: {
+          totalRevenue: summary.totalRevenue,
+          totalUnits: summary.totalUnits,
+          totalOrders: summary.totalOrders,
+          averageOrderValue: summary.averageOrderValue,
+          growthRate: summary.growthRate,
+          timeRange: timeRange,
+          exportDate: new Date().toISOString()
+        },
+        salesData: salesData.map(sale => ({
+          date: sale.periodKey,
+          revenue: sale.revenue,
+          units: sale.units,
+          orders: sale.orders,
+          averageOrderValue: sale.averageOrderValue,
+          averageUnitPrice: sale.averageUnitPrice
+        })),
+        topProducts: topProducts.map(product => ({
+          rank: product.rank,
+          productName: product.productName,
+          category: product.category,
+          revenue: product.revenue,
+          units: product.units,
+          marginPercentage: product.marginPercentage,
+          revenueGrowth: product.revenueGrowth
+        })),
+        worstProducts: worstProducts.map(product => ({
+          rank: product.rank,
+          productName: product.productName,
+          category: product.category,
+          revenue: product.revenue,
+          units: product.units,
+          marginPercentage: product.marginPercentage,
+          revenueGrowth: product.revenueGrowth
+        }))
+      };
+
+      const response = await fetch('/api/google-sheets/sales', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(exportData)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setSheetsUrl(result.sheetsUrl);
+        setLastExportDate(new Date().toLocaleString());
+        // Show success message
+        alert('Sales data exported to Google Sheets successfully!');
+      } else {
+        throw new Error(result.error || 'Export failed');
+      }
+
+    } catch (err) {
+      console.error('Error exporting to Google Sheets:', err);
+      alert('Failed to export to Google Sheets. Please try again.');
+    } finally {
+      setExportingToSheets(false);
+    }
   };
 
   if (loading) {
@@ -266,6 +344,7 @@ export default function FinanceDashboard() {
           <TabsTrigger value="products">Product Performance</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="insights">Insights</TabsTrigger>
+          <TabsTrigger value="sheets">Google Sheets</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -378,6 +457,163 @@ export default function FinanceDashboard() {
                     <p className="text-sm text-blue-700">
                       Stock levels for popular items are below optimal. Consider restocking.
                     </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="sheets" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileSpreadsheet className="h-5 w-5" />
+                Google Sheets Integration
+              </CardTitle>
+              <CardDescription>
+                Export and manage your sales data in Google Sheets with systematic organization
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Export Section */}
+              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+                <div>
+                  <h4 className="font-medium text-blue-900">Export Sales Data</h4>
+                  <p className="text-sm text-blue-700">
+                    Export current dashboard data to a well-organized Google Sheet
+                  </p>
+                  {lastExportDate && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      Last exported: {lastExportDate}
+                    </p>
+                  )}
+                </div>
+                <Button
+                  onClick={exportToGoogleSheets}
+                  disabled={exportingToSheets}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {exportingToSheets ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Exporting...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4 mr-2" />
+                      Export to Sheets
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Sheets Link */}
+              {sheetsUrl && (
+                <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
+                  <div>
+                    <h4 className="font-medium text-green-900">Google Sheet Created</h4>
+                    <p className="text-sm text-green-700">
+                      Your sales data has been exported successfully
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open(sheetsUrl!, '_blank')}
+                    className="border-green-300 text-green-700 hover:bg-green-100"
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Open in Google Sheets
+                  </Button>
+                </div>
+              )}
+
+              {/* Data Structure Preview */}
+              <div className="space-y-4">
+                <h4 className="font-medium">Sheet Structure Preview</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Summary Sheet</CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-xs space-y-1">
+                      <div>• Total Revenue: {formatCurrency(summary.totalRevenue)}</div>
+                      <div>• Total Orders: {formatNumber(summary.totalOrders)}</div>
+                      <div>• Total Units: {formatNumber(summary.totalUnits)}</div>
+                      <div>• Average Order Value: {formatCurrency(summary.averageOrderValue)}</div>
+                      <div>• Time Range: {timeRange}</div>
+                      <div>• Export Date: {new Date().toLocaleDateString()}</div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Sales Data Sheet</CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-xs space-y-1">
+                      <div>• Date-wise breakdown</div>
+                      <div>• Revenue per period</div>
+                      <div>• Units sold</div>
+                      <div>• Order count</div>
+                      <div>• Average values</div>
+                      <div>• Growth metrics</div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Top Products Sheet</CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-xs space-y-1">
+                      <div>• Product rankings</div>
+                      <div>• Revenue by product</div>
+                      <div>• Units sold</div>
+                      <div>• Margin analysis</div>
+                      <div>• Growth trends</div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Performance Insights</CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-xs space-y-1">
+                      <div>• Automated calculations</div>
+                      <div>• Trend analysis</div>
+                      <div>• Performance metrics</div>
+                      <div>• Charts and graphs</div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              {/* Benefits */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-medium mb-2">Benefits of Google Sheets Integration</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span>Systematic data organization</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span>Real-time collaboration</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span>Automated calculations</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span>Custom reporting</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span>Data visualization</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span>Historical tracking</span>
                   </div>
                 </div>
               </div>

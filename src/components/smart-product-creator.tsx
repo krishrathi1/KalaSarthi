@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ConversationalVoiceProcessor } from "@/lib/service/ConversationalVoiceProcessor";
 
 interface ProductFormData {
   name: string;
@@ -122,11 +123,17 @@ export function SmartProductCreator() {
   const [showDebug, setShowDebug] = useState(false);
   const [uploadingProduct, setUploadingProduct] = useState(false);
 
-  // Voice-guided workflow state
-  const [voiceWorkflowStep, setVoiceWorkflowStep] = useState<'welcome' | 'image_upload' | 'product_details' | 'review_publish'>('welcome');
+  // Enhanced Voice-guided workflow state
+  const [voiceWorkflowStep, setVoiceWorkflowStep] = useState<'welcome' | 'image_upload' | 'audio_recording' | 'pricing_setup' | 'product_details' | 'review_publish'>('welcome');
   const [voiceWorkflowActive, setVoiceWorkflowActive] = useState(false);
   const [voiceFeedback, setVoiceFeedback] = useState<string>("");
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  const [voiceProgress, setVoiceProgress] = useState(0);
+  const [voiceStepHistory, setVoiceStepHistory] = useState<string[]>([]);
+  const [voiceErrors, setVoiceErrors] = useState<string[]>([]);
+  const [voiceHints, setVoiceHints] = useState<string[]>([]);
+  const [voiceErrorHelp, setVoiceErrorHelp] = useState<string>("");
+  const [retryCount, setRetryCount] = useState(0);
 
   // Additional state for compatibility
   const [translations, setTranslations] = useState<Record<string, string>>({});
@@ -155,6 +162,9 @@ export function SmartProductCreator() {
   const { toast } = useToast();
   const { userProfile } = useAuth();
 
+  // Initialize conversational voice processor
+  const conversationalProcessor = ConversationalVoiceProcessor.getInstance();
+
   // Auto-fill product form when data becomes available
   useEffect(() => {
     if (currentStep === 'product-details' && imageAnalysis && !productForm.name) {
@@ -175,8 +185,40 @@ export function SmartProductCreator() {
         quantity: prev.quantity || 1,
         tags: prev.tags.length > 0 ? prev.tags : generateTagsFromAnalysis(imageAnalysis)
       }));
+
+      // Voice confirmation for auto-filled data
+      if (voiceWorkflowActive && voiceWorkflowStep === 'product_details') {
+        setTimeout(() => {
+          speakVoiceFeedback("I've automatically filled in some details from your image and story. Please review and add any missing information.");
+        }, 1000);
+      }
     }
-  }, [currentStep, imageAnalysis, transcription, productForm.name, pricingApproved, pricingAnalysis]);
+  }, [currentStep, imageAnalysis, transcription, productForm.name, pricingApproved, pricingAnalysis, voiceWorkflowActive, voiceWorkflowStep]);
+
+  // Voice confirmations for step completions
+  useEffect(() => {
+    if (voiceWorkflowActive) {
+      // Image upload completion
+      if (voiceWorkflowStep === 'image_upload' && imageFile && !isAnalyzingImage) {
+        speakVoiceFeedback("Great! Image uploaded successfully. I'm analyzing it now.");
+      }
+
+      // Audio recording completion
+      if (voiceWorkflowStep === 'audio_recording' && audioBlob && transcription) {
+        speakVoiceFeedback("Perfect! Your story has been recorded and transcribed. Moving to pricing.");
+      }
+
+      // Pricing completion
+      if (voiceWorkflowStep === 'pricing_setup' && pricingAnalysis) {
+        speakVoiceFeedback(`Fair price calculated: ₹${pricingAnalysis.suggestedPrice}. Moving to product details.`);
+      }
+
+      // Product details completion
+      if (voiceWorkflowStep === 'product_details' && productForm.name && productForm.description && productForm.category) {
+        speakVoiceFeedback("Excellent! All product details are complete. Ready for final review.");
+      }
+    }
+  }, [imageFile, audioBlob, transcription, pricingAnalysis, productForm, voiceWorkflowActive, voiceWorkflowStep, isAnalyzingImage]);
 
   // Merge real-time transcription with server results
   const mergeTranscriptions = (realtimeText: string, serverText: string): string => {
@@ -2110,18 +2152,77 @@ export function SmartProductCreator() {
     });
   };
 
-  // Voice workflow functions
+  // Enhanced Voice workflow functions
   const startVoiceWorkflow = () => {
     setVoiceWorkflowActive(true);
     setVoiceWorkflowStep('welcome');
-    setVoiceFeedback("🎤 Voice-guided workflow started. Say 'start' to begin.");
-    speakVoiceFeedback("Voice-guided workflow started. Say 'start' to begin.");
+    setVoiceProgress(0);
+    setVoiceStepHistory([]);
+    setVoiceErrors([]);
+    setVoiceHints([]);
+    setVoiceFeedback("🎤 Voice-guided product creation started. Say 'start' to begin creating your product.");
+    speakVoiceFeedback("Voice-guided product creation started. Say 'start' to begin creating your product.");
   };
 
   const stopVoiceWorkflow = () => {
     setVoiceWorkflowActive(false);
     setVoiceWorkflowStep('welcome');
+    setVoiceProgress(0);
     setVoiceFeedback("");
+  };
+
+  // Voice step guidance system
+  const getVoiceGuidanceForStep = (step: typeof voiceWorkflowStep): { message: string; hints: string[]; actions: string[] } => {
+    switch (step) {
+      case 'welcome':
+        return {
+          message: "Welcome to voice-guided product creation! I'll help you create your product step by step. Say 'start' when you're ready to begin.",
+          hints: ["Say 'start' to begin", "Say 'help' for assistance", "Say 'stop' to exit voice guidance"],
+          actions: ['start', 'help', 'stop']
+        };
+
+      case 'image_upload':
+        return {
+          message: "Let's start with uploading a photo of your product. You can either upload from gallery or take a new photo with your camera.",
+          hints: ["Say 'upload image' to open gallery", "Say 'take photo' to use camera", "Say 'next' if you already have an image"],
+          actions: ['upload_image', 'take_photo', 'next']
+        };
+
+      case 'audio_recording':
+        return {
+          message: "Great! Now let's record the story behind your product. Tell us about your craftsmanship, materials, and what makes this product special.",
+          hints: ["Say 'start recording' to begin", "Say 'play' to listen to your recording", "Say 'next' when story is complete"],
+          actions: ['start_recording', 'play_audio', 'next']
+        };
+
+      case 'pricing_setup':
+        return {
+          message: "Now let's set a fair price for your product. Tell me about your time spent, material costs, and desired profit margin.",
+          hints: ["Say 'set time' to enter hours worked", "Say 'set materials' for material costs", "Say 'calculate price' when ready"],
+          actions: ['set_time', 'set_materials', 'calculate_price']
+        };
+
+      case 'product_details':
+        return {
+          message: "Almost done! Let's add the final details like product name, category, and description.",
+          hints: ["Say 'set name' for product name", "Say 'set category' for category", "Say 'confirm' when details are complete"],
+          actions: ['set_name', 'set_category', 'confirm']
+        };
+
+      case 'review_publish':
+        return {
+          message: "Perfect! Review your product details and say 'publish' when you're ready to create your product.",
+          hints: ["Say 'review' to check details", "Say 'edit' to make changes", "Say 'publish' to create product"],
+          actions: ['review', 'edit', 'publish']
+        };
+
+      default:
+        return {
+          message: "How can I help you with your product creation?",
+          hints: ["Say 'help' for available commands"],
+          actions: ['help']
+        };
+    }
   };
 
   const speakVoiceFeedback = async (text: string) => {
@@ -2149,90 +2250,476 @@ export function SmartProductCreator() {
 
   const handleVoiceWorkflowCommand = (command: string) => {
     setIsProcessingVoice(true);
+    setVoiceStepHistory(prev => [...prev.slice(-4), `${new Date().toLocaleTimeString()}: ${command}`]);
+
+    // Update progress based on current step
+    const stepProgress = {
+      'welcome': 0,
+      'image_upload': 25,
+      'audio_recording': 50,
+      'pricing_setup': 75,
+      'product_details': 90,
+      'review_publish': 100
+    };
+    setVoiceProgress(stepProgress[voiceWorkflowStep] || 0);
+
+    // Clear previous error help
+    setVoiceErrorHelp("");
+
+    // Check for voice shortcuts first (available in all steps)
+    if (handleVoiceShortcut(command)) {
+      setTimeout(() => setIsProcessingVoice(false), 1000);
+      return;
+    }
 
     switch (command) {
       case 'start':
         if (voiceWorkflowStep === 'welcome') {
           setVoiceWorkflowStep('image_upload');
           setCurrentStep('image-upload');
-          setVoiceFeedback("Moving to image upload step. Say 'upload image' or 'take photo'.");
-          speakVoiceFeedback("Moving to image upload step. Say 'upload image' or 'take photo'.");
+          setVoiceStepHistory(prev => [...prev, 'Started product creation']);
+          const guidance = getVoiceGuidanceForStep('image_upload');
+          setVoiceFeedback(guidance.message);
+          setVoiceHints(guidance.hints);
+          speakVoiceFeedback(guidance.message);
         }
         break;
 
       case 'upload_image':
+      case 'upload':
         if (voiceWorkflowStep === 'image_upload') {
           fileInputRef.current?.click();
-          setVoiceFeedback("Opening image upload. Choose your product image.");
-          speakVoiceFeedback("Opening image upload. Choose your product image.");
+          setVoiceFeedback("Opening gallery. Please select a photo of your product.");
+          speakVoiceFeedback("Opening gallery. Please select a photo of your product.");
         }
         break;
 
       case 'take_photo':
+      case 'camera':
         if (voiceWorkflowStep === 'image_upload') {
           openCamera();
-          setVoiceFeedback("Opening camera. Take a photo of your product.");
-          speakVoiceFeedback("Opening camera. Take a photo of your product.");
+          setVoiceFeedback("Opening camera. Position your product and take a clear photo.");
+          speakVoiceFeedback("Opening camera. Position your product and take a clear photo.");
         }
         break;
 
       case 'next':
-        if (voiceWorkflowStep === 'image_upload' && imageFile) {
-          setVoiceWorkflowStep('product_details');
-          setCurrentStep('product-details');
-          setVoiceFeedback("Moving to product details. Tell me about your product name and price.");
-          speakVoiceFeedback("Moving to product details. Tell me about your product name and price.");
-        } else if (voiceWorkflowStep === 'product_details' && productForm.name && productForm.description) {
-          setVoiceWorkflowStep('review_publish');
-          setVoiceFeedback("Moving to review step. Say 'save product' when ready.");
-          speakVoiceFeedback("Moving to review step. Say 'save product' when ready.");
-        }
+        handleVoiceNext();
         break;
 
       case 'back':
-        if (voiceWorkflowStep === 'product_details') {
-          setVoiceWorkflowStep('image_upload');
-          setCurrentStep('image-upload');
-          setVoiceFeedback("Going back to image upload step.");
-          speakVoiceFeedback("Going back to image upload step.");
-        } else if (voiceWorkflowStep === 'review_publish') {
-          setVoiceWorkflowStep('product_details');
-          setCurrentStep('product-details');
-          setVoiceFeedback("Going back to product details.");
-          speakVoiceFeedback("Going back to product details.");
+      case 'previous':
+        handleVoiceBack();
+        break;
+
+      case 'start_recording':
+      case 'record':
+        if (voiceWorkflowStep === 'audio_recording') {
+          startRecording();
+          setVoiceFeedback("Recording started. Tell us your product's story...");
+          speakVoiceFeedback("Recording started. Tell us your product's story...");
         }
         break;
 
-      case 'save_product':
-        if (voiceWorkflowStep === 'review_publish') {
-          handleProductSubmit();
-          setVoiceFeedback("Creating your product...");
-          speakVoiceFeedback("Creating your product...");
+      case 'stop_recording':
+        if (voiceWorkflowStep === 'audio_recording' && isRecording) {
+          stopRecording();
+          setVoiceFeedback("Recording stopped. Processing your story...");
+          speakVoiceFeedback("Recording stopped. Processing your story...");
         }
+        break;
+
+      case 'play_audio':
+      case 'play':
+        if (voiceWorkflowStep === 'audio_recording' && audioBlob) {
+          playAudio();
+          setVoiceFeedback("Playing your recorded story...");
+          speakVoiceFeedback("Playing your recorded story...");
+        }
+        break;
+
+      case 'set_time':
+      case 'time':
+        if (voiceWorkflowStep === 'pricing_setup') {
+          // Focus on time input
+          setVoiceFeedback("Please tell me how many hours you spent making this product.");
+          speakVoiceFeedback("Please tell me how many hours you spent making this product.");
+        }
+        break;
+
+      case 'set_materials':
+      case 'materials':
+        if (voiceWorkflowStep === 'pricing_setup') {
+          setVoiceFeedback("Please tell me the total cost of materials used.");
+          speakVoiceFeedback("Please tell me the total cost of materials used.");
+        }
+        break;
+
+      case 'calculate_price':
+        if (voiceWorkflowStep === 'pricing_setup') {
+          if (artisanInputs.timeSpent && artisanInputs.materialCosts) {
+            analyzePricing();
+            setVoiceFeedback("Calculating your fair price...");
+            speakVoiceFeedback("Calculating your fair price...");
+          } else {
+            setVoiceFeedback("Please provide time spent and material costs first.");
+            speakVoiceFeedback("Please provide time spent and material costs first.");
+          }
+        }
+        break;
+
+      case 'set_name':
+      case 'name':
+        if (voiceWorkflowStep === 'product_details') {
+          setVoiceFeedback("Please tell me the name of your product.");
+          speakVoiceFeedback("Please tell me the name of your product.");
+        }
+        break;
+
+      case 'set_category':
+      case 'category':
+        if (voiceWorkflowStep === 'product_details') {
+          setVoiceFeedback("Please tell me the category of your product.");
+          speakVoiceFeedback("Please tell me the category of your product.");
+        }
+        break;
+
+      case 'confirm':
+      case 'save_product':
+      case 'publish':
+        if (voiceWorkflowStep === 'review_publish' || (voiceWorkflowStep === 'product_details' && canProceedToNext())) {
+          handleProductSubmit();
+          setVoiceFeedback("Creating your product... This may take a moment.");
+          speakVoiceFeedback("Creating your product... This may take a moment.");
+        } else {
+          setVoiceFeedback("Please complete all required fields first.");
+          speakVoiceFeedback("Please complete all required fields first.");
+        }
+        break;
+
+      case 'help':
+        const guidance = getVoiceGuidanceForStep(voiceWorkflowStep);
+        setVoiceFeedback(`Available commands: ${guidance.actions.join(', ')}`);
+        setVoiceHints(guidance.hints);
+        speakVoiceFeedback(`You can say: ${guidance.actions.join(', or ')}`);
+        break;
+
+      case 'status':
+      case 'progress':
+        const currentGuidance = getVoiceGuidanceForStep(voiceWorkflowStep);
+        setVoiceFeedback(`Current step: ${voiceWorkflowStep.replace('_', ' ')}. ${currentGuidance.message}`);
+        speakVoiceFeedback(`You're currently at the ${voiceWorkflowStep.replace('_', ' ')} step. ${currentGuidance.message}`);
         break;
 
       default:
-        setVoiceFeedback(`I didn't understand '${command}'. Try saying 'help' for available commands.`);
-        speakVoiceFeedback(`I didn't understand '${command}'. Try saying 'help' for available commands.`);
+        // Handle unrecognized commands with helpful suggestions
+        incrementRetryCount();
+        const suggestions = getVoiceGuidanceForStep(voiceWorkflowStep);
+        setVoiceErrors(prev => [...prev.slice(-2), `Unrecognized command: ${command}`]);
+
+        let errorMessage = `I didn't understand '${command}'.`;
+        let helpMessage = "";
+
+        if (retryCount >= 2) {
+          errorMessage += " Let me show you what you can say.";
+          helpMessage = `Available commands: ${suggestions.actions.join(', ')}. You can also say 'help' anytime.`;
+          setVoiceHints(suggestions.hints);
+        } else {
+          errorMessage += ` Try: ${suggestions.actions.slice(0, 3).join(', ')}`;
+          helpMessage = `Try saying: ${suggestions.actions.slice(0, 3).join(', or ')}`;
+        }
+
+        setVoiceFeedback(errorMessage);
+        speakVoiceFeedback(helpMessage);
     }
+
+    // Reset retry count on successful command
+    resetRetryCount();
 
     setTimeout(() => setIsProcessingVoice(false), 1000);
   };
 
-  // Voice command recognition functions
-  const voiceCommands = {
-    next: ['next', 'aage jao', 'aage', 'forward', 'proceed', 'continue', ' आगे', 'नेक्स्ट', 'अगला', 'जाओ', 'चलो'],
-    confirm: ['confirm', 'yes', 'okay', 'upload', 'save', 'done', 'हाँ', 'ठीक', 'अपलोड', 'सेव', 'हो गया'],
-    back: ['back', 'previous', 'peeche', 'पीछे', 'वापस', 'बैक'],
-    start: ['start', 'begin', 'शुरू', 'शुरू करें', 'बEGIN'],
-    upload_image: ['upload image', 'upload', 'image', 'तस्वीर अपलोड', 'फोटो अपलोड'],
-    take_photo: ['take photo', 'camera', 'photo', 'फोटो लें', 'कैमरा'],
-    save_product: ['save product', 'save', 'create', 'सेव', 'बनाएं', 'create product']
+  // Voice shortcuts for common actions (available in all steps)
+  const handleVoiceShortcut = (command: string) => {
+    const shortcuts = {
+      'repeat': () => {
+        const guidance = getVoiceGuidanceForStep(voiceWorkflowStep);
+        setVoiceFeedback(guidance.message);
+        speakVoiceFeedback(guidance.message);
+      },
+      'clear': () => {
+        setVoiceErrors([]);
+        setVoiceHints([]);
+        setVoiceErrorHelp("");
+        setVoiceFeedback("Cleared all messages and hints.");
+        speakVoiceFeedback("All messages and hints have been cleared.");
+      },
+      'faster': () => {
+        // Could adjust speech rate here
+        setVoiceFeedback("I'll speak a bit faster now.");
+        speakVoiceFeedback("Speaking faster now.");
+      },
+      'slower': () => {
+        // Could adjust speech rate here
+        setVoiceFeedback("I'll speak a bit slower now.");
+        speakVoiceFeedback("Speaking slower now.");
+      },
+      'louder': () => {
+        setVoiceFeedback("I'll speak louder now.");
+        speakVoiceFeedback("Speaking louder now.");
+      },
+      'quieter': () => {
+        setVoiceFeedback("I'll speak quieter now.");
+        speakVoiceFeedback("Speaking quieter now.");
+      },
+      'skip': () => {
+        if (voiceWorkflowStep !== 'review_publish') {
+          handleVoiceNext();
+        } else {
+          setVoiceFeedback("Cannot skip the final review step.");
+          speakVoiceFeedback("Cannot skip the final review step.");
+        }
+      },
+      'restart': () => {
+        startVoiceWorkflow();
+        setVoiceFeedback("Voice workflow restarted from the beginning.");
+        speakVoiceFeedback("Voice workflow restarted from the beginning.");
+      }
+    };
+
+    const shortcutAction = shortcuts[command as keyof typeof shortcuts];
+    if (shortcutAction) {
+      shortcutAction();
+      return true;
+    }
+    return false;
   };
 
-  const recognizeVoiceCommand = (text: string): string | null => {
+  const handleVoiceNext = () => {
+    const currentIndex = ['welcome', 'image_upload', 'audio_recording', 'pricing_setup', 'product_details', 'review_publish'].indexOf(voiceWorkflowStep);
+
+    if (currentIndex < 5) {
+      const nextStep = ['welcome', 'image_upload', 'audio_recording', 'pricing_setup', 'product_details', 'review_publish'][currentIndex + 1] as typeof voiceWorkflowStep;
+
+      // Validate current step before proceeding
+      if (validateStepCompletion(voiceWorkflowStep)) {
+        setVoiceWorkflowStep(nextStep);
+        setCurrentStep(nextStep === 'audio_recording' ? 'audio-recording' :
+                      nextStep === 'pricing_setup' ? 'pricing-engine' :
+                      nextStep === 'product_details' ? 'product-details' : 'image-upload');
+
+        const guidance = getVoiceGuidanceForStep(nextStep);
+        setVoiceFeedback(guidance.message);
+        setVoiceHints(guidance.hints);
+        speakVoiceFeedback(guidance.message);
+      } else {
+        const errorMsg = getStepValidationError(voiceWorkflowStep);
+        setVoiceFeedback(errorMsg);
+        speakVoiceFeedback(errorMsg);
+      }
+    }
+  };
+
+  const handleVoiceBack = () => {
+    const currentIndex = ['welcome', 'image_upload', 'audio_recording', 'pricing_setup', 'product_details', 'review_publish'].indexOf(voiceWorkflowStep);
+
+    if (currentIndex > 0) {
+      const prevStep = ['welcome', 'image_upload', 'audio_recording', 'pricing_setup', 'product_details', 'review_publish'][currentIndex - 1] as typeof voiceWorkflowStep;
+
+      setVoiceWorkflowStep(prevStep);
+      setCurrentStep(prevStep === 'audio_recording' ? 'audio-recording' :
+                    prevStep === 'pricing_setup' ? 'pricing-engine' :
+                    prevStep === 'product_details' ? 'product-details' : 'image-upload');
+
+      const guidance = getVoiceGuidanceForStep(prevStep);
+      setVoiceFeedback(guidance.message);
+      setVoiceHints(guidance.hints);
+      speakVoiceFeedback(`Going back to ${prevStep.replace('_', ' ')} step. ${guidance.message}`);
+    }
+  };
+
+  const validateStepCompletion = (step: typeof voiceWorkflowStep): boolean => {
+    switch (step) {
+      case 'image_upload':
+        return !!imageFile;
+      case 'audio_recording':
+        return !!(audioBlob && transcription);
+      case 'pricing_setup':
+        return !!pricingAnalysis;
+      case 'product_details':
+        return !!(productForm.name && productForm.description && productForm.category);
+      default:
+        return true;
+    }
+  };
+
+  const getStepValidationError = (step: typeof voiceWorkflowStep): string => {
+    switch (step) {
+      case 'image_upload':
+        return "Please upload or take a photo of your product first.";
+      case 'audio_recording':
+        return "Please record your product's story before proceeding.";
+      case 'pricing_setup':
+        return "Please calculate your fair price before continuing.";
+      case 'product_details':
+        return "Please fill in product name, description, and category.";
+      default:
+        return "Please complete the current step.";
+    }
+  };
+
+  // Voice error detection and help system
+  const detectVoiceErrors = () => {
+    const errors: string[] = [];
+    const help: string[] = [];
+
+    // Image upload errors
+    if (voiceWorkflowStep === 'image_upload') {
+      if (!imageFile) {
+        errors.push("No image uploaded");
+        help.push("Try saying 'upload image' to open gallery or 'take photo' to use camera");
+      }
+      if (isAnalyzingImage) {
+        help.push("Image is being analyzed by AI. Please wait...");
+      }
+    }
+
+    // Audio recording errors
+    if (voiceWorkflowStep === 'audio_recording') {
+      if (!audioBlob) {
+        errors.push("No audio recorded");
+        help.push("Say 'start recording' to begin recording your story");
+      }
+      if (isRecording && recordingTime > 300) { // 5 minutes
+        errors.push("Recording is very long");
+        help.push("Consider saying 'stop recording' if you've finished your story");
+      }
+      if (!transcription && audioBlob) {
+        errors.push("Audio transcription failed");
+        help.push("Try recording again in a quieter environment");
+      }
+    }
+
+    // Pricing errors
+    if (voiceWorkflowStep === 'pricing_setup') {
+      if (!artisanInputs.timeSpent) {
+        errors.push("Time not specified");
+        help.push("Say 'set time' followed by number of hours");
+      }
+      if (!artisanInputs.materialCosts) {
+        errors.push("Material costs not specified");
+        help.push("Say 'set materials' followed by cost amount");
+      }
+      if (isAnalyzingPricing) {
+        help.push("Calculating fair price. Please wait...");
+      }
+    }
+
+    // Product details errors
+    if (voiceWorkflowStep === 'product_details') {
+      if (!productForm.name) {
+        errors.push("Product name missing");
+        help.push("Say 'set name' followed by your product name");
+      }
+      if (!productForm.description) {
+        errors.push("Description missing");
+        help.push("Say 'set description' followed by product description");
+      }
+      if (!productForm.category) {
+        errors.push("Category not selected");
+        help.push("Say 'set category' followed by category name");
+      }
+    }
+
+    // General errors
+    if (retryCount > 3) {
+      errors.push("Multiple command failures");
+      help.push("Try saying 'help' for available commands or 'status' for current progress");
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      errors.push("Microphone not supported");
+      help.push("Voice features require microphone access. Please use a modern browser.");
+    }
+
+    setVoiceErrors(errors);
+    setVoiceHints(help);
+
+    // Provide voice help for critical errors
+    if (errors.length > 0 && voiceWorkflowActive) {
+      const criticalError = errors.find(e =>
+        e.includes("No image") || e.includes("No audio") || e.includes("missing") || e.includes("not supported")
+      );
+      if (criticalError && help.length > 0) {
+        setVoiceErrorHelp(`Issue detected: ${criticalError}. ${help[0]}`);
+        speakVoiceFeedback(`I notice an issue: ${criticalError}. ${help[0]}`);
+      }
+    }
+
+    return { errors, help };
+  };
+
+  // Monitor for errors and provide help
+  useEffect(() => {
+    if (voiceWorkflowActive) {
+      const errorCheck = setInterval(() => {
+        detectVoiceErrors();
+      }, 3000); // Check every 3 seconds
+
+      return () => clearInterval(errorCheck);
+    }
+  }, [voiceWorkflowActive, voiceWorkflowStep, imageFile, audioBlob, transcription, productForm, artisanInputs, isRecording, recordingTime, retryCount]);
+
+  // Reset retry count on successful commands
+  const resetRetryCount = () => {
+    setRetryCount(0);
+  };
+
+  // Increment retry count on failed commands
+  const incrementRetryCount = () => {
+    setRetryCount(prev => prev + 1);
+  };
+
+  // Voice command recognition functions
+  const voiceCommands = {
+    // Navigation commands
+    next: ['next', 'aage jao', 'aage', 'forward', 'proceed', 'continue', ' आगे', 'नेक्स्ट', 'अगला', 'जाओ', 'चलो'],
+    back: ['back', 'previous', 'peeche', 'पीछे', 'वापस', 'बैक', 'go back', 'वापस जाओ'],
+    start: ['start', 'begin', 'शुरू', 'शुरू करें', 'बEGIN', 'start creating'],
+
+    // Image commands
+    upload_image: ['upload image', 'upload', 'image', 'gallery', 'तस्वीर अपलोड', 'फोटो अपलोड', 'गैलरी'],
+    take_photo: ['take photo', 'camera', 'photo', 'फोटो लें', 'कैमरा', 'take picture'],
+
+    // Audio commands
+    start_recording: ['start recording', 'record', 'record story', 'रिकॉर्ड', 'रिकॉर्डिंग शुरू', 'record audio'],
+    stop_recording: ['stop recording', 'stop', 'रिकॉर्डिंग बंद', 'stop record'],
+    play_audio: ['play', 'play audio', 'listen', 'play recording', 'बजाओ', 'सुनो'],
+
+    // Pricing commands
+    set_time: ['set time', 'time', 'hours', 'समय', 'घंटे', 'time spent'],
+    set_materials: ['set materials', 'materials', 'cost', 'सामग्री', 'मटेरियल', 'material cost'],
+    calculate_price: ['calculate price', 'price', 'कीमत', 'मूल्य', 'calculate'],
+
+    // Product details commands
+    set_name: ['set name', 'product name', 'name is', 'नाम', 'नाम है', 'प्रोडक्ट नाम'],
+    set_description: ['set description', 'description is', 'विवरण', 'विवरण है', 'डिस्क्रिप्शन'],
+    set_price: ['set price', 'price is', 'मूल्य', 'मूल्य है', 'कीमत', 'दाम'],
+    set_category: ['set category', 'category is', 'श्रेणी', 'श्रेणी है', 'कैटेगरी'],
+
+    // Action commands
+    confirm: ['confirm', 'yes', 'okay', 'upload', 'save', 'done', 'हाँ', 'ठीक', 'अपलोड', 'सेव', 'हो गया'],
+    save_product: ['save product', 'save', 'create', 'publish', 'सेव', 'बनाएं', 'create product', 'publish product'],
+    help: ['help', 'मदद', 'सहायता', 'क्या कर सकता है', 'what can you do'],
+    status: ['status', 'progress', 'where am i', 'स्थिति', 'प्रगति', 'कहाँ हूँ'],
+    review: ['review', 'check', 'verify', 'जाँच', 'समीक्षा'],
+    edit: ['edit', 'change', 'modify', 'संपादित', 'बदलो']
+  };
+
+  const recognizeVoiceCommand = async (text: string): Promise<string | null> => {
     const lowerText = text.toLowerCase().trim();
 
+    // First check for exact keyword matches (faster)
     for (const [command, keywords] of Object.entries(voiceCommands)) {
       for (const keyword of keywords) {
         if (lowerText.includes(keyword.toLowerCase())) {
@@ -2240,10 +2727,44 @@ export function SmartProductCreator() {
         }
       }
     }
-    return null;
+
+    // If no exact match, use conversational processor for natural language understanding
+    try {
+      // Create a text-based audio buffer simulation for conversational processing
+      const textBuffer = new ArrayBuffer(text.length * 2);
+      const result = await conversationalProcessor.processVoiceCommand(textBuffer, 'hi');
+
+      // Update conversational context with current page
+      conversationalProcessor.updateContext({
+        currentPage: '/smart-product-creator',
+        recentActions: ['product_creation', 'voice_interaction']
+      });
+
+      // Check if conversational processor has a meaningful response
+      if (result && result.intent && result.intent.confidence > 0.3) {
+        // Handle conversational intents
+        if (result.intent.type === 'action' && result.intent.target === 'create_product') {
+          return 'start';
+        }
+        if (result.intent.type === 'navigate' && result.intent.target === '/') {
+          return 'back';
+        }
+        if (result.intent.type === 'action' && result.intent.target === 'next') {
+          return 'next';
+        }
+        if (result.intent.type === 'action' && result.intent.target === 'confirm') {
+          return 'confirm';
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Conversational processing failed:', error);
+      return null;
+    }
   };
 
-  const executeVoiceCommand = (command: string) => {
+  const executeVoiceCommand = async (command: string) => {
     const now = Date.now();
 
     // Prevent command spam with cooldown
@@ -2316,6 +2837,25 @@ export function SmartProductCreator() {
           });
         }
         break;
+
+      default:
+        // Try conversational processing for unrecognized commands
+        try {
+          const emptyBuffer = new ArrayBuffer(0);
+          const result = await conversationalProcessor.processVoiceCommand(emptyBuffer, 'hi');
+
+          if (result.response) {
+            // Provide voice feedback for conversational responses
+            speakVoiceFeedback(result.response);
+            toast({
+              title: "🤖 AI Assistant",
+              description: result.response,
+            });
+          }
+        } catch (error) {
+          console.error('Conversational processing failed:', error);
+        }
+        break;
     }
   };
 
@@ -2362,17 +2902,23 @@ export function SmartProductCreator() {
 
         // Check for voice commands in both interim and final results
         if (finalTranscript) {
-          const command = recognizeVoiceCommand(finalTranscript);
-          if (command) {
-            executeVoiceCommand(command);
-          }
+          recognizeVoiceCommand(finalTranscript).then(command => {
+            if (command) {
+              executeVoiceCommand(command);
+            }
+          }).catch(error => {
+            console.error('Voice command recognition failed:', error);
+          });
         }
 
         if (interimTranscript) {
-          const command = recognizeVoiceCommand(interimTranscript);
-          if (command) {
-            executeVoiceCommand(command);
-          }
+          recognizeVoiceCommand(interimTranscript).then(command => {
+            if (command) {
+              executeVoiceCommand(command);
+            }
+          }).catch(error => {
+            console.error('Voice command recognition failed:', error);
+          });
         }
       };
 
@@ -3600,17 +4146,108 @@ export function SmartProductCreator() {
               </div>
             )}
 
-            {/* Voice Feedback Display */}
-            {voiceWorkflowActive && voiceFeedback && (
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mt-2">
-                <div className="flex items-center gap-2">
-                  {isProcessingVoice && (
-                    <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-                  )}
-                  <span className="text-sm text-purple-800 font-medium">
-                    {voiceFeedback}
-                  </span>
+            {/* Enhanced Voice Workflow Display */}
+            {voiceWorkflowActive && (
+              <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4 mt-2 space-y-3">
+                {/* Progress Bar */}
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <div className="flex justify-between text-xs text-purple-700 mb-1">
+                      <span>Voice Workflow Progress</span>
+                      <span>{voiceProgress}%</span>
+                    </div>
+                    <div className="w-full bg-purple-200 rounded-full h-2">
+                      <div
+                        className="bg-purple-600 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${voiceProgress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-purple-600 font-medium">
+                    Step {['welcome', 'image_upload', 'audio_recording', 'pricing_setup', 'product_details', 'review_publish'].indexOf(voiceWorkflowStep) + 1}/6
+                  </div>
                 </div>
+
+                {/* Current Step Indicator */}
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium text-purple-800 capitalize">
+                    {voiceWorkflowStep.replace('_', ' ')} Step
+                  </span>
+                  {isProcessingVoice && (
+                    <div className="w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                  )}
+                </div>
+
+                {/* Voice Feedback */}
+                {voiceFeedback && (
+                  <div className="bg-white/70 rounded-lg p-3">
+                    <span className="text-sm text-purple-800">
+                      {voiceFeedback}
+                    </span>
+                  </div>
+                )}
+
+                {/* Voice Hints */}
+                {voiceHints.length > 0 && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="text-xs font-medium text-blue-800 mb-2">💡 Try saying:</div>
+                    <div className="flex flex-wrap gap-2">
+                      {voiceHints.map((hint, index) => (
+                        <span key={index} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                          "{hint}"
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Voice Errors */}
+                {voiceErrors.length > 0 && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <div className="text-xs font-medium text-red-800 mb-1">⚠️ Recent Issues:</div>
+                    <div className="text-xs text-red-700">
+                      {voiceErrors[voiceErrors.length - 1]}
+                    </div>
+                  </div>
+                )}
+
+                {/* Voice Error Help */}
+                {voiceErrorHelp && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <div className="text-xs font-medium text-yellow-800 mb-1">💡 Help:</div>
+                    <div className="text-xs text-yellow-700">
+                      {voiceErrorHelp}
+                    </div>
+                  </div>
+                )}
+
+                {/* Voice Shortcuts Info */}
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <div className="text-xs font-medium text-gray-800 mb-2">🎯 Shortcuts (always available):</div>
+                  <div className="grid grid-cols-2 gap-1 text-xs text-gray-600">
+                    <div>• "repeat" - Repeat current guidance</div>
+                    <div>• "clear" - Clear messages</div>
+                    <div>• "status" - Show current progress</div>
+                    <div>• "help" - Show available commands</div>
+                    <div>• "restart" - Restart workflow</div>
+                    <div>• "skip" - Skip current step</div>
+                  </div>
+                </div>
+
+                {/* Step History */}
+                {voiceStepHistory.length > 0 && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                    <div className="text-xs font-medium text-gray-800 mb-2">📝 Recent Commands:</div>
+                    <div className="space-y-1 max-h-20 overflow-y-auto">
+                      {voiceStepHistory.slice(-3).map((cmd, index) => (
+                        <div key={index} className="text-xs text-gray-600">
+                          {cmd}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
