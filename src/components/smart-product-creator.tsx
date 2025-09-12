@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { Camera, Upload, Sparkles, Mic, MicOff, Play, Pause } from "lucide-react";
 import {
@@ -61,6 +61,7 @@ export function SmartProductCreator() {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [transcription, setTranscription] = useState<string>("");
   const [enhancedTranscription, setEnhancedTranscription] = useState<string>("");
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -776,57 +777,36 @@ export function SmartProductCreator() {
     };
   }, [isContinuousListening]);
 
-  const handleFileSelect = async (file: File) => {
+  const handleFileSelect = useCallback((file: File) => {
     if (file && file.type.startsWith('image/')) {
+      setIsProcessingFile(true);
       setImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         const originalImageData = reader.result as string;
         setOriginalImage(originalImageData);
         setImagePreview(originalImageData);
+        // Reset enhancement state when new file is selected
+        setEnhancedImage(null);
+        setShowComparison(false);
+        setProcessingStep("");
+        setProgress(0);
+        setIsProcessingFile(false);
+      };
+      reader.onerror = () => {
+        setIsProcessingFile(false);
+        toast({
+          title: "File processing failed",
+          description: "Could not read the selected file.",
+          variant: "destructive",
+        });
       };
       reader.readAsDataURL(file);
 
-      // Start image enhancement process
-      setProcessingStep("Enhancing image with Nano Banana AI...");
-      setProgress(10);
-
-      try {
-        const formData = new FormData();
-        formData.append('image', file);
-
-        const response = await fetch('/api/image-enhance', {
-          method: 'POST',
-          body: formData,
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          setEnhancedImage(result.enhancedImage);
-          setImagePreview(result.enhancedImage);
-          setProgress(100);
-          setProcessingStep("");
-          setShowComparison(true);
-          setComparisonSlider(50); // Reset slider to middle
-          toast({
-            title: "🎨 Image enhanced with Gemini AI!",
-            description: "Professional styling applied with background optimization. Colors and patterns preserved!",
-          });
-        } else {
-          throw new Error(result.error);
-        }
-      } catch (error) {
-        console.error('Image enhancement failed:', error);
-        setProcessingStep("");
-        setProgress(0);
-        setShowComparison(false);
-        toast({
-          title: "Enhancement failed",
-          description: "Using original image. Enhancement will be available soon.",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Processing image...",
+        description: "Please wait while we load your image.",
+      });
     } else {
       toast({
         title: "Invalid file type",
@@ -834,7 +814,7 @@ export function SmartProductCreator() {
         variant: "destructive",
       });
     }
-  };
+  }, [toast]);
 
   const handleGalleryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1508,6 +1488,60 @@ export function SmartProductCreator() {
     if (audioRef.current && isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
+    }
+  };
+
+  const enhanceImage = async () => {
+    if (!imageFile) {
+      toast({
+        title: "No image to enhance",
+        description: "Please upload an image first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsAnalyzingImage(true);
+    setProcessingStep("Enhancing image with Nano Banana AI...");
+    setProgress(10);
+
+    try {
+      const formData = new FormData();
+      formData.append('image', imageFile);
+
+      const response = await fetch('/api/image-enhance', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setEnhancedImage(result.enhancedImage);
+        setImagePreview(result.enhancedImage);
+        setProgress(100);
+        setProcessingStep("");
+        setShowComparison(true);
+        setComparisonSlider(50); // Reset slider to middle
+        toast({
+          title: "🎨 Image enhanced with Gemini AI!",
+          description: "Professional styling applied with background optimization. Colors and patterns preserved!",
+        });
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      console.error('Image enhancement failed:', error);
+      setProcessingStep("");
+      setProgress(0);
+      setShowComparison(false);
+      toast({
+        title: "Enhancement failed",
+        description: "Using original image. Enhancement will be available soon.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAnalyzingImage(false);
     }
   };
 
@@ -3433,24 +3467,44 @@ export function SmartProductCreator() {
                 onClick={() => fileInputRef.current?.click()}
                 className="flex flex-col items-center gap-2 h-20"
                 variant="outline"
+                disabled={isProcessingFile}
               >
-                <Upload className="size-6" />
-                <span className="text-xs">Gallery</span>
+                {isProcessingFile ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-xs">Processing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="size-6" />
+                    <span className="text-xs">Gallery</span>
+                  </>
+                )}
               </Button>
               <Button
                 onClick={openCamera}
                 className="flex flex-col items-center gap-2 h-20"
                 variant="outline"
+                disabled={isProcessingFile}
               >
-                <Camera className="size-6" />
-                <span className="text-xs">Camera</span>
+                {isProcessingFile ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-xs">Processing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Camera className="size-6" />
+                    <span className="text-xs">Camera</span>
+                  </>
+                )}
               </Button>
             </div>
 
             {/* AI Enhancement Button */}
             {imageFile && !enhancedImage && (
               <Button
-                onClick={analyzeImage}
+                onClick={enhanceImage}
                 disabled={isAnalyzingImage}
                 className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
                 size="sm"

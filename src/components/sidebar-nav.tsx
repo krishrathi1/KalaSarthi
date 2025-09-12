@@ -40,9 +40,23 @@ export function SidebarNav() {
 
   // Filter menu items based on user role
   const filteredMenuItems = menuItems.filter(item => {
-    // For unauthenticated users, only show public-friendly items
+    // For unauthenticated users, show more public-friendly items
     if (!userProfile) {
-      const publicFriendlyRoutes = ['/marketplace', '/auth'];
+      const publicFriendlyRoutes = [
+        '/marketplace',
+        '/auth',
+        '/smart-product-creator',
+        '/trend-spotter',
+        '/trend-mapper',
+        '/ai-image-generator',
+        '/arth-saarthi',
+        '/artisan-buddy',
+        '/yojana-mitra',
+        '/voice-enrollment',
+        '/trust-layer',
+        '/matchmaking',
+        '/multi-marketplace'
+      ];
       return publicFriendlyRoutes.some(route => item.path.startsWith(route));
     }
     return shouldShowMenuItem(item.path);

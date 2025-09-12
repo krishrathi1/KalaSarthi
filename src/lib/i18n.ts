@@ -928,6 +928,25 @@ export const menuItems = [
   },
   {
     label: {
+      en: 'AI Image Generator',
+      hi: 'AI छवि जेनरेटर',
+      ta: 'AI பட உருவாக்கி',
+      bn: 'AI ইমেজ জেনারেটর',
+      te: 'AI ఇమేజ్ జనరేటర్',
+      gu: 'AI ઇમેજ જનરેટર',
+      mr: 'AI इमेज जनरेटर',
+      kn: 'AI ಇಮೇಜ್ ಜನರೇಟರ್',
+      ml: 'AI ഇമേജ് ജനറേറ്റർ',
+      pa: 'AI ਇਮੇਜ ਜਨਰੇਟਰ',
+      as: 'AI ইমেজ জেনাৰেটৰ',
+      or: 'AI ଇମେଜ ଜେନେରେଟର',
+      ur: 'AI امیج جنریٹر',
+    },
+    icon: Sparkles,
+    path: "/ai-image-generator",
+  },
+  {
+    label: {
       en: 'TrendSpotter',
       hi: 'ट्रेंडस्पॉटर',
       ta: 'ட்ரெண்ட்ஸ்பாட்டர்',
