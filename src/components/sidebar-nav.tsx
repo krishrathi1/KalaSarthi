@@ -25,14 +25,28 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { useLanguage } from "@/context/language-context";
+import { useAuth } from "@/context/auth-context";
+import { useRoleBasedAccess } from "@/hooks/useRoleBasedAccess";
 import { menuItems, t, translateAsync } from "@/lib/i18n";
 import { useState, useEffect } from "react";
 
 export function SidebarNav() {
   const pathname = usePathname();
   const { language } = useLanguage();
+  const { userProfile } = useAuth();
+  const { shouldShowMenuItem } = useRoleBasedAccess();
   const [translatedAppName, setTranslatedAppName] = useState('KalaMitra');
   const [translatedTagline, setTranslatedTagline] = useState('From Kanchipuram to California...');
+
+  // Filter menu items based on user role
+  const filteredMenuItems = menuItems.filter(item => {
+    // For unauthenticated users, only show public-friendly items
+    if (!userProfile) {
+      const publicFriendlyRoutes = ['/marketplace', '/auth'];
+      return publicFriendlyRoutes.some(route => item.path.startsWith(route));
+    }
+    return shouldShowMenuItem(item.path);
+  });
 
   useEffect(() => {
     const loadTranslations = async () => {
@@ -62,7 +76,7 @@ export function SidebarNav() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
-          {menuItems.map((item) => (
+          {filteredMenuItems.map((item) => (
             <SidebarMenuItem key={item.path}>
               <SidebarMenuButton
                 asChild

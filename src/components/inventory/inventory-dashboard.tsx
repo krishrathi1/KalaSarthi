@@ -11,6 +11,9 @@ import { useOrders } from '@/hooks/use-orders';
 import ProductTable from './product-table';
 import OrderTable from './order-table';
 import IntegrationsTab from './integration-tag';
+import ProductGrid from '@/components/profile/ProductGrid';
+import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 interface InventoryDashboardProps {
     artisanId: string;
@@ -30,6 +33,10 @@ export default function InventoryDashboard({ artisanId }: InventoryDashboardProp
     const [productError, setProductError] = useState<string | null>(null);
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+    const [updating, setUpdating] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState<string | null>(null);
+    const { toast } = useToast();
+    const router = useRouter();
 
     const {
         orders,
@@ -131,6 +138,51 @@ export default function InventoryDashboard({ artisanId }: InventoryDashboardProp
         } catch (error) {
             console.error('Network error updating stock:', error);
             return { success: false, error: 'Network error occurred' };
+        }
+    };
+
+    // Product status change
+    const handleProductStatusChange = async (productId: string, newStatus: 'published' | 'draft' | 'archived') => {
+        setUpdating(productId);
+        try {
+            const response = await fetch(`/api/products/${productId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            const data = await response.json();
+            if (response.ok && data.success) {
+                setProducts(prev => prev.map(p => p.productId === productId ? ({ ...p, status: newStatus } as IProductDocument) : p));
+                toast({ title: 'Status updated', description: `Product moved to ${newStatus}.` });
+            } else {
+                toast({ title: 'Failed to update', description: data.error || 'Try again later', variant: 'destructive' });
+            }
+        } catch (e) {
+            toast({ title: 'Network error', description: 'Could not update product status', variant: 'destructive' });
+        } finally {
+            setUpdating(null);
+        }
+    };
+
+    const handleEditProduct = (productId: string) => {
+        router.push(`/smart-product-creator?edit=${productId}`);
+    };
+
+    const handleDeleteProduct = async (productId: string) => {
+        setDeleting(productId);
+        try {
+            const response = await fetch(`/api/products/${productId}`, { method: 'DELETE' });
+            const data = await response.json();
+            if (response.ok && data.success) {
+                setProducts(prev => prev.filter(p => p.productId !== productId));
+                toast({ title: 'Product deleted', description: 'The product was removed.' });
+            } else {
+                toast({ title: 'Delete failed', description: data.error || 'Try again later', variant: 'destructive' });
+            }
+        } catch (e) {
+            toast({ title: 'Network error', description: 'Could not delete product', variant: 'destructive' });
+        } finally {
+            setDeleting(null);
         }
     };
 
@@ -340,28 +392,22 @@ export default function InventoryDashboard({ artisanId }: InventoryDashboardProp
             )}
 
             {/* Main Content Tabs */}
-            <Tabs defaultValue="products" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="products">
-                        Products ({products.length})
-                    </TabsTrigger>
-                    <TabsTrigger value="orders">
-                        Orders ({orders?.length || 0})
-                    </TabsTrigger>
-                    <TabsTrigger value="integrations">
-                        Integrations
-                    </TabsTrigger>
+            <Tabs defaultValue="published" className="w-full">
+                <TabsList className="grid w-full grid-cols-5">
+                    <TabsTrigger value="published">Published ({products.filter(p => p.status === 'published').length})</TabsTrigger>
+                    <TabsTrigger value="drafts">Drafts ({products.filter(p => p.status === 'draft').length})</TabsTrigger>
+                    <TabsTrigger value="archived">Archived ({products.filter(p => p.status === 'archived').length})</TabsTrigger>
+                    <TabsTrigger value="orders">Orders ({orders?.length || 0})</TabsTrigger>
+                    <TabsTrigger value="integrations">Integrations</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="products">
+                <TabsContent value="published">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Product Management</CardTitle>
-                            <p className="text-sm text-muted-foreground">
-                                Manage your product inventory and Amazon listings
-                            </p>
+                            <CardTitle>Published Products</CardTitle>
+                            <p className="text-sm text-muted-foreground">Manage published products and listings</p>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="overflow-hidden">
                             {isLoadingProducts ? (
                                 <div className="flex items-center justify-center py-8">
                                     <Loader2 className="h-6 w-6 animate-spin mr-2" />
@@ -369,10 +415,66 @@ export default function InventoryDashboard({ artisanId }: InventoryDashboardProp
                                 </div>
                             ) : (
                                 <ProductTable
-                                    products={products}
+                                    products={products.filter(p => p.status === 'published')}
                                     onUpdateStock={updateProductStock}
                                     onUpdateAmazonListing={updateAmazonListing}
+                                    onStatusChange={handleProductStatusChange}
                                     isLoading={isLoadingProducts}
+                                />
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="drafts">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Draft Products</CardTitle>
+                            <p className="text-sm text-muted-foreground">Review and publish drafts</p>
+                        </CardHeader>
+                        <CardContent className="overflow-hidden">
+                            {isLoadingProducts ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                                    Loading products...
+                                </div>
+                            ) : (
+                                <ProductGrid
+                                    products={products.filter(p => p.status === 'draft')}
+                                    showActions
+                                    isDraft
+                                    onStatusChange={handleProductStatusChange}
+                                    onEdit={handleEditProduct}
+                                    onDelete={handleDeleteProduct}
+                                    updating={updating}
+                                    deleting={deleting}
+                                />
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="archived">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Archived Products</CardTitle>
+                            <p className="text-sm text-muted-foreground">Restore or manage archived products</p>
+                        </CardHeader>
+                        <CardContent className="overflow-hidden">
+                            {isLoadingProducts ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                                    Loading products...
+                                </div>
+                            ) : (
+                                <ProductGrid
+                                    products={products.filter(p => p.status === 'archived')}
+                                    showActions
+                                    onStatusChange={handleProductStatusChange}
+                                    onEdit={handleEditProduct}
+                                    onDelete={handleDeleteProduct}
+                                    updating={updating}
+                                    deleting={deleting}
                                 />
                             )}
                         </CardContent>

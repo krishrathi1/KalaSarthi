@@ -28,8 +28,14 @@ const AuthPage: React.FC = () => {
 
   useEffect(() => {
     if (!loading && user && userProfile) {
-      // User is authenticated and has a profile, redirect to dashboard
-      router.push('/dashboard');
+      // User is authenticated and has a profile, redirect based on role
+      if (userProfile.role === 'buyer') {
+        router.push('/marketplace');
+      } else if (userProfile.role === 'artisan') {
+        router.push('/dashboard/inventory');
+      } else {
+        router.push('/dashboard');
+      }
     }
   }, [user, userProfile, loading, router]);
 
@@ -44,9 +50,15 @@ const AuthPage: React.FC = () => {
       if (response.ok) {
         const result: UserProfileResponse = await response.json();
         if (result.success && result.data) {
-          // User already has a profile, redirect to dashboard
-          console.log('User profile found, redirecting to dashboard');
-          router.push('/dashboard');
+          // User already has a profile, redirect based on role
+          console.log('User profile found, redirecting based on role');
+          if (result.data.role === 'buyer') {
+            router.push('/marketplace');
+          } else if (result.data.role === 'artisan') {
+            router.push('/dashboard/inventory');
+          } else {
+            router.push('/dashboard');
+          }
         } else {
           // New user, show registration form
           setAuthStep('register');
@@ -66,7 +78,14 @@ const AuthPage: React.FC = () => {
 
   const handleRegistrationComplete = (userData: UserData): void => {
     console.log('Registration completed:', userData);
-    router.push('/dashboard');
+    // Redirect based on role after registration
+    if (userData.role === 'buyer') {
+      router.push('/marketplace');
+    } else if (userData.role === 'artisan') {
+      router.push('/dashboard/inventory');
+    } else {
+      router.push('/dashboard');
+    }
   };
 
   if (loading) {

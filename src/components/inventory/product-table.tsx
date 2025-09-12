@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Image from 'next/image';
-import { formatPrice } from '@/lib/format-utils';
+import { formatPrice, formatDate } from '@/lib/format-utils';
 import {
     Store,
     Edit2,
@@ -24,11 +24,13 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAmazonSPAPI } from '@/hooks/use-amazon';
 import { useMounted } from '@/hooks/use-mounted';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 interface ProductTableProps {
     products: IProductDocument[];
     onUpdateStock?: (productId: string, quantity: number) => Promise<{ success: boolean; error?: string }>;
     onUpdateAmazonListing?: (productId: string, listingData: any) => Promise<{ success: boolean; error?: string }>;
+    onStatusChange?: (productId: string, newStatus: 'published' | 'draft' | 'archived') => void;
     isLoading?: boolean;
 }
 
@@ -48,6 +50,7 @@ export default function ProductTable({
     products,
     onUpdateStock,
     onUpdateAmazonListing,
+    onStatusChange,
     isLoading = false
 }: ProductTableProps) {
     const mounted = useMounted();
@@ -58,6 +61,8 @@ export default function ProductTable({
     const [amazonListings, setAmazonListings] = useState<AmazonListingStatus>({});
     const [isInitializing, setIsInitializing] = useState(true);
     const { toast } = useToast();
+    const [viewProduct, setViewProduct] = useState<IProductDocument | null>(null);
+    const [isViewOpen, setIsViewOpen] = useState(false);
 
     // Amazon SP-API hook
     const {
@@ -354,10 +359,10 @@ export default function ProductTable({
     const connectionStatus = getConnectionStatus();
 
     return (
-        <div className="space-y-4 ">
+        <div className="space-y-4 w-full max-w-full overflow-hidden">
             {/* Amazon Connection Status */}
             <div className="bg-muted/50 rounded-lg p-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                     <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${connectionStatus.color}`} />
                         <span className="text-sm font-medium">
@@ -370,8 +375,8 @@ export default function ProductTable({
                 </div>
                 {amazonError && (
                     <div className="mt-2 text-sm text-destructive flex items-center gap-1">
-                        <AlertCircle className="h-4 w-4" />
-                        {amazonError}
+                        <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                        <span className="break-words">{amazonError}</span>
                     </div>
                 )}
                 {isAmazonConnected && (
@@ -382,16 +387,16 @@ export default function ProductTable({
             </div>
 
             {/* Filters and Search */}
-            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-                <div className="flex gap-2 items-center">
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+                <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center w-full sm:w-auto">
                     <Input
                         placeholder="Search products..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-64"
+                        className="w-full sm:w-64"
                     />
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="w-36">
+                        <SelectTrigger className="w-full sm:w-36">
                             <SelectValue placeholder="Filter by status" />
                         </SelectTrigger>
                         <SelectContent>
@@ -403,7 +408,7 @@ export default function ProductTable({
                     </Select>
                 </div>
 
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-muted-foreground whitespace-nowrap">
                     Showing {filteredProducts.length} of {products.length} products
                 </div>
             </div>
@@ -414,75 +419,78 @@ export default function ProductTable({
                     <p className="text-muted-foreground">No products match your current filters.</p>
                 </div>
             ) : (
-                <div className="border rounded-lg overflow-hidden">
-                    <Table>
+                <>
+                    {/* Desktop Table View */}
+                    <div className="hidden lg:block border rounded-lg overflow-hidden w-full">
+                        <div className="overflow-x-auto w-full">
+                            <Table className="w-full table-fixed">
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Product</TableHead>
-                                <TableHead>Category</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Stock</TableHead>
-                                <TableHead>Amazon Listing</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
+                                    <TableHead className="w-[40%] p-2 text-xs font-medium">Product</TableHead>
+                                    <TableHead className="w-[10%] p-2 text-xs font-medium">Category</TableHead>
+                                    <TableHead className="w-[10%] p-2 text-xs font-medium">Status</TableHead>
+                                    <TableHead className="w-[20%] p-2 text-xs font-medium">Stock</TableHead>
+                                    <TableHead className="w-[10%] p-2 text-xs font-medium">Amazon</TableHead>
+                                    <TableHead className="w-[10%] p-2 text-xs font-medium text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {filteredProducts.map(product => (
                                 <TableRow key={product.productId}>
                                     {/* Product Info */}
-                                    <TableCell>
-                                        <div className="flex items-center gap-3">
-                                            <div className="relative w-12 h-12 rounded-md overflow-hidden bg-muted">
+                                    <TableCell className="p-2">
+                                        <div className="flex items-center gap-2">
+                                            <div className="relative w-8 h-8 rounded overflow-hidden bg-muted flex-shrink-0">
                                                 {product.images && product.images.length > 0 ? (
                                                     <Image
                                                         src={product.images[0]}
                                                         alt={product.name}
                                                         fill
                                                         className="object-cover"
-                                                        sizes="48px"
+                                                        sizes="32px"
                                                     />
                                                 ) : (
-                                                    <Package className="w-6 h-6 text-muted-foreground absolute inset-0 m-auto" />
+                                                    <Package className="w-4 h-4 text-muted-foreground absolute inset-0 m-auto" />
                                                 )}
                                             </div>
-                                            <div className="min-w-0">
-                                                <p className="font-medium truncate">{product.name}</p>
-                                                <p className="text-sm text-muted-foreground">
-                                                    {formatPrice(product.price)}
+                                            <div className="min-w-0 flex-1">
+                                                <p className="font-medium text-xs truncate" title={product.name}>
+                                                    {product.name}
                                                 </p>
                                                 <p className="text-xs text-muted-foreground">
-                                                    ID: {product.productId}
+                                                    {formatPrice(product.price)}
                                                 </p>
                                             </div>
                                         </div>
                                     </TableCell>
 
                                     {/* Category */}
-                                    <TableCell>
-                                        <Badge variant="outline">{product.category}</Badge>
+                                    <TableCell className="p-2">
+                                        <Badge variant="outline" className="text-xs px-1 py-0">{product.category}</Badge>
                                     </TableCell>
 
                                     {/* Status */}
-                                    <TableCell>
-                                        <Badge variant={getStatusBadgeVariant(product.status)}>
+                                    <TableCell className="p-2">
+                                        <Badge variant={getStatusBadgeVariant(product.status)} className="text-xs px-1 py-0">
                                             {product.status.charAt(0).toUpperCase() + product.status.slice(1)}
                                         </Badge>
                                     </TableCell>
 
                                     {/* Stock Management */}
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
+                                    <TableCell className="p-2">
+                                        <div className="flex items-center gap-1">
                                             {getStockStatusIcon(product.inventory.quantity)}
                                             <Input
                                                 type="number"
                                                 min="0"
                                                 value={stock[product.productId] ?? product.inventory.quantity}
                                                 onChange={(e) => handleStockChange(product.productId, parseInt(e.target.value) || 0)}
-                                                className="w-20"
+                                                className="w-12 h-6 text-xs p-1"
                                                 disabled={updatingStock[product.productId]}
                                             />
                                             <Button
                                                 size="sm"
+                                                className="h-6 w-6 p-0"
                                                 onClick={() => handleUpdateStock(product)}
                                                 disabled={updatingStock[product.productId] ||
                                                     (stock[product.productId] ?? product.inventory.quantity) === product.inventory.quantity}
@@ -490,47 +498,29 @@ export default function ProductTable({
                                                 {updatingStock[product.productId] ? (
                                                     <Loader2 className="h-3 w-3 animate-spin" />
                                                 ) : (
-                                                    'Update'
+                                                    <span className="text-xs">✓</span>
                                                 )}
                                             </Button>
                                         </div>
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                            {product.inventory.isAvailable ? 'Available' : 'Out of Stock'}
-                                        </p>
                                     </TableCell>
 
                                     {/* Amazon Listing */}
-                                    <TableCell>
-                                        <div className="space-y-2">
+                                    <TableCell className="p-2">
+                                        <div className="space-y-1">
                                             {isListedOnAmazon(product.productId) ? (
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <Store className="h-4 w-4 text-orange-500" />
-                                                        <Badge variant={getAmazonStatusBadgeVariant(amazonListings[product.productId]?.status || '')}>
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-1">
+                                                        <Store className="h-3 w-3 text-orange-500" />
+                                                        <Badge variant={getAmazonStatusBadgeVariant(amazonListings[product.productId]?.status || '')} className="text-xs px-1 py-0">
                                                             {amazonListings[product.productId]?.status || 'Listed'}
                                                         </Badge>
                                                     </div>
-
-                                                    {/* Amazon listing details */}
-                                                    <div className="bg-orange-50 border border-orange-200 rounded p-2">
-                                                        <div className="text-xs text-orange-700 space-y-1">
-                                                            {amazonListings[product.productId]?.asin ? (
-                                                                <div>ASIN: {amazonListings[product.productId]?.asin}</div>
-                                                            ) : (
-                                                                <div>Submission ID: {amazonListings[product.productId]?.submissionId}</div>
-                                                            )}
-                                                            <div>SKU: {amazonListings[product.productId]?.sku}</div>
-                                                            <div>Status: {amazonListings[product.productId]?.status}</div>
-                                                            {!amazonListings[product.productId]?.asin && (
-                                                                <div className="text-orange-600 font-medium">
-                                                                    ⏳ ASIN pending (processing)
-                                                                </div>
-                                                            )}
-                                                        </div>
+                                                    <div className="text-xs text-muted-foreground truncate" title={amazonListings[product.productId]?.asin || amazonListings[product.productId]?.submissionId}>
+                                                        {amazonListings[product.productId]?.asin ? `ASIN: ${amazonListings[product.productId]?.asin}` : `ID: ${amazonListings[product.productId]?.submissionId}`}
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <Badge variant="outline">Not Listed</Badge>
+                                                <Badge variant="outline" className="text-xs px-1 py-0">Not Listed</Badge>
                                             )}
 
                                             <Button
@@ -538,33 +528,35 @@ export default function ProductTable({
                                                 variant={isListedOnAmazon(product.productId) ? "outline" : "default"}
                                                 onClick={() => handleToggleAmazonListing(product)}
                                                 disabled={product.status !== 'published' || isPublishingToAmazon(product.productId) || !isAmazonConnected || isAmazonLoading}
-                                                className={!isListedOnAmazon(product.productId) ? "bg-orange-500 hover:bg-orange-600" : ""}
+                                                className={`h-6 px-1 text-xs ${!isListedOnAmazon(product.productId) ? "bg-orange-500 hover:bg-orange-600" : ""}`}
                                             >
                                                 {isPublishingToAmazon(product.productId) ? (
-                                                    <>
-                                                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                                                        Publishing...
-                                                    </>
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
                                                 ) : isListedOnAmazon(product.productId) ? (
-                                                    'Remove Listing'
+                                                    'Remove'
                                                 ) : (
-                                                    <>
-                                                        <ShoppingCart className="h-4 w-4 mr-1" />
-                                                        List on Amazon
-                                                    </>
+                                                    'List'
                                                 )}
                                             </Button>
                                         </div>
                                     </TableCell>
 
                                     {/* Actions */}
-                                    <TableCell className="text-right">
-                                        <div className="flex items-center justify-end gap-2">
-                                            <Button size="sm" variant="ghost">
-                                                <Eye className="h-4 w-4" />
+                                    <TableCell className="text-right p-2">
+                                        <div className="flex items-center justify-end gap-1">
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="h-6 w-6 p-0"
+                                                onClick={() => {
+                                                    setViewProduct(product);
+                                                    setIsViewOpen(true);
+                                                }}
+                                            >
+                                                <Eye className="h-3 w-3" />
                                             </Button>
-                                            <Button size="sm" variant="ghost">
-                                                <Edit2 className="h-4 w-4" />
+                                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
+                                                <Edit2 className="h-3 w-3" />
                                             </Button>
                                         </div>
                                     </TableCell>
@@ -573,7 +565,236 @@ export default function ProductTable({
                         </TableBody>
                     </Table>
                 </div>
+                    </div>
+
+                    {/* Mobile Card View */}
+                    <div className="lg:hidden space-y-3">
+                        {filteredProducts.map(product => (
+                            <div key={product.productId} className="border rounded-lg p-3 space-y-2">
+                                {/* Product Header */}
+                                <div className="flex items-start gap-2">
+                                    <div className="relative w-10 h-10 rounded overflow-hidden bg-muted flex-shrink-0">
+                                        {product.images && product.images.length > 0 ? (
+                                            <Image
+                                                src={product.images[0]}
+                                                alt={product.name}
+                                                fill
+                                                className="object-cover"
+                                                sizes="40px"
+                                            />
+                                        ) : (
+                                            <Package className="w-5 h-5 text-muted-foreground absolute inset-0 m-auto" />
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="font-medium text-sm truncate" title={product.name}>
+                                            {product.name}
+                                        </h3>
+                                        <p className="text-xs text-muted-foreground">
+                                            {formatPrice(product.price)}
+                                        </p>
+                                        <div className="flex items-center gap-1 mt-1">
+                                            <Badge variant="outline" className="text-xs px-1 py-0">{product.category}</Badge>
+                                            <Badge variant={getStatusBadgeVariant(product.status)} className="text-xs px-1 py-0">
+                                                {product.status.charAt(0).toUpperCase() + product.status.slice(1)}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Stock Management */}
+                                <div className="flex items-center gap-2">
+                                    {getStockStatusIcon(product.inventory.quantity)}
+                                    <Input
+                                        type="number"
+                                        min="0"
+                                        value={stock[product.productId] ?? product.inventory.quantity}
+                                        onChange={(e) => handleStockChange(product.productId, parseInt(e.target.value) || 0)}
+                                        className="w-16 h-7 text-xs p-1"
+                                        disabled={updatingStock[product.productId]}
+                                    />
+                                    <Button
+                                        size="sm"
+                                        className="h-7 px-2 text-xs"
+                                        onClick={() => handleUpdateStock(product)}
+                                        disabled={updatingStock[product.productId] ||
+                                            (stock[product.productId] ?? product.inventory.quantity) === product.inventory.quantity}
+                                    >
+                                        {updatingStock[product.productId] ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : (
+                                            '✓'
+                                        )}
+                                    </Button>
+                                    <span className="text-xs text-muted-foreground">
+                                        {product.inventory.isAvailable ? 'Available' : 'Out of Stock'}
+                                    </span>
+                                </div>
+
+                                {/* Amazon Listing */}
+                                <div className="space-y-1">
+                                    {isListedOnAmazon(product.productId) ? (
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-1">
+                                                <Store className="h-3 w-3 text-orange-500" />
+                                                <Badge variant={getAmazonStatusBadgeVariant(amazonListings[product.productId]?.status || '')} className="text-xs px-1 py-0">
+                                                    {amazonListings[product.productId]?.status || 'Listed'}
+                                                </Badge>
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">
+                                                {amazonListings[product.productId]?.asin ? `ASIN: ${amazonListings[product.productId]?.asin}` : `ID: ${amazonListings[product.productId]?.submissionId}`}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <Badge variant="outline" className="text-xs px-1 py-0">Not Listed</Badge>
+                                    )}
+                                    
+                                    <Button
+                                        size="sm"
+                                        variant={isListedOnAmazon(product.productId) ? "outline" : "default"}
+                                        onClick={() => handleToggleAmazonListing(product)}
+                                        disabled={product.status !== 'published' || isPublishingToAmazon(product.productId) || !isAmazonConnected || isAmazonLoading}
+                                        className={`h-7 px-2 text-xs ${!isListedOnAmazon(product.productId) ? "bg-orange-500 hover:bg-orange-600" : ""}`}
+                                    >
+                                        {isPublishingToAmazon(product.productId) ? (
+                                            <>
+                                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                                Publishing...
+                                            </>
+                                        ) : isListedOnAmazon(product.productId) ? (
+                                            'Remove'
+                                        ) : (
+                                            'List on Amazon'
+                                        )}
+                                    </Button>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="flex items-center justify-end gap-1 pt-1 border-t">
+                                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
+                                        <Eye className="h-3 w-3" />
+                                    </Button>
+                                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
+                                        <Edit2 className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </>
             )}
+
+            {/* View Dialog */}
+            <ProductViewDialog
+                open={isViewOpen}
+                onOpenChange={(v) => {
+                    if (!v) setViewProduct(null);
+                    setIsViewOpen(v);
+                }}
+                product={viewProduct}
+                onArchive={() => viewProduct && onStatusChange && onStatusChange(viewProduct.productId, 'archived')}
+                onPublish={() => viewProduct && onStatusChange && onStatusChange(viewProduct.productId, 'published')}
+                onRestore={() => viewProduct && onStatusChange && onStatusChange(viewProduct.productId, 'published')}
+            />
         </div>
+    );
+}
+
+// Render the view dialog at root of this module so ProductTable can toggle it
+export function ProductTableViewLayer({ open, onOpenChange, product }: { open: boolean; onOpenChange: (v: boolean) => void; product: IProductDocument | null }) {
+    return <ProductViewDialog open={open} onOpenChange={onOpenChange} product={product} />
+}
+
+// View Dialog rendering at the bottom to avoid nested table structure issues
+function ProductViewDialog({ open, onOpenChange, product, onArchive, onPublish, onRestore }: { open: boolean; onOpenChange: (v: boolean) => void; product: IProductDocument | null; onArchive?: () => void; onPublish?: () => void; onRestore?: () => void }) {
+    if (!product) return null;
+    const [expandDesc, setExpandDesc] = useState(false);
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>{product.name}</DialogTitle>
+                    <DialogDescription>Product details and listing status</DialogDescription>
+                </DialogHeader>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Image Card */}
+                    <div className="border rounded-lg overflow-hidden">
+                        <div className="relative aspect-square bg-muted">
+                            {product.images && product.images[0] ? (
+                                <Image src={product.images[0]} alt={product.name} fill className="object-cover" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                    <Package className="h-10 w-10 text-muted-foreground" />
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-3 text-sm">
+                            <div className="flex items-center gap-2">
+                                <Badge variant="outline">{product.category}</Badge>
+                                <Badge variant="outline">{product.status}</Badge>
+                            </div>
+                            <div className="mt-2 text-muted-foreground">ID: {product.productId}</div>
+                            <div className="mt-1">Price: {formatPrice(product.price)}</div>
+                            <div className="mt-1 text-muted-foreground text-xs">Created {formatDate(product.createdAt)}</div>
+                        </div>
+                    </div>
+
+                    {/* Info Card */}
+                    <div className="border rounded-lg p-3 space-y-3">
+                        {product.description && (
+                            <div>
+                                <div className="text-sm font-medium mb-1">Description</div>
+                                <div className={expandDesc ? "" : "max-h-40 overflow-hidden"}>
+                                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{product.description}</p>
+                                </div>
+                                {product.description.length > 400 && (
+                                    <Button variant="ghost" size="sm" onClick={() => setExpandDesc(v => !v)} className="mt-1 px-2 h-7">
+                                        {expandDesc ? 'Show less' : 'Show more'}
+                                    </Button>
+                                )}
+                            </div>
+                        )}
+                        <div>
+                            <div className="text-sm font-medium mb-1">Stock</div>
+                            <div className="text-sm text-muted-foreground">Qty: {product.inventory?.quantity ?? 0} • {product.inventory?.isAvailable ? 'Available' : 'Out of stock'}</div>
+                        </div>
+                        {product.tags && product.tags.length > 0 && (
+                            <div>
+                                <div className="text-sm font-medium mb-1">Tags</div>
+                                <div className="flex flex-wrap gap-1">
+                                    {product.tags.map((t, i) => (
+                                        <Badge key={i} variant="secondary" className="text-xs">{t}</Badge>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        <div>
+                            <div className="text-sm font-medium mb-1">Amazon Listing</div>
+                            {product.amazonListing?.isListed ? (
+                                <div className="text-sm">
+                                    <div>Status: {product.amazonListing.status || 'ACTIVE'}</div>
+                                    {product.amazonListing.asin && <div>ASIN: {product.amazonListing.asin}</div>}
+                                    {product.amazonListing.sku && <div>SKU: {product.amazonListing.sku}</div>}
+                                </div>
+                            ) : (
+                                <div className="text-sm text-muted-foreground">Not listed</div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+                <DialogFooter>
+                    {product.status === 'draft' && (
+                        <Button onClick={onPublish}>Review & Publish</Button>
+                    )}
+                    {product.status === 'published' && (
+                        <Button variant="destructive" onClick={onArchive}>Archive</Button>
+                    )}
+                    {product.status === 'archived' && (
+                        <Button variant="outline" onClick={onRestore}>Restore</Button>
+                    )}
+                    <Button variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }
