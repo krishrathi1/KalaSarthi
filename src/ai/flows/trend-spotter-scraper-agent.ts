@@ -123,7 +123,7 @@ const scraperAgentFlow = ai.defineFlow(
             try {
               let products: any[] = [];
               const searchTerm = query.query;
-  
+
               switch (platform.platform.toLowerCase()) {
                 case 'amazon':
                   const { scrapeAmazon } = await import('@/lib/scrapers/scrape-amazon');
@@ -161,7 +161,7 @@ const scraperAgentFlow = ai.defineFlow(
                 default:
                   continue;
               }
-  
+
               if (products && products.length > 0) {
                 // Add search query and enhanced data to products
                 const enhancedProducts = products.map((product: any) => ({

@@ -89,13 +89,13 @@ async function retryOperation(operation, maxRetries = 3, baseDelay = 2000) {
 // Enhanced page setup with better stealth
 async function setupPage(browser) {
     const page = await browser.newPage();
-    
+
     // Enhanced stealth setup
     await page.setViewport({ width: 1366, height: 864 });
     await page.setUserAgent(
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     );
-    
+
     await page.setExtraHTTPHeaders({
         'accept-language': 'en-IN,en-US;q=0.9,en;q=0.8',
         'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -112,7 +112,7 @@ async function setupPage(browser) {
     page.on('request', (req) => {
         const resourceType = req.resourceType();
         const url = req.url();
-        
+
         if (['stylesheet', 'font', 'media'].includes(resourceType) ||
             url.includes('google-analytics') ||
             url.includes('amazon-adsystem') ||
@@ -153,14 +153,14 @@ async function checkForBlocks(page, pageNum, saveDebugFiles) {
                 const html = await page.content();
                 const timestamp = Date.now();
                 fs.writeFileSync(
-                    path.join(process.cwd(), `amazon_block_page${pageNum}_${timestamp}.html`), 
-                    html, 
+                    path.join(process.cwd(), `amazon_block_page${pageNum}_${timestamp}.html`),
+                    html,
                     'utf8'
                 );
                 try {
-                    await page.screenshot({ 
-                        path: path.join(process.cwd(), `amazon_block_page${pageNum}_${timestamp}.png`), 
-                        fullPage: true 
+                    await page.screenshot({
+                        path: path.join(process.cwd(), `amazon_block_page${pageNum}_${timestamp}.png`),
+                        fullPage: true
                     });
                 } catch (e) {
                     Logger.warn('Screenshot failed', { error: e.message });
@@ -179,7 +179,7 @@ async function performSmartScroll(page) {
             let distance = 300;
             const maxScrolls = 15;
             let scrollCount = 0;
-            
+
             const timer = setInterval(() => {
                 const scrollHeight = document.body.scrollHeight;
                 window.scrollBy(0, distance);
@@ -204,7 +204,7 @@ async function performSmartScroll(page) {
 // Enhanced product extraction with comprehensive selectors
 async function extractProducts(page) {
     await page.waitForSelector('[data-component-type="s-search-result"], .s-result-item', { timeout: 25000 });
-    
+
     return await page.evaluate(() => {
         const selectors = {
             // Amazon frequently changes selectors, so we have extensive fallbacks
@@ -280,10 +280,10 @@ async function extractProducts(page) {
             for (const selector of selectorArray) {
                 const element = card.querySelector(selector);
                 if (element) {
-                    return element.textContent?.trim() || 
-                           element.getAttribute('aria-label')?.trim() || 
-                           element.getAttribute('alt')?.trim() || 
-                           element.getAttribute('title')?.trim() || null;
+                    return element.textContent?.trim() ||
+                        element.getAttribute('aria-label')?.trim() ||
+                        element.getAttribute('alt')?.trim() ||
+                        element.getAttribute('title')?.trim() || null;
                 }
             }
             return null;
@@ -321,22 +321,22 @@ async function extractProducts(page) {
         return Array.from(cards).map((card, index) => {
             const title = getTextBySelectorArray(card, selectors.title);
             let href = getAttributeBySelectorArray(card, selectors.link, 'href');
-            
+
             // Ensure full URL
             if (href && !href.startsWith('http')) {
                 href = 'https://www.amazon.in' + href;
             }
-            
+
             const priceText = getTextBySelectorArray(card, selectors.price);
             const originalPriceText = getTextBySelectorArray(card, selectors.originalPrice);
             const ratingText = getTextBySelectorArray(card, selectors.rating);
             const reviewCountText = getTextBySelectorArray(card, selectors.reviewCount);
             const image = getAttributeBySelectorArray(card, selectors.image, 'src');
-            
+
             // Additional metadata
             const isPrime = hasElementBySelector(card, selectors.prime);
             const isSponsored = hasElementBySelector(card, selectors.sponsored);
-            
+
             return {
                 title: title || '',
                 url: href,
@@ -356,11 +356,11 @@ async function extractProducts(page) {
 // Build Amazon Karigar search URL with advanced filters
 function buildKarigarSearchUrl(categoryQuery, options, pageNum = 1) {
     const { minPrice, maxPrice, sortBy = 'price-asc-rank' } = options;
-    
+
     // Convert prices to paise (Amazon uses paise for price filtering)
     const minPricePaise = minPrice * 100;
     const maxPricePaise = maxPrice * 100;
-    
+
     const params = new URLSearchParams({
         k: `${categoryQuery} karigar handmade handicraft`,
         s: sortBy,
@@ -368,10 +368,10 @@ function buildKarigarSearchUrl(categoryQuery, options, pageNum = 1) {
         page: pageNum.toString(),
         ref: 'sr_pg_' + pageNum
     });
-    
+
     // Add additional filters for better Karigar targeting
     params.append('rh', 'p_85:2470955031'); // Handmade products category if available
-    
+
     return `https://www.amazon.in/s?${params.toString()}`;
 }
 
@@ -389,12 +389,12 @@ async function scrapeAmazon(categoryQuery, options = {}) {
         requireRating = false
     } = options;
 
-    Logger.info('Starting Amazon Karigar scrape', { 
-        categoryQuery, 
-        minPrice, 
-        maxPrice, 
+    Logger.info('Starting Amazon Karigar scrape', {
+        categoryQuery,
+        minPrice,
+        maxPrice,
         maxResults,
-        sortBy 
+        sortBy
     });
 
     const browser = await puppeteer.launch({
@@ -420,21 +420,21 @@ async function scrapeAmazon(categoryQuery, options = {}) {
     try {
         for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
             Logger.info(`Processing page ${pageNum}/${maxPages}`);
-            
+
             const page = await setupPage(browser);
-            
+
             try {
                 // Navigate with retry mechanism
                 await retryOperation(async () => {
                     const url = buildKarigarSearchUrl(categoryQuery, options, pageNum);
-                    
-                    await page.goto(url, { 
-                        waitUntil: 'networkidle2', 
-                        timeout: 30000 
+
+                    await page.goto(url, {
+                        waitUntil: 'networkidle2',
+                        timeout: 30000
                     });
-                    
+
                     Logger.info(`Loaded page ${pageNum}`, { url: page.url() });
-                    
+
                     // Check page title for validation
                     const title = await page.title();
                     if (title.toLowerCase().includes('robot') || title.toLowerCase().includes('sorry')) {
@@ -465,13 +465,13 @@ async function scrapeAmazon(categoryQuery, options = {}) {
                         const html = await page.content();
                         const timestamp = Date.now();
                         fs.writeFileSync(
-                            path.join(process.cwd(), `amazon_empty_page${pageNum}_${timestamp}.html`), 
-                            html, 
+                            path.join(process.cwd(), `amazon_empty_page${pageNum}_${timestamp}.html`),
+                            html,
                             'utf8'
                         );
                         Logger.warn(`Empty page ${pageNum}, debug file saved`);
                     }
-                    
+
                     if (consecutiveEmptyPages >= 2) {
                         Logger.warn('Two consecutive empty pages, stopping pagination');
                         await page.close();
@@ -488,7 +488,7 @@ async function scrapeAmazon(categoryQuery, options = {}) {
                     originalPrice: parseIndianPrice(p.originalPriceText),
                     rating: parseRating(p.ratingText),
                     reviewCount: parseReviewCount(p.reviewCountText),
-                    discount: p.originalPrice && p.price ? 
+                    discount: p.originalPrice && p.price ?
                         Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100) : null,
                     page: pageNum,
                     platform: 'amazon'
@@ -500,17 +500,17 @@ async function scrapeAmazon(categoryQuery, options = {}) {
                     if (!p.price || p.price < minPrice || p.price > maxPrice || !p.title.length) {
                         return false;
                     }
-                    
+
                     // Exclude sponsored if requested
                     if (excludeSponsored && p.isSponsored) {
                         return false;
                     }
-                    
+
                     // Require rating if requested
                     if (requireRating && !p.rating) {
                         return false;
                     }
-                    
+
                     return true;
                 });
 
@@ -537,7 +537,7 @@ async function scrapeAmazon(categoryQuery, options = {}) {
                 if (page && !page.isClosed()) {
                     await page.close();
                 }
-                
+
                 // If it's a block/CAPTCHA, stop scraping
                 if (pageError.message.includes('block') || pageError.message.includes('CAPTCHA')) {
                     Logger.error('Scraping blocked by Amazon, stopping');
@@ -553,25 +553,25 @@ async function scrapeAmazon(categoryQuery, options = {}) {
             const ratingA = a.rating || 0;
             const ratingB = b.rating || 0;
             if (Math.abs(ratingB - ratingA) > 0.1) return ratingB - ratingA;
-            
+
             // Secondary: Review count (desc)
             const reviewsA = a.reviewCount || 0;
             const reviewsB = b.reviewCount || 0;
             if (reviewsB !== reviewsA) return reviewsB - reviewsA;
-            
+
             // Tertiary: Price (asc) 
             const priceA = a.price || Infinity;
             const priceB = b.price || Infinity;
             if (Math.abs(priceA - priceB) > 50) return priceA - priceB;
-            
+
             // Quaternary: Prime preference
             if (a.isPrime !== b.isPrime) return b.isPrime - a.isPrime;
-            
+
             return 0;
         });
 
         // Remove duplicates based on URL
-        const uniqueProducts = allProducts.filter((product, index, array) => 
+        const uniqueProducts = allProducts.filter((product, index, array) =>
             array.findIndex(p => p.url === product.url) === index
         );
 
@@ -582,13 +582,13 @@ async function scrapeAmazon(categoryQuery, options = {}) {
             totalScraped: allProducts.length,
             afterDeduplication: uniqueProducts.length,
             returned: finalProducts.length,
-            averagePrice: finalProducts.length > 0 ? 
+            averagePrice: finalProducts.length > 0 ?
                 Math.round(finalProducts.reduce((sum, p) => sum + p.price, 0) / finalProducts.length) : 0,
             withRating: finalProducts.filter(p => p.rating).length,
             primeProducts: finalProducts.filter(p => p.isPrime).length,
             averageRating: finalProducts.filter(p => p.rating).length > 0 ?
-                (finalProducts.filter(p => p.rating).reduce((sum, p) => sum + p.rating, 0) / 
-                 finalProducts.filter(p => p.rating).length).toFixed(1) : 'N/A'
+                (finalProducts.filter(p => p.rating).reduce((sum, p) => sum + p.rating, 0) /
+                    finalProducts.filter(p => p.rating).length).toFixed(1) : 'N/A'
         };
 
         Logger.info('Amazon Karigar scraping completed', stats);
@@ -606,16 +606,16 @@ async function scrapeAmazon(categoryQuery, options = {}) {
 // Enhanced helper function for bulk scraping
 async function scrapeMultipleCategories(categories, options = {}) {
     const results = {};
-    
+
     Logger.info('Starting bulk Amazon Karigar scraping', { categories: categories.length });
-    
+
     for (let i = 0; i < categories.length; i++) {
         const category = categories[i];
         Logger.info(`Processing category ${i + 1}/${categories.length}: ${category}`);
-        
+
         try {
             results[category] = await scrapeAmazon(category, options);
-            
+
             // Add delay between categories
             if (i < categories.length - 1) {
                 const delay = 15000 + Math.random() * 10000;
@@ -627,7 +627,7 @@ async function scrapeMultipleCategories(categories, options = {}) {
             results[category] = [];
         }
     }
-    
+
     return results;
 }
 
@@ -652,10 +652,10 @@ if (require.main === module) {
                 excludeSponsored: true,
                 requireRating: false
             });
-            
+
             console.log('\n🎯 AMAZON KARIGAR RESULTS 🎯');
             console.log('='.repeat(50));
-            
+
             results.forEach((product, index) => {
                 console.log(`\n${index + 1}. ${product.title}`);
                 console.log(`   💰 Price: ₹${product.price}`);
@@ -667,7 +667,7 @@ if (require.main === module) {
                 if (product.isSponsored) console.log(`   📢 Sponsored`);
                 console.log(`   🔗 URL: ${product.url}`);
             });
-            
+
         } catch (error) {
             console.error('❌ Error:', error.message);
         }

@@ -1,6 +1,6 @@
-# KalaMitra - Your Artisan's Digital Twin
+# KalaSarthi - Your Artisan's Digital Twin
 
-This is a Next.js application for **KalaMitra**, an AI-Powered Marketplace-as-a-Service (MaaS) designed to empower Indian artisans.
+This is a Next.js application for **KalaSarthi**, an AI-Powered Marketplace-as-a-Service (MaaS) designed to empower Indian artisans.
 
 This project was created for the Google GenAI Exchange Program Hackathon 2025.
 

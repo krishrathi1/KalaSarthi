@@ -80,7 +80,6 @@ export default function ScrapedProductGrid({ products, platform }: ScrapedProduc
 
                             {/* Price */}
                             <div className="flex items-center gap-1">
-                                <IndianRupee className="h-4 w-4" />
                                 <span className="font-semibold">
                                     {formatPrice(product.price)}
                                 </span>

@@ -6,10 +6,11 @@
  * Format price with Indian Rupee symbol
  */
 export function formatPrice(price: number): string {
-    return new Intl.NumberFormat('en-IN', {
+    const formattedNumber = new Intl.NumberFormat('en-IN', {
         minimumFractionDigits: 0,
         maximumFractionDigits: 2,
     }).format(price);
+    return `₹${formattedNumber}`;
 }
 
 /**
@@ -30,11 +31,11 @@ export const formatPriceWithDecimals = (amount: number): string => {
         return '₹0.00';
     }
 
-    return new Intl.NumberFormat('en-IN', {
-        currency: 'INR',
+    const formattedNumber = new Intl.NumberFormat('en-IN', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     }).format(amount);
+    return `₹${formattedNumber}`;
 };
 
 /**

@@ -38,9 +38,9 @@ interface AmazonListingStatus {
     };
 }
 
-export default function ProductGrid({ 
-    products, 
-    showActions = false, 
+export default function ProductGrid({
+    products,
+    showActions = false,
     isDraft = false,
     isCompact = false,
     onStatusChange,
@@ -55,7 +55,7 @@ export default function ProductGrid({
     const [amazonListings, setAmazonListings] = useState<AmazonListingStatus>({});
     const [isInitializing, setIsInitializing] = useState(true);
     const { toast } = useToast();
-    
+
     // Amazon SP-API hook
     const {
         config: amazonConfig,
@@ -110,7 +110,7 @@ export default function ProductGrid({
         if (!isAmazonConnected) {
             toast({
                 title: 'Amazon SP-API not connected',
-                description:'Amazon SP-API not connected. Please configure your credentials.',
+                description: 'Amazon SP-API not connected. Please configure your credentials.',
                 variant: "destructive",
             });
             return;
@@ -127,9 +127,9 @@ export default function ProductGrid({
 
         try {
             clearError();
-            
+
             const result = await createListing(product);
-            
+
             if (result.success) {
                 // Update local listing status
                 setAmazonListings(prev => ({
@@ -147,15 +147,15 @@ export default function ProductGrid({
 
                 toast({
                     title: 'Product successfully submitted to Amazon!',
-                    description: result.asin 
-                        ? `ASIN: ${result.asin}` 
+                    description: result.asin
+                        ? `ASIN: ${result.asin}`
                         : `Submission ID: ${result.submissionId || result.listingId}. ASIN will be available once processed.`,
                     variant: 'default'
                 });
 
                 // In a real app, you'd also update the product in your database
                 // to store the Amazon listing information
-                
+
             } else {
                 throw new Error(result.errors?.join(', ') || 'Failed to create Amazon listing');
             }
@@ -199,10 +199,10 @@ export default function ProductGrid({
     };
 
     if (products.length === 0) {
-        const emptyMessage = isDraft 
-            ? "No draft products found" 
+        const emptyMessage = isDraft
+            ? "No draft products found"
             : "No products found";
-        const emptyDescription = isDraft 
+        const emptyDescription = isDraft
             ? "Products you create will appear here as drafts before publishing."
             : "Start creating your first product to showcase your craft.";
 
@@ -303,7 +303,7 @@ export default function ProductGrid({
                                     <Package className="h-12 w-12 text-muted-foreground" />
                                 </div>
                             )}
-                            
+
                             {/* Status Badges */}
                             <div className="absolute top-2 right-2 flex flex-col gap-1">
                                 <Badge variant={getStatusColor(product.status)}>
@@ -333,7 +333,7 @@ export default function ProductGrid({
                                 <p className="text-muted-foreground line-clamp-2 text-sm">
                                     {product.description}
                                 </p>
-                                
+
                                 {/* Category */}
                                 <Badge variant="outline" className="text-xs">
                                     {product.category}
@@ -342,7 +342,6 @@ export default function ProductGrid({
                                 {/* Price and Quantity */}
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-1">
-                                        <IndianRupee className="h-4 w-4" />
                                         <span className="font-semibold">
                                             {formatPrice(product.price)}
                                         </span>
@@ -409,8 +408,8 @@ export default function ProductGrid({
                                             {/* Status-specific actions */}
                                             {product.status === 'draft' && (
                                                 <div className="flex gap-2">
-                                                    <Button 
-                                                        variant="default" 
+                                                    <Button
+                                                        variant="default"
                                                         size="sm"
                                                         className="flex-1"
                                                         onClick={() => {
@@ -422,8 +421,8 @@ export default function ProductGrid({
                                                         <FileText className="h-4 w-4 mr-1" />
                                                         Review
                                                     </Button>
-                                                    <Button 
-                                                        variant="outline" 
+                                                    <Button
+                                                        variant="outline"
                                                         size="sm"
                                                         className="flex-1"
                                                         onClick={() => handleStatusChange(product.productId, 'published')}
@@ -434,11 +433,11 @@ export default function ProductGrid({
                                                     </Button>
                                                 </div>
                                             )}
-                                            
+
                                             {product.status === 'published' && (
                                                 <div className="flex gap-2">
-                                                    <Button 
-                                                        variant="outline" 
+                                                    <Button
+                                                        variant="outline"
                                                         size="sm"
                                                         className="flex-1"
                                                         onClick={() => handleStatusChange(product.productId, 'archived')}
@@ -449,11 +448,11 @@ export default function ProductGrid({
                                                     </Button>
                                                 </div>
                                             )}
-                                            
+
                                             {product.status === 'archived' && (
                                                 <div className="flex gap-2">
-                                                    <Button 
-                                                        variant="outline" 
+                                                    <Button
+                                                        variant="outline"
                                                         size="sm"
                                                         className="flex-1"
                                                         onClick={() => handleStatusChange(product.productId, 'published')}
@@ -464,11 +463,11 @@ export default function ProductGrid({
                                                     </Button>
                                                 </div>
                                             )}
-                                            
+
                                             {/* Edit and Delete actions - always available */}
                                             <div className="flex gap-2">
-                                                <Button 
-                                                    variant="outline" 
+                                                <Button
+                                                    variant="outline"
                                                     size="sm"
                                                     className="flex-1"
                                                     onClick={() => onEdit && onEdit(product.productId)}
@@ -477,8 +476,8 @@ export default function ProductGrid({
                                                     <Edit className="h-4 w-4 mr-1" />
                                                     Edit
                                                 </Button>
-                                                <Button 
-                                                    variant="destructive" 
+                                                <Button
+                                                    variant="destructive"
                                                     size="sm"
                                                     className="flex-1"
                                                     onClick={() => onDelete && onDelete(product.productId)}
@@ -495,9 +494,9 @@ export default function ProductGrid({
                                                 <Eye className="h-4 w-4 mr-1" />
                                                 View
                                             </Button>
-                                            <Button 
-                                                variant="outline" 
-                                                size="sm" 
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
                                                 className="flex-1"
                                                 onClick={() => onEdit && onEdit(product.productId)}
                                             >
@@ -517,7 +516,7 @@ export default function ProductGrid({
                     </Card>
                 ))}
             </div>
-            
+
             {/* Review Dialog for Draft Products */}
             <ProductReviewDialog
                 product={reviewProduct}

@@ -194,7 +194,7 @@ function getProfessionSearchTerms(profession: string): string[] {
   };
 
   return professionTerms[profession.toLowerCase()] ||
-         professionTerms['weaver']; // Default fallback
+    professionTerms['weaver']; // Default fallback
 }
 
 function removeDuplicates(products: any[]): any[] {

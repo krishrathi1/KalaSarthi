@@ -86,7 +86,6 @@ export default function ProductReviewDialog({
                             <div>
                                 <label className="text-sm font-medium text-muted-foreground">Price</label>
                                 <div className="flex items-center gap-1 mt-1">
-                                    <IndianRupee className="h-4 w-4" />
                                     <span className="font-semibold">{formatPrice(product.price)}</span>
                                 </div>
                             </div>
@@ -127,7 +126,7 @@ export default function ProductReviewDialog({
                                             </div>
                                         </div>
                                     )}
-                                    
+
                                     {product.specifications.colors && product.specifications.colors.length > 0 && (
                                         <div>
                                             <label className="text-sm font-medium text-muted-foreground flex items-center gap-1">
@@ -143,7 +142,7 @@ export default function ProductReviewDialog({
                                             </div>
                                         </div>
                                     )}
-                                    
+
                                     {product.specifications.dimensions && (
                                         <div className="md:col-span-2">
                                             <label className="text-sm font-medium text-muted-foreground">Dimensions</label>

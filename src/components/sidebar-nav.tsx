@@ -35,7 +35,7 @@ export function SidebarNav() {
   const { language } = useLanguage();
   const { userProfile } = useAuth();
   const { shouldShowMenuItem } = useRoleBasedAccess();
-  const [translatedAppName, setTranslatedAppName] = useState('KalaMitra');
+  const [translatedAppName, setTranslatedAppName] = useState('KalaSarthi');
   const [translatedTagline, setTranslatedTagline] = useState('From Kanchipuram to California...');
 
   // Filter menu items based on user role
@@ -58,7 +58,7 @@ export function SidebarNav() {
       } catch (error) {
         console.error('Sidebar translation loading failed:', error);
         // Fallback to static translations
-        setTranslatedAppName(t('appName', language) || 'KalaMitra');
+        setTranslatedAppName(t('appName', language) || 'KalaSarthi');
         setTranslatedTagline(t('tagline', language) || 'From Kanchipuram to California...');
       }
     };
