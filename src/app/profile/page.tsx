@@ -8,11 +8,13 @@ import AuthGuard from '@/components/auth/AuthGuard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, Search, TrendingUp } from 'lucide-react';
+import { Loader2, Search, TrendingUp, Mic, MicOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ProductGrid, ProfileHeader, ProfileInfo } from '@/components/profile';
 import ScrapedProductGrid from '@/components/profile/ScrapedProductGrid';
 import { useToast } from '@/hooks/use-toast';
+import { VoiceControl } from '@/components/ui/VoiceControl';
+import { ConversationalVoiceProcessor } from '@/lib/service/ConversationalVoiceProcessor';
 
 export default function ProfilePage() {
     const { userProfile, loading: authLoading } = useAuth();
@@ -24,6 +26,13 @@ export default function ProfilePage() {
     const [scrapedProducts, setScrapedProducts] = useState<any>({});
     const [scrapingLoading, setScrapingLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('handicraft');
+    const [activeTab, setActiveTab] = useState('published');
+
+    // Voice-related state
+    const [isVoiceActive, setIsVoiceActive] = useState(false);
+    const [voiceCommand, setVoiceCommand] = useState('');
+    const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+    const conversationalProcessor = ConversationalVoiceProcessor.getInstance();
     const { toast } = useToast();
     const router = useRouter();
 
@@ -189,6 +198,152 @@ export default function ProfilePage() {
         }
     };
 
+    // Voice command processing
+    const processVoiceCommand = async (command: string) => {
+        setIsProcessingVoice(true);
+        setVoiceCommand(command);
+
+        try {
+            // Update conversational context
+            conversationalProcessor.updateContext({
+                currentPage: '/profile',
+                recentActions: ['profile_management', 'voice_interaction']
+            });
+
+            // Create a text-based audio buffer for processing
+            const textBuffer = new ArrayBuffer(command.length * 2);
+            const result = await conversationalProcessor.processVoiceCommand(textBuffer, 'hi');
+
+            // Handle different types of voice commands
+            if (command.toLowerCase().includes('show') || command.toLowerCase().includes('view')) {
+                handleVoiceTabSwitch(command);
+            } else if (command.toLowerCase().includes('create') || command.toLowerCase().includes('new')) {
+                handleVoiceCreateProduct(command);
+            } else if (result.intent.type === 'search' || command.toLowerCase().includes('search') || command.toLowerCase().includes('find')) {
+                handleVoiceMarketResearch(command);
+            } else if (result.intent.type === 'navigate' || command.toLowerCase().includes('go to') || command.toLowerCase().includes('open')) {
+                handleVoiceNavigation(command);
+            } else {
+                // Fallback to general help
+                handleVoiceHelp(command);
+            }
+
+            // Provide voice feedback
+            if (result.response) {
+                speakFeedback(result.response);
+            }
+
+        } catch (error) {
+            console.error('Voice command processing failed:', error);
+            speakFeedback('Sorry, I had trouble understanding that. Please try again.');
+        } finally {
+            setIsProcessingVoice(false);
+        }
+    };
+
+    const handleVoiceTabSwitch = (command: string) => {
+        const lowerCommand = command.toLowerCase();
+
+        if (lowerCommand.includes('published') || lowerCommand.includes('live')) {
+            setActiveTab('published');
+            toast({
+                title: "🔄 Voice Tab Switch",
+                description: "Showing published products",
+            });
+        } else if (lowerCommand.includes('draft') || lowerCommand.includes('drafts')) {
+            setActiveTab('drafts');
+            toast({
+                title: "🔄 Voice Tab Switch",
+                description: "Showing draft products",
+            });
+        } else if (lowerCommand.includes('archived') || lowerCommand.includes('archive')) {
+            setActiveTab('archived');
+            toast({
+                title: "🔄 Voice Tab Switch",
+                description: "Showing archived products",
+            });
+        } else if (lowerCommand.includes('market') || lowerCommand.includes('research')) {
+            setActiveTab('market-research');
+            toast({
+                title: "🔄 Voice Tab Switch",
+                description: "Opening market research",
+            });
+        }
+    };
+
+    const handleVoiceCreateProduct = (command: string) => {
+        router.push('/smart-product-creator');
+        toast({
+            title: "🎨 Voice Action",
+            description: "Opening Smart Product Creator",
+        });
+    };
+
+    const handleVoiceMarketResearch = (command: string) => {
+        const searchTerms = command.toLowerCase()
+            .replace(/search for|find|look for/gi, '')
+            .trim();
+
+        if (searchTerms) {
+            setSearchQuery(searchTerms);
+            setActiveTab('market-research');
+            fetchScrapedProducts(searchTerms);
+            toast({
+                title: "🔍 Voice Market Research",
+                description: `Searching for "${searchTerms}"`,
+            });
+        } else {
+            setActiveTab('market-research');
+            toast({
+                title: "📊 Voice Action",
+                description: "Opening market research",
+            });
+        }
+    };
+
+    const handleVoiceNavigation = (command: string) => {
+        const lowerCommand = command.toLowerCase();
+
+        if (lowerCommand.includes('dashboard') || lowerCommand.includes('home')) {
+            router.push('/');
+        } else if (lowerCommand.includes('marketplace') || lowerCommand.includes('shop')) {
+            router.push('/marketplace');
+        } else if (lowerCommand.includes('finance') || lowerCommand.includes('money')) {
+            router.push('/finance/dashboard');
+        }
+    };
+
+    const handleVoiceHelp = (command: string) => {
+        speakFeedback('You can say: "show published products", "create new product", "search for sarees", or "go to marketplace"');
+        toast({
+            title: "💡 Voice Help",
+            description: "Try saying: 'show drafts', 'create product', 'market research'",
+        });
+    };
+
+    const speakFeedback = async (text: string) => {
+        try {
+            const response = await fetch('/api/text-to-speech', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text: text,
+                    language: 'hi',
+                    voiceType: 'artisan_female',
+                    speed: 1.0
+                })
+            });
+
+            const result = await response.json();
+            if (result.success && result.audioData) {
+                const audio = new Audio(result.audioData);
+                audio.play();
+            }
+        } catch (error) {
+            console.error('Voice feedback failed:', error);
+        }
+    };
+
     if (authLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -216,7 +371,33 @@ export default function ProfilePage() {
         <AuthGuard>
             <div className="min-h-screen bg-background">
                 <div className="container mx-auto px-4 py-8">
-                    <ProfileHeader userProfile={userProfile} />
+                    <div className="flex items-center justify-between mb-6">
+                        <ProfileHeader userProfile={userProfile} />
+
+                        {/* Voice Control */}
+                        <div className="flex items-center gap-4">
+                            <VoiceControl
+                                variant="inline"
+                                showSettings={true}
+                                autoStart={false}
+                            />
+
+                            {/* Voice Status */}
+                            {isVoiceActive && (
+                                <div className="flex items-center gap-2 text-sm text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                    <span>Voice Active</span>
+                                </div>
+                            )}
+
+                            {isProcessingVoice && (
+                                <div className="flex items-center gap-2 text-orange-600 bg-orange-50 px-3 py-1 rounded-full">
+                                    <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+                                    <span>Processing: "{voiceCommand}"</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
 
                     <div className="mt-8 grid grid-cols-1 lg:grid-cols-4 gap-8">
                         {/* Profile Information */}

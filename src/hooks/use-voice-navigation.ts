@@ -184,6 +184,33 @@ export const useVoiceNavigation = () => {
     const handleResult = async (event: any) => {
       const currentTranscript = event.results[0][0].transcript.toLowerCase().trim();
       setTranscript(currentTranscript);
+      
+      // Check if we're on the artisan buddy page - if so, only emit voice input event
+      const currentPath = window.location.pathname;
+      if (currentPath === '/artisan-buddy') {
+        // On artisan buddy page, only emit voice input event and let the chat handle it
+        const voiceInputEvent = new CustomEvent('voiceInput', {
+          detail: {
+            transcript: currentTranscript,
+            isVoice: true,
+            timestamp: new Date()
+          }
+        });
+        window.dispatchEvent(voiceInputEvent);
+        stopListening();
+        return;
+      }
+      
+      // Emit voice input event for speech assistant
+      const voiceInputEvent = new CustomEvent('voiceInput', {
+        detail: {
+          transcript: currentTranscript,
+          isVoice: true,
+          timestamp: new Date()
+        }
+      });
+      window.dispatchEvent(voiceInputEvent);
+      
       await processCommand(currentTranscript);
       stopListening();
     };
@@ -195,6 +222,9 @@ export const useVoiceNavigation = () => {
 
     const handleEnd = () => {
         setIsListening(false);
+        // Emit voice end event
+        const voiceEndEvent = new CustomEvent('voiceEnd');
+        window.dispatchEvent(voiceEndEvent);
     }
 
     rec.addEventListener('result', handleResult as EventListener);
@@ -215,6 +245,11 @@ export const useVoiceNavigation = () => {
       setIsListening(true);
       setError(null);
       setTranscript('');
+      
+      // Emit voice start event
+      const voiceStartEvent = new CustomEvent('voiceStart');
+      window.dispatchEvent(voiceStartEvent);
+      
       toast({
         title: "Listening...",
         description: "Please say a command.",
@@ -229,9 +264,47 @@ export const useVoiceNavigation = () => {
     if (!isListening || !recognitionRef.current) return;
     recognitionRef.current.stop();
     setIsListening(false);
+    
+    // Emit voice end event
+    const voiceEndEvent = new CustomEvent('voiceEnd');
+    window.dispatchEvent(voiceEndEvent);
   };
 
   const processCommand = async (command: string) => {
+    // Check if we're on the artisan buddy page - if so, don't process navigation at all
+    const currentPath = window.location.pathname;
+    if (currentPath === '/artisan-buddy') {
+      // On artisan buddy page, completely skip navigation processing
+      // Let the Artisan Buddy handle all voice input
+      return;
+    }
+
+    // Check for explicit navigation intent
+    const navigationIntentKeywords = [
+      'go to', 'navigate to', 'take me to', 'show me', 'open',
+      'switch to', 'visit', 'access'
+    ];
+    
+    const hasNavigationIntent = navigationIntentKeywords.some(keyword => 
+      command.toLowerCase().includes(keyword)
+    );
+
+    // Additional check for conversational patterns that should NOT trigger navigation
+    const conversationalPatterns = [
+      'mera naam', 'my name is', 'i am', 'i am from', 'i live in',
+      'how are you', 'what is', 'tell me about', 'can you help',
+      'i want to know', 'explain', 'describe', 'hello', 'hi', 'namaste'
+    ];
+    
+    const isConversational = conversationalPatterns.some(pattern => 
+      command.toLowerCase().includes(pattern)
+    );
+
+    if (isConversational) {
+      // This is conversational input, don't process as navigation
+      return;
+    }
+
     // First try with existing static keywords
     for (const key in commandKeywords) {
       const commandData = commandKeywords[key];
@@ -264,6 +337,7 @@ export const useVoiceNavigation = () => {
       }
     }
 
+    // Show error for unrecognized commands (only on non-artisan-buddy pages)
     toast({
       title: "Command not recognized",
       description: `I heard "${command}", but didn't understand.`,

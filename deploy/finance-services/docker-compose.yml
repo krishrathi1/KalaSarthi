@@ -1,0 +1,139 @@
+version: '3.8'
+
+services:
+  # Main Finance API Service
+  finance-api:
+    build:
+      context: ../../
+      dockerfile: deploy/finance-services/Dockerfile
+      target: production
+    container_name: finance-api
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongodb:27017/finance
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - API_PORT=3000
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - ../../logs:/app/logs
+    networks:
+      - finance-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Aggregation Job Service
+  aggregation-worker:
+    build:
+      context: ../../
+      dockerfile: deploy/finance-services/Dockerfile
+      target: production
+    container_name: aggregation-worker
+    command: ["npm", "run", "worker:aggregation"]
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongodb:27017/finance
+      - REDIS_URL=redis://redis:6379
+      - WORKER_TYPE=aggregation
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - ../../logs:/app/logs
+    networks:
+      - finance-network
+    restart: unless-stopped
+
+  # Forecasting Service
+  forecasting-service:
+    build:
+      context: ../../
+      dockerfile: deploy/finance-services/Dockerfile
+      target: production
+    container_name: forecasting-service
+    command: ["npm", "run", "worker:forecasting"]
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongodb:27017/finance
+      - REDIS_URL=redis://redis:6379
+      - WORKER_TYPE=forecasting
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - ../../logs:/app/logs
+    networks:
+      - finance-network
+    restart: unless-stopped
+
+  # MongoDB Database
+  mongodb:
+    image: mongo:6.0
+    container_name: finance-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=finance
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+    volumes:
+      - mongodb_data:/data/db
+      - ../../deploy/finance-services/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - finance-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: finance-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - finance-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: finance-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../../deploy/finance-services/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../../deploy/finance-services/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - finance-api
+    networks:
+      - finance-network
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  finance-network:
+    driver: bridge

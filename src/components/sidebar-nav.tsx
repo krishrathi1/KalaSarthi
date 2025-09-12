@@ -14,6 +14,13 @@ import {
   ScrollText,
   IndianRupee,
   Calculator,
+  Archive,
+  FileText,
+  User,
+  Globe,
+  Mic,
+  UserPlus,
+  DollarSign,
 } from "lucide-react";
 import { Logo } from "@/components/icons";
 import {

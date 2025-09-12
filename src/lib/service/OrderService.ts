@@ -3,6 +3,7 @@ import Product, { IProductDocument } from "../models/Product";
 import Cart from "../models/Cart";
 import connectDB from "../mongodb";
 import { v4 as uuidv4 } from 'uuid';
+import { SalesEventService } from './SalesEventService';
 
 interface ServiceResponse<T = any> {
     success: boolean;
@@ -166,6 +167,15 @@ export class OrderService {
 
             const savedOrder = await order.save();
 
+            // Emit sales events for order creation
+            try {
+                const salesEventService = SalesEventService.getInstance();
+                await salesEventService.emitOrderCreatedEvents(savedOrder);
+            } catch (error) {
+                console.error('Error emitting order created events:', error);
+                // Don't fail the order creation if event emission fails
+            }
+
             // Update product inventory
             for (const item of orderItemsWithDetails) {
                 await Product.updateOne(
@@ -301,6 +311,15 @@ export class OrderService {
         try {
             await connectDB();
 
+            // Get the order before update to compare status changes
+            const existingOrder = await Order.findOne({ orderId }).exec();
+            if (!existingOrder) {
+                return {
+                    success: false,
+                    error: 'Order not found'
+                };
+            }
+
             const updateFields: any = {
                 ...updateData,
                 updatedAt: new Date()
@@ -325,6 +344,34 @@ export class OrderService {
                     success: false,
                     error: 'Order not found'
                 };
+            }
+
+            // Get updated order for event emission
+            const updatedOrder = await Order.findOne({ orderId }).exec();
+            if (updatedOrder) {
+                // Emit sales events based on status changes
+                try {
+                    const salesEventService = SalesEventService.getInstance();
+                    
+                    // Emit payment events
+                    if (updateData.paymentStatus === 'paid' && existingOrder.paymentStatus !== 'paid') {
+                        await salesEventService.emitOrderPaidEvents(updatedOrder);
+                    }
+                    
+                    // Emit fulfillment events
+                    if (updateData.status === 'delivered' && existingOrder.status !== 'delivered') {
+                        await salesEventService.emitOrderFulfilledEvents(updatedOrder);
+                    }
+                    
+                    // Emit cancellation events
+                    if (updateData.status === 'cancelled' && existingOrder.status !== 'cancelled') {
+                        await salesEventService.emitOrderCanceledEvents(updatedOrder);
+                    }
+                    
+                } catch (error) {
+                    console.error('Error emitting order update events:', error);
+                    // Don't fail the order update if event emission fails
+                }
             }
 
             return {
@@ -396,6 +443,19 @@ export class OrderService {
                     }
                 }
             ).exec();
+
+            // Emit cancellation events
+            try {
+                const salesEventService = SalesEventService.getInstance();
+                // Get the updated order from database
+                const updatedOrder = await Order.findOne({ orderId }).exec();
+                if (updatedOrder) {
+                    await salesEventService.emitOrderCanceledEvents(updatedOrder);
+                }
+            } catch (error) {
+                console.error('Error emitting order cancellation events:', error);
+                // Don't fail the cancellation if event emission fails
+            }
 
             return {
                 success: true,
