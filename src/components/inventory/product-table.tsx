@@ -25,6 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAmazonSPAPI } from '@/hooks/use-amazon';
 import { useMounted } from '@/hooks/use-mounted';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { useState as useReactState } from 'react';
 
 interface ProductTableProps {
     products: IProductDocument[];
@@ -695,6 +696,32 @@ export default function ProductTable({
                 onArchive={() => viewProduct && onStatusChange && onStatusChange(viewProduct.productId, 'archived')}
                 onPublish={() => viewProduct && onStatusChange && onStatusChange(viewProduct.productId, 'published')}
                 onRestore={() => viewProduct && onStatusChange && onStatusChange(viewProduct.productId, 'published')}
+                onPublishInstagram={async () => {
+                    if (!viewProduct) return;
+                    try {
+                        const imageUrl = viewProduct.images?.[0];
+                        if (!imageUrl) {
+                            toast({ title: 'No image', description: 'Product has no image to post', variant: 'destructive' });
+                            return;
+                        }
+                        const captionBase = viewProduct.description || viewProduct.name || '';
+                        const hashtags = (viewProduct.tags || []).map(t => `#${String(t).replace(/\s+/g, '')}`).join(' ');
+                        const caption = `${captionBase}\n\n${hashtags}`.trim();
+                        const res = await fetch('/api/instagram/publish', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ imageUrl, caption })
+                        });
+                        const data = await res.json();
+                        if (res.ok && data.success) {
+                            toast({ title: 'Posted to Instagram', description: `Media ID: ${data.mediaId}` });
+                        } else {
+                            toast({ title: 'Instagram post failed', description: data.error || 'Unknown error', variant: 'destructive' });
+                        }
+                    } catch (e: any) {
+                        toast({ title: 'Instagram post error', description: e?.message || 'Unexpected error', variant: 'destructive' });
+                    }
+                }}
             />
         </div>
     );
@@ -706,9 +733,10 @@ export function ProductTableViewLayer({ open, onOpenChange, product }: { open: b
 }
 
 // View Dialog rendering at the bottom to avoid nested table structure issues
-function ProductViewDialog({ open, onOpenChange, product, onArchive, onPublish, onRestore }: { open: boolean; onOpenChange: (v: boolean) => void; product: IProductDocument | null; onArchive?: () => void; onPublish?: () => void; onRestore?: () => void }) {
+function ProductViewDialog({ open, onOpenChange, product, onArchive, onPublish, onRestore, onPublishInstagram }: { open: boolean; onOpenChange: (v: boolean) => void; product: IProductDocument | null; onArchive?: () => void; onPublish?: () => void; onRestore?: () => void; onPublishInstagram?: () => Promise<void> }) {
     if (!product) return null;
     const [expandDesc, setExpandDesc] = useState(false);
+    const [posting, setPosting] = useState(false);
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
@@ -782,7 +810,24 @@ function ProductViewDialog({ open, onOpenChange, product, onArchive, onPublish, 
                         </div>
                     </div>
                 </div>
-                <DialogFooter>
+                <DialogFooter className="flex items-center justify-between gap-2">
+                    <div>
+                        <Button
+                            variant="outline"
+                            disabled={posting}
+                            onClick={async () => {
+                                if (!onPublishInstagram) return;
+                                try {
+                                    setPosting(true);
+                                    await onPublishInstagram();
+                                } finally {
+                                    setPosting(false);
+                                }
+                            }}
+                        >
+                            {posting ? 'Posting…' : 'Post to Instagram'}
+                        </Button>
+                    </div>
                     {product.status === 'draft' && (
                         <Button onClick={onPublish}>Review & Publish</Button>
                     )}
