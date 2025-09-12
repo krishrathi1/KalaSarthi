@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       voice: {
         languageCode,
         name: voiceName,
-        ssmlGender: 'NEUTRAL' as const
+        ssmlGender: 'FEMALE' as const
       },
       audioConfig: {
         audioEncoding: 'LINEAR16' as const,

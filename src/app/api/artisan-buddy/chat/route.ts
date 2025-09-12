@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SpeechToTextService } from '@/lib/service/SpeechToTextService';
 import { TextToSpeechService } from '@/lib/service/TextToSpeechService';
+import { EnhancedTextToSpeechService } from '@/lib/service/EnhancedTextToSpeechService';
+import { ActionAwareTTSService } from '@/lib/service/ActionAwareTTSService';
 import { TranslationService } from '@/lib/service/TranslationService';
 import { ChatStorageService } from '@/lib/service/ChatStorageService';
+import { FastResponseCache } from '@/lib/service/FastResponseCache';
+import { FastResponseGenerator } from '@/lib/service/FastResponseGenerator';
+import { DialogflowService } from '@/lib/service/DialogflowService';
+import { NavigationService } from '@/lib/service/NavigationService';
 import { interactWithArtisanDigitalTwin } from '@/lib/actions';
 
 // Language detection function
@@ -134,7 +140,7 @@ async function generateDynamicResponse(message: string, language: string): Promi
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, language, enableTranslation, enableVoice, isVoice, userId } = await request.json();
+    const { message, language, enableTranslation, enableVoice, isVoice, userId, fastMode } = await request.json();
 
     // For now, use a default userId if not provided (in production, this should come from proper auth)
     const currentUserId = userId || 'default-user';
@@ -149,11 +155,50 @@ export async function POST(request: NextRequest) {
     // Initialize services
     const speechToTextService = SpeechToTextService.getInstance();
     const textToSpeechService = TextToSpeechService.getInstance();
+    const enhancedTtsService = EnhancedTextToSpeechService.getInstance();
+    const actionAwareTtsService = ActionAwareTTSService.getInstance();
     const translationService = TranslationService.getInstance();
     const chatStorageService = ChatStorageService.getInstance();
+    const fastResponseCache = FastResponseCache.getInstance();
+    const fastResponseGenerator = FastResponseGenerator.getInstance();
+    const dialogflowService = DialogflowService.getInstance();
+    const navigationService = NavigationService.getInstance();
 
     let processedMessage = message;
     let responseLanguage = language || 'en-US';
+
+    // Check cache first for fast responses
+    if (fastMode) {
+      const cachedResponse = fastResponseCache.get(message, responseLanguage);
+      if (cachedResponse) {
+        console.log('⚡ Fast cache response');
+        return NextResponse.json({
+          response: cachedResponse.response,
+          language: cachedResponse.language,
+          audio: cachedResponse.audioUrl,
+          isFast: true,
+          fromCache: true
+        });
+      }
+
+      // Try fast response generator
+      const fastResponse = fastResponseGenerator.getFastResponse(message, responseLanguage);
+      if (fastResponse) {
+        console.log('⚡ Fast generated response');
+        
+        // Cache the response
+        fastResponseCache.set(message, responseLanguage, fastResponse.response);
+        
+        return NextResponse.json({
+          response: fastResponse.response,
+          language: responseLanguage,
+          shouldNavigate: fastResponse.shouldNavigate,
+          navigationTarget: fastResponse.navigationTarget,
+          isFast: true,
+          fromGenerator: true
+        });
+      }
+    }
 
     // Handle translation if enabled
     if (enableTranslation && language !== 'en-US') {
@@ -191,28 +236,57 @@ export async function POST(request: NextRequest) {
     // Add user message to session
     await chatStorageService.addMessageToSession(activeSession.id, userMessage);
 
-    // Process the message using dynamic AI
+    // Process the message using Dialogflow intent detection
     let response = '';
     let shouldNavigate = false;
     let navigationTarget = '';
+    let actionData: any = null;
 
-    // Generate dynamic response
     try {
-      const aiResponse = await generateDynamicResponse(processedMessage, language);
-      response = aiResponse.response;
-      shouldNavigate = aiResponse.shouldNavigate || false;
-      navigationTarget = aiResponse.navigationTarget || '';
+      // Detect intent using Dialogflow service
+      const detectedLang = detectLanguage(processedMessage);
+      const intentResult = await dialogflowService.detectIntent(processedMessage, detectedLang);
+      
+      console.log('Intent detected:', intentResult);
+      
+      // Execute action based on intent
+      const taskResult = await navigationService.executeAction(intentResult.intent, intentResult.parameters);
+      
+      response = intentResult.fulfillmentText;
+      shouldNavigate = taskResult.action?.type === 'navigate';
+      navigationTarget = taskResult.action?.target || '';
+      actionData = taskResult.action;
       
       // Update response language based on detected language
-      const detectedLang = detectLanguage(processedMessage);
       if (detectedLang === 'hi') {
         responseLanguage = 'hi-IN';
       } else {
         responseLanguage = 'en-US';
       }
+
+      // Cache the response for future use
+      if (fastMode) {
+        fastResponseCache.set(message, responseLanguage, response);
+      }
     } catch (error) {
-      console.error('AI response generation error:', error);
-      response = `I heard you say: "${processedMessage}". I'm your Artisan Buddy and I'm here to help you with your craft business. How can I assist you today?`;
+      console.error('Intent detection error:', error);
+      // Fallback to old method
+      try {
+        const aiResponse = await generateDynamicResponse(processedMessage, language);
+        response = aiResponse.response;
+        shouldNavigate = aiResponse.shouldNavigate || false;
+        navigationTarget = aiResponse.navigationTarget || '';
+        
+        const detectedLang = detectLanguage(processedMessage);
+        if (detectedLang === 'hi') {
+          responseLanguage = 'hi-IN';
+        } else {
+          responseLanguage = 'en-US';
+        }
+      } catch (fallbackError) {
+        console.error('Fallback response generation error:', fallbackError);
+        response = `I heard you say: "${processedMessage}". I'm your Artisan Buddy and I'm here to help you with your craft business. How can I assist you today?`;
+      }
     }
 
     // Handle translation of response if needed
@@ -243,51 +317,59 @@ export async function POST(request: NextRequest) {
     // Add assistant message to session
     await chatStorageService.addMessageToSession(activeSession.id, assistantMessage);
 
-    // Generate voice output if enabled
+    // Generate voice output if enabled (async, don't block response)
+    let audioPromise: Promise<string> | null = null;
     if (enableVoice) {
-      try {
-        // Use optimal voice for the language
-        const optimalVoice = textToSpeechService.getOptimalVoice(responseLanguage, 'FEMALE');
-        console.log('TTS Language:', responseLanguage, 'Optimal Voice:', optimalVoice);
-        
-        const audioBuffer = await textToSpeechService.synthesizeSpeech(
-          response,
-          responseLanguage,
-          {
-            voice: optimalVoice || undefined,
-            gender: 'FEMALE',
-            speed: 1.0,
-            pitch: 0.0,
-            volume: 1.0
-          }
-        );
-        
-        // Convert audio buffer to base64 for client
-        const base64Audio = Buffer.from(audioBuffer).toString('base64');
-        
-        return NextResponse.json({
-          response,
-          language: responseLanguage,
-          audio: base64Audio,
-          shouldNavigate: shouldNavigate,
-          navigationTarget: navigationTarget,
-          messageId: assistantMessage.id,
-          sessionId: activeSession.id
-        });
-      } catch (error) {
-        console.error('TTS error:', error);
-        // Return text response even if TTS fails
-      }
+      audioPromise = (async () => {
+        try {
+          console.log('Action-Aware TTS Language:', responseLanguage);
+          
+          const ttsResult = await actionAwareTtsService.synthesizeWithAction(
+            response,
+            {
+              language: responseLanguage,
+              gender: 'FEMALE',
+              quality: 'Neural2',
+              speed: 1.0,
+              pitch: 0.0,
+              volume: 1.0,
+              enableActions: true
+            }
+          );
+          
+          return Buffer.from(ttsResult.audioBuffer).toString('base64');
+        } catch (error) {
+          console.error('Action-Aware TTS error:', error);
+          return '';
+        }
+      })();
     }
 
-    return NextResponse.json({
+    // Return response immediately, audio will be generated in background
+    const responseData = {
       response,
       language: responseLanguage,
       shouldNavigate: shouldNavigate,
       navigationTarget: navigationTarget,
+      actionData: actionData,
       messageId: assistantMessage.id,
-      sessionId: activeSession.id
-    });
+      sessionId: activeSession.id,
+      isFast: fastMode || false
+    };
+
+    // If audio is being generated, add it to the response
+    if (audioPromise) {
+      try {
+        const audio = await audioPromise;
+        if (audio) {
+          (responseData as any).audio = audio;
+        }
+      } catch (error) {
+        console.error('Audio generation failed:', error);
+      }
+    }
+
+    return NextResponse.json(responseData);
 
   } catch (error) {
     console.error('Artisan Buddy chat error:', error);

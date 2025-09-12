@@ -1,410 +1,484 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { VoiceControl } from '@/components/ui/VoiceControl';
-import { Mic, Volume2, Languages, HelpCircle, Play, Square, Settings } from 'lucide-react';
+import { VoiceManager } from '@/components/voice/VoiceManager';
+import { Loader2, Volume2, Play, Pause, RotateCcw, Download, Copy } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+
+interface VoiceConfig {
+  name: string;
+  gender: 'MALE' | 'FEMALE';
+  quality: 'Standard' | 'Wavenet' | 'Neural2' | 'Chirp3-HD';
+  description?: string;
+}
+
+interface TTSResult {
+  success: boolean;
+  audio?: {
+    data: string;
+    format: string;
+    language: string;
+    voice: string;
+  };
+  translation?: {
+    original: string;
+    translated: string;
+    sourceLanguage: string;
+    targetLanguage: string;
+  };
+  processing?: {
+    time: number;
+    cached: boolean;
+  };
+  error?: string;
+}
 
 export default function VoiceDemoPage() {
-  const [activeTab, setActiveTab] = useState('demo');
+  const [text, setText] = useState('');
+  const [selectedLanguage, setSelectedLanguage] = useState('hi-IN');
+  const [selectedVoice, setSelectedVoice] = useState<VoiceConfig | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [ttsResult, setTtsResult] = useState<TTSResult | null>(null);
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+  const [enableTranslation, setEnableTranslation] = useState(false);
+  const [sourceLanguage, setSourceLanguage] = useState('en');
+  const audioRef = useRef<HTMLAudioElement>(null);
 
-  const voiceCommands = {
-    english: [
-      'Go to finance dashboard',
-      'Show me the marketplace',
-      'Take me to my profile',
-      'Open loans section',
-      'Navigate to trend analysis',
-      'Search for handloom sarees',
-      'Help me navigate'
-    ],
-    hindi: [
-      'फाइनेंस डैशबोर्ड पर जाओ',
-      'मुझे मार्केटप्लेस दिखाओ',
-      'मेरे प्रोफाइल पर ले चलो',
-      'लोन सेक्शन खोलो',
-      'ट्रेंड विश्लेषण पर नेविगेट करो',
-      'हस्तशिल्प साड़ी खोजो',
-      'मदद करो'
-    ],
-    regional: [
-      'ফাইন্যান্স ড্যাশবোর্ডে যান (Bengali)',
-      'మార్కెట్‌ప్లేస్ చూపించు (Telugu)',
-      'माझ्या प्रोफाइल वर न्या (Marathi)',
-      'லോൺ വിഭാഗം തുറക്കുക (Malayalam)',
-      'ਮੇਰੇ ਪ੍ਰੋਫਾਈਲ ਤੇ ਜਾਓ (Punjabi)'
-    ]
+  const sampleTexts = {
+    'hi-IN': 'नमस्ते! मैं कलामित्र का आर्टिफिशियल इंटेलिजेंस सहायक हूं। मैं आपकी कला और व्यवसाय में आपकी मदद कर सकता हूं।',
+    'en-IN': 'Hello! I am KalaMitra\'s AI assistant. I can help you with your art and business.',
+    'bn-IN': 'নমস্কার! আমি কলামিত্রের কৃত্রিম বুদ্ধিমত্তার সহায়ক। আমি আপনার শিল্প এবং ব্যবসায় আপনাকে সাহায্য করতে পারি।',
+    'ta-IN': 'வணக்கம்! நான் கலாமித்ராவின் செயற்கை நுண்ணறிவு உதவியாளர். உங்கள் கலை மற்றும் வணிகத்தில் உங்களுக்கு உதவ முடியும்.',
+    'te-IN': 'నమస్కారం! నేను కళామిత్ర యొక్క కృత్రిమ మేధస్సు సహాయకుడిని. మీ కళ మరియు వ్యాపారంలో మీకు సహాయం చేయగలను.',
+    'gu-IN': 'નમસ્તે! હું કલામિત્રનો કૃત્રિમ બુદ્ધિમત્તા સહાયક છું. હું તમારી કલા અને વ્યવસાયમાં તમારી મદદ કરી શકું છું.',
+    'kn-IN': 'ನಮಸ್ಕಾರ! ನಾನು ಕಲಾಮಿತ್ರದ ಕೃತಕ ಬುದ್ಧಿಮತ್ತೆಯ ಸಹಾಯಕ. ನಿಮ್ಮ ಕಲೆ ಮತ್ತು ವ್ಯಾಪಾರದಲ್ಲಿ ನಿಮಗೆ ಸಹಾಯ ಮಾಡಬಹುದು.',
+    'ml-IN': 'നമസ്കാരം! ഞാൻ കലാമിത്രയുടെ കൃത്രിമബുദ്ധി സഹായകനാണ്. നിങ്ങളുടെ കലയിലും വ്യാപാരത്തിലും നിങ്ങളെ സഹായിക്കാം.',
+    'mr-IN': 'नमस्कार! मी कलामित्राचा कृत्रिम बुद्धिमत्ता सहायक आहे. मी तुमच्या कला आणि व्यवसायात तुमची मदत करू शकतो.',
+    'pa-IN': 'ਨਮਸਤੇ! ਮੈਂ ਕਲਾਮਿਤਰ ਦਾ ਕ੍ਰਿਤਰਿਮ ਬੁੱਧੀ ਸਹਾਇਕ ਹਾਂ। ਮੈਂ ਤੁਹਾਡੀ ਕਲਾ ਅਤੇ ਵਪਾਰ ਵਿੱਚ ਤੁਹਾਡੀ ਮਦਦ ਕਰ ਸਕਦਾ ਹਾਂ।',
+    'or-IN': 'ନମସ୍କାର! ମୁଁ କଲାମିତ୍ରର କୃତ୍ରିମ ବୁଦ୍ଧିମତ୍ତା ସହାୟକ। ମୁଁ ତୁମର କଳା ଏବଂ ବ୍ୟବସାୟରେ ତୁମକୁ ସହାୟତା କରିପାରେ।',
+    'as-IN': 'নমস্কাৰ! মই কলামিত্ৰৰ কৃত্ৰিম বুদ্ধিমত্তাৰ সহায়ক। মই আপোনাৰ কলা আৰু ব্যৱসায়ত আপোনাক সহায় কৰিব পাৰো।',
+    'ur-PK': 'السلام علیکم! میں کلامیترا کا مصنوعی ذہانت کا معاون ہوں۔ میں آپ کی فن اور کاروبار میں آپ کی مدد کر سکتا ہوں۔',
+    'ne-NP': 'नमस्कार! म कलामित्रको कृत्रिम बुद्धिमत्ता सहायक हुँ। म तपाईंको कला र व्यापारमा तपाईंलाई मद्दत गर्न सक्छु।'
   };
 
-  const features = [
-    {
-      title: 'Natural Human Voices',
-      description: 'Google Cloud Neural2 voices that sound completely natural and human-like, not robotic',
-      icon: <Volume2 className="h-6 w-6 text-green-500" />
-    },
-    {
-      title: 'Multi-Language Support',
-      description: 'Voice commands in English, Hindi, and regional languages with native accent voices',
-      icon: <Languages className="h-6 w-6" />
-    },
-    {
-      title: 'Advanced Speech Recognition',
-      description: 'Google Cloud STT with superior accuracy and noise cancellation',
-      icon: <Mic className="h-6 w-6 text-blue-500" />
-    },
-    {
-      title: 'Real-time Navigation',
-      description: 'Instant response and seamless page transitions with voice feedback',
-      icon: <Play className="h-6 w-6" />
-    },
-    {
-      title: 'Contextual Understanding',
-      description: 'AI-powered understanding of voice commands and artisan-specific intents',
-      icon: <HelpCircle className="h-6 w-6" />
-    },
-    {
-      title: 'Voice Customization',
-      description: 'Adjustable speed, pitch, and voice selection for personalized experience',
-      icon: <Settings className="h-6 w-6" />
+  const handleVoiceChange = (voice: VoiceConfig, language: string) => {
+    setSelectedVoice(voice);
+    setSelectedLanguage(language);
+  };
+
+  const handleSynthesize = async () => {
+    if (!text.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please enter some text to synthesize',
+        variant: 'destructive'
+      });
+      return;
     }
-  ];
+
+    if (!selectedVoice) {
+      toast({
+        title: 'Error',
+        description: 'Please select a voice',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      const response = await fetch('/api/tts/enhanced', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          text,
+          language: selectedLanguage,
+          voice: selectedVoice.name,
+          gender: selectedVoice.gender,
+          quality: selectedVoice.quality,
+          enableTranslation,
+          sourceLanguage: enableTranslation ? sourceLanguage : undefined
+        })
+      });
+
+      const result: TTSResult = await response.json();
+      setTtsResult(result);
+
+      if (result.success && result.audio) {
+        // Stop any currently playing audio
+        if (audioElement) {
+          audioElement.pause();
+          audioElement.currentTime = 0;
+        }
+
+        // Create new audio element
+        const audio = new Audio(`data:audio/mp3;base64,${result.audio.data}`);
+        audio.onended = () => setIsPlaying(false);
+        audio.onplay = () => setIsPlaying(true);
+        audio.onpause = () => setIsPlaying(false);
+        
+        setAudioElement(audio);
+        await audio.play();
+      } else {
+        throw new Error(result.error || 'TTS synthesis failed');
+      }
+    } catch (error) {
+      console.error('TTS synthesis error:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to synthesize speech',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePlayPause = () => {
+    if (audioElement) {
+      if (isPlaying) {
+        audioElement.pause();
+      } else {
+        audioElement.play();
+      }
+    }
+  };
+
+  const handleStop = () => {
+    if (audioElement) {
+      audioElement.pause();
+      audioElement.currentTime = 0;
+      setIsPlaying(false);
+    }
+  };
+
+  const handleDownload = () => {
+    if (ttsResult?.audio?.data) {
+      const link = document.createElement('a');
+      link.href = `data:audio/mp3;base64,${ttsResult.audio.data}`;
+      link.download = `tts-${selectedLanguage}-${Date.now()}.mp3`;
+      link.click();
+    }
+  };
+
+  const handleCopyText = () => {
+    if (ttsResult?.translation?.translated) {
+      navigator.clipboard.writeText(ttsResult.translation.translated);
+      toast({
+        title: 'Copied',
+        description: 'Translated text copied to clipboard'
+      });
+    } else {
+      navigator.clipboard.writeText(text);
+      toast({
+        title: 'Copied',
+        description: 'Text copied to clipboard'
+      });
+    }
+  };
+
+  const handleSampleText = () => {
+    const sample = sampleTexts[selectedLanguage as keyof typeof sampleTexts];
+    if (sample) {
+      setText(sample);
+    }
+  };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="text-center space-y-4">
-        <h1 className="text-4xl font-bold">Voice Navigation Demo</h1>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-          Experience hands-free navigation across the entire KalaBandhu platform with natural, human-like voices.
-          Use voice commands in multiple languages to navigate, search, and interact with features.
+    <div className="container mx-auto p-6 max-w-6xl">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">Enhanced Text-to-Speech Demo</h1>
+        <p className="text-gray-600">
+          Experience high-quality multilingual text-to-speech with intelligent voice selection
         </p>
-        <div className="flex justify-center gap-4 flex-wrap">
-          <Badge variant="secondary" className="text-sm">
-            <Mic className="h-3 w-3 mr-1" />
-            Google Cloud STT
-          </Badge>
-          <Badge variant="secondary" className="text-sm">
-            <Volume2 className="h-3 w-3 mr-1" />
-            Google Cloud TTS
-          </Badge>
-          <Badge variant="secondary" className="text-sm">
-            <Languages className="h-3 w-3 mr-1" />
-            Multi-Language
-          </Badge>
-          <Badge variant="secondary" className="text-sm bg-green-100 text-green-800">
-            ✨ Natural Voices
-          </Badge>
-        </div>
       </div>
 
-      {/* Voice Control - Floating */}
-      <VoiceControl variant="floating" showSettings={true} />
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="demo">Live Demo</TabsTrigger>
-          <TabsTrigger value="commands">Voice Commands</TabsTrigger>
+      <Tabs defaultValue="synthesize" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="synthesize">Synthesize Speech</TabsTrigger>
+          <TabsTrigger value="voice-settings">Voice Settings</TabsTrigger>
           <TabsTrigger value="features">Features</TabsTrigger>
-          <TabsTrigger value="status">Status</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="demo" className="space-y-6">
+        <TabsContent value="synthesize" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Voice Control Demo */}
+            {/* Input Section */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Mic className="h-5 w-5" />
-                  Voice Control
-                </CardTitle>
+                <CardTitle>Text Input</CardTitle>
                 <CardDescription>
-                  Click the microphone to start voice navigation
+                  Enter text to synthesize or use sample text
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <VoiceControl
-                  variant="default"
-                  size="lg"
-                  showSettings={true}
-                  className="mx-auto"
-                />
-              </CardContent>
-            </Card>
-
-            {/* Quick Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Navigation</CardTitle>
-                <CardDescription>
-                  Test voice navigation with these buttons
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button
-                  className="w-full justify-start"
-                  onClick={() => window.location.href = '/finance/dashboard'}
-                >
-                  📊 Go to Finance Dashboard
-                </Button>
-                <Button
-                  className="w-full justify-start"
-                  variant="outline"
-                  onClick={() => window.location.href = '/marketplace'}
-                >
-                  🛍️ Open Marketplace
-                </Button>
-                <Button
-                  className="w-full justify-start"
-                  variant="outline"
-                  onClick={() => window.location.href = '/profile'}
-                >
-                  👤 View Profile
-                </Button>
-                <Button
-                  className="w-full justify-start"
-                  variant="outline"
-                  onClick={() => window.location.href = '/trend-spotter'}
-                >
-                  📈 Trend Analysis
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="commands" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* English Commands */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  🇺🇸 English Commands
-                </CardTitle>
-                <CardDescription>
-                  Voice commands in English
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {voiceCommands.english.map((command, index) => (
-                    <div key={index} className="p-2 bg-muted rounded text-sm">
-                      "{command}"
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Hindi Commands */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  🇮🇳 हिंदी Commands
-                </CardTitle>
-                <CardDescription>
-                  Voice commands in Hindi
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {voiceCommands.hindi.map((command, index) => (
-                    <div key={index} className="p-2 bg-muted rounded text-sm">
-                      "{command}"
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Regional Commands */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  🌏 Regional Languages
-                </CardTitle>
-                <CardDescription>
-                  Voice commands in regional languages
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {voiceCommands.regional.map((command, index) => (
-                    <div key={index} className="p-2 bg-muted rounded text-sm">
-                      {command}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="features" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {features.map((feature, index) => (
-              <Card key={index}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-3">
-                    {feature.icon}
-                    {feature.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">{feature.description}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Technical Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Technical Implementation</CardTitle>
-              <CardDescription>
-                How voice navigation works under the hood
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <CardContent className="space-y-4">
                 <div>
-                  <h4 className="font-semibold mb-2">Frontend Components</h4>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• VoiceControl - Main interaction component</li>
-                    <li>• VoiceStatus - Real-time status display</li>
-                    <li>• MediaRecorder API integration</li>
-                    <li>• Google Cloud TTS/STT primary</li>
-                    <li>• Web Speech API fallback</li>
-                  </ul>
+                  <label className="text-sm font-medium mb-2 block">Text to Synthesize</label>
+                  <Textarea
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    placeholder="Enter text to synthesize..."
+                    rows={6}
+                    className="w-full"
+                  />
                 </div>
-                <div>
-                  <h4 className="font-semibold mb-2">AI & Cloud Services</h4>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• Google Cloud Text-to-Speech (Neural2)</li>
-                    <li>• Google Cloud Speech-to-Text (Enhanced)</li>
-                    <li>• Gemini AI for intent processing</li>
-                    <li>• Multi-language voice synthesis</li>
-                    <li>• Advanced noise cancellation</li>
-                  </ul>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSampleText}
+                    disabled={!sampleTexts[selectedLanguage as keyof typeof sampleTexts]}
+                  >
+                    Use Sample Text
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyText}
+                    disabled={!text}
+                  >
+                    <Copy className="h-4 w-4 mr-1" />
+                    Copy
+                  </Button>
                 </div>
-              </div>
 
-              {/* Voice Quality Comparison */}
-              <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border">
-                <h4 className="font-semibold mb-3 text-green-800">🎵 Voice Quality Improvement</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <h5 className="font-medium text-red-600 mb-2">❌ Before (Robotic)</h5>
-                    <ul className="text-muted-foreground space-y-1">
-                      <li>• Monotone, mechanical sound</li>
-                      <li>• Limited emotional expression</li>
-                      <li>• Unnatural speech patterns</li>
-                      <li>• Browser-dependent quality</li>
-                    </ul>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Translation Options</label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="enableTranslation"
+                      checked={enableTranslation}
+                      onChange={(e) => setEnableTranslation(e.target.checked)}
+                      className="rounded"
+                    />
+                    <label htmlFor="enableTranslation" className="text-sm">
+                      Enable translation
+                    </label>
                   </div>
-                  <div>
-                    <h5 className="font-medium text-green-600 mb-2">✅ After (Natural)</h5>
-                    <ul className="text-muted-foreground space-y-1">
-                      <li>• Human-like Neural2 voices</li>
-                      <li>• Natural intonation & rhythm</li>
-                      <li>• Emotional expression capability</li>
-                      <li>• Consistent quality across devices</li>
-                    </ul>
-                  </div>
+                  {enableTranslation && (
+                    <div>
+                      <label className="text-sm font-medium">Source Language</label>
+                      <select
+                        value={sourceLanguage}
+                        onChange={(e) => setSourceLanguage(e.target.value)}
+                        className="w-full p-2 border rounded"
+                      >
+                        <option value="en">English</option>
+                        <option value="hi">Hindi</option>
+                        <option value="bn">Bengali</option>
+                        <option value="ta">Tamil</option>
+                        <option value="te">Telugu</option>
+                        <option value="gu">Gujarati</option>
+                        <option value="kn">Kannada</option>
+                        <option value="ml">Malayalam</option>
+                        <option value="mr">Marathi</option>
+                        <option value="pa">Punjabi</option>
+                        <option value="or">Odia</option>
+                        <option value="as">Assamese</option>
+                        <option value="ur">Urdu</option>
+                        <option value="ne">Nepali</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
-        <TabsContent value="status" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Voice Status */}
-            <div className="lg:col-span-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Voice Interaction Status</CardTitle>
-                  <CardDescription>Real-time voice command processing status</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Voice Recognition:</span>
-                      <Badge variant="secondary">Active</Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Language Detection:</span>
-                      <Badge variant="secondary">Auto</Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Command Processing:</span>
-                      <Badge variant="secondary">Ready</Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">TTS Engine:</span>
-                      <Badge variant="secondary">Gemini AI</Badge>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                <Button
+                  onClick={handleSynthesize}
+                  disabled={isLoading || !text.trim() || !selectedVoice}
+                  className="w-full"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Synthesizing...
+                    </>
+                  ) : (
+                    <>
+                      <Volume2 className="h-4 w-4 mr-2" />
+                      Synthesize Speech
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
 
-            {/* System Info */}
+            {/* Output Section */}
             <Card>
               <CardHeader>
-                <CardTitle>System Information</CardTitle>
+                <CardTitle>Audio Output</CardTitle>
+                <CardDescription>
+                  Play, pause, or download the synthesized audio
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span>Browser Support:</span>
-                  <Badge variant="secondary">Chrome/Edge</Badge>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Microphone Access:</span>
-                  <Badge variant="secondary">Required</Badge>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>AI Processing:</span>
-                  <Badge variant="secondary">Gemini API</Badge>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Languages:</span>
-                  <Badge variant="secondary">10+ Supported</Badge>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Response Time:</span>
-                  <Badge variant="secondary">Under 2s</Badge>
-                </div>
+              <CardContent className="space-y-4">
+                {ttsResult?.success && ttsResult.audio ? (
+                  <>
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <p className="font-medium">{ttsResult.audio.voice}</p>
+                          <p className="text-sm text-gray-600">
+                            {ttsResult.audio.language} • {ttsResult.audio.format}
+                          </p>
+                        </div>
+                        <Badge variant="outline">
+                          {ttsResult.processing?.cached ? 'Cached' : 'Live'}
+                        </Badge>
+                      </div>
+                      {ttsResult.processing && (
+                        <p className="text-xs text-gray-500">
+                          Processing time: {ttsResult.processing.time}ms
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handlePlayPause}
+                        disabled={!audioElement}
+                        className="flex-1"
+                      >
+                        {isPlaying ? (
+                          <Pause className="h-4 w-4 mr-2" />
+                        ) : (
+                          <Play className="h-4 w-4 mr-2" />
+                        )}
+                        {isPlaying ? 'Pause' : 'Play'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={handleStop}
+                        disabled={!audioElement}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={handleDownload}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    {ttsResult.translation && (
+                      <div className="p-4 bg-blue-50 rounded-lg">
+                        <h4 className="font-medium mb-2">Translation</h4>
+                        <p className="text-sm text-gray-700 mb-2">
+                          <strong>Original ({ttsResult.translation.sourceLanguage}):</strong><br />
+                          {ttsResult.translation.original}
+                        </p>
+                        <p className="text-sm text-gray-700">
+                          <strong>Translated ({ttsResult.translation.targetLanguage}):</strong><br />
+                          {ttsResult.translation.translated}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                ) : ttsResult?.error ? (
+                  <div className="p-4 bg-red-50 rounded-lg">
+                    <p className="text-red-700 font-medium">Error</p>
+                    <p className="text-red-600 text-sm">{ttsResult.error}</p>
+                  </div>
+                ) : (
+                  <div className="p-8 text-center text-gray-500">
+                    <Volume2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No audio generated yet</p>
+                    <p className="text-sm">Enter text and click synthesize to get started</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="voice-settings">
+          <VoiceManager
+            onVoiceChange={handleVoiceChange}
+            initialLanguage={selectedLanguage}
+            className="max-w-2xl"
+          />
+        </TabsContent>
+
+        <TabsContent value="features">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Intelligent Voice Selection</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600">
+                  Automatically selects the best voice based on language, gender preference, and quality requirements.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Multiple Voice Qualities</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600">
+                  Choose from Standard, Wavenet, Neural2, and Chirp3-HD voices for different quality levels.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Audio Caching</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600">
+                  Frequently used audio is cached for faster playback and reduced API costs.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Automatic Translation</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600">
+                  Seamlessly translate text before synthesis for multilingual support.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>High-Quality Audio</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600">
+                  24kHz sample rate and optimized audio settings for crystal clear speech.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Real-time Processing</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600">
+                  Fast synthesis with real-time feedback and progress indicators.
+                </p>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
       </Tabs>
-
-      {/* Footer */}
-      <Card className="mt-8">
-        <CardContent className="pt-6">
-          <div className="text-center space-y-2">
-            <h3 className="text-lg font-semibold">Ready to Try Voice Navigation?</h3>
-            <p className="text-muted-foreground">
-              Click the floating microphone button or use the voice control above to start exploring
-              the KalaBandhu platform with voice commands.
-            </p>
-            <div className="flex justify-center gap-4 mt-4">
-              <Button onClick={() => setActiveTab('demo')}>
-                <Play className="h-4 w-4 mr-2" />
-                Start Demo
-              </Button>
-              <Button variant="outline" onClick={() => setActiveTab('commands')}>
-                <HelpCircle className="h-4 w-4 mr-2" />
-                View Commands
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
