@@ -644,13 +644,13 @@ export function SmartProductCreator() {
       };
 
       recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
+          console.error('Speech recognition error:', event.error);
         setIsRealtimeActive(false);
-        toast({
+          toast({
           title: "Speech Recognition Error",
           description: `Error: ${event.error}. Real-time transcription disabled.`,
-          variant: "destructive",
-        });
+            variant: "destructive",
+          });
       };
 
       recognition.onend = () => {
@@ -845,7 +845,7 @@ export function SmartProductCreator() {
       };
       reader.readAsDataURL(file);
 
-      toast({
+          toast({
         title: "Processing image...",
         description: "Please wait while we load your image.",
       });
@@ -3064,15 +3064,15 @@ export function SmartProductCreator() {
         <div className="text-sm text-purple-700">
           Product details have been successfully transferred from the Voice Product Creator.
           You can now continue with the regular workflow or make additional edits.
-        </div>
+            </div>
         <div className="mt-2 flex flex-wrap gap-2">
-          <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs">
           </Badge>
           <Badge variant="outline" className="text-xs">
           </Badge>
           <Badge variant="outline" className="text-xs">
-          </Badge>
-        </div>
+                  </Badge>
+                </div>
       </div>
 
       {/* Voice Input Section */}
@@ -3080,7 +3080,7 @@ export function SmartProductCreator() {
         <div className="bg-gradient-to-r from-primary/10 to-secondary/10 rounded-lg p-6 border-2 border-dashed border-primary/20">
           <div className="text-center space-y-4">
             <div className="relative">
-              <Button
+                        <Button
                 onClick={isRecording ? stopRecording : startRecording}
                 size="lg"
                 className={`w-24 h-24 rounded-full text-2xl font-bold transition-all duration-300 ${isRecording
@@ -3089,13 +3089,13 @@ export function SmartProductCreator() {
                   }`}
               >
                 {isRecording ? <MicOff className="size-8" /> : <Mic className="size-8" />}
-              </Button>
+                        </Button>
 
               {isRecording && !isPaused && (
                 <div className="absolute -inset-4 border-4 border-red-500 rounded-full animate-ping opacity-20 pointer-events-none"></div>
               )}
-            </div>
-
+                    </div>
+                    
             {/* Recording Status & Timer */}
             {isRecording && (
               <div className={`border rounded-lg p-3 text-center ${isPaused
@@ -3105,11 +3105,11 @@ export function SmartProductCreator() {
                 <div className={`font-medium ${isPaused ? 'text-yellow-600' : 'text-red-600'
                   }`}>
                   {isPaused ? '⏸️ Recording Paused' : '🔴 Recording Active'}
-                </div>
+                    </div>
                 <div className={`text-2xl font-bold mt-1 ${isPaused ? 'text-yellow-700' : 'text-red-700'
                   }`}>
                   {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
-                </div>
+                    </div>
               </div>
             )}
 
@@ -3216,7 +3216,7 @@ export function SmartProductCreator() {
               <span className="text-sm text-muted-foreground">
                 Audio recorded ({Math.round(audioBlob.size / 1024)} KB)
               </span>
-            </div>
+    </div>
             <Button
               onClick={() => {
                 setAudioBlob(null);
@@ -3401,7 +3401,7 @@ export function SmartProductCreator() {
             onChange={(e) => {
               if (inputMode === 'text') {
                 setTextInput(e.target.value);
-              } else {
+      } else {
                 setTranscription(e.target.value);
               }
             }}
@@ -4022,8 +4022,8 @@ export function SmartProductCreator() {
                   </>
                 ) : (
                   <>
-                    <Upload className="size-6" />
-                    <span className="text-xs">Gallery</span>
+                <Upload className="size-6" />
+                <span className="text-xs">Gallery</span>
                   </>
                 )}
               </Button>
@@ -4040,8 +4040,8 @@ export function SmartProductCreator() {
                   </>
                 ) : (
                   <>
-                    <Camera className="size-6" />
-                    <span className="text-xs">Camera</span>
+                <Camera className="size-6" />
+                <span className="text-xs">Camera</span>
                   </>
                 )}
               </Button>
