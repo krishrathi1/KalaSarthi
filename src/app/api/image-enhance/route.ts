@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 import { uploadToCloudinary, getCloudinaryConfig } from '@/lib/cloudinary';
 
 // Note: Using Gemini Vision API for image enhancement since Nano Banana

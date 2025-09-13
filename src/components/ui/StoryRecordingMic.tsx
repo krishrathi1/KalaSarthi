@@ -1259,32 +1259,6 @@ export function StoryRecordingMic({
 
             {/* Enhanced Story Box - REMOVED TO AVOID DUPLICATION */}
 
-            {/* Story Choice Buttons - Only show when both stories are available and no choice made */}
-            {lastTranscript && enhancedStory && !storyChoice && (
-              <div className="lg:col-span-2">
-                <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4">
-                  <div className="text-center mb-4">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">Choose Your Final Story</h3>
-                    <p className="text-sm text-gray-600">Select which version you'd like to use for voice generation</p>
-                  </div>
-                  
-                  <div className="flex gap-4 justify-center">
-                    <Button
-                      onClick={() => finalizeStoryChoice('original')}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-6"
-                    >
-                      Use Original Story
-                    </Button>
-                    <Button
-                      onClick={() => finalizeStoryChoice('enhanced')}
-                      className="bg-purple-600 hover:bg-purple-700 text-white px-6"
-                    >
-                      Use Enhanced Story
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Finalized Story Display - Only show when story is finalized */}
             {finalizedStory && storyChoice && (
@@ -1314,6 +1288,39 @@ export function StoryRecordingMic({
               </div>
             )}
 
+            {/* Finalize Story Button - Show when there's a story but no choice made */}
+            {lastTranscript && !storyChoice && (
+              <div className="lg:col-span-2">
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold text-orange-800 mb-2">Ready to Finalize Your Story?</h3>
+                    <p className="text-sm text-orange-600 mb-4">
+                      {enhancedStory 
+                        ? "Choose between your original or enhanced story, then select a voice for audio generation"
+                        : "Finalize your story and select a voice for audio generation"
+                      }
+                    </p>
+                    <div className="flex gap-4 justify-center">
+                      <Button
+                        onClick={() => finalizeStoryChoice('original')}
+                        className="bg-orange-600 hover:bg-orange-700 text-white px-6"
+                      >
+                        🎯 Finalize Original Story
+                      </Button>
+                      {enhancedStory && (
+                        <Button
+                          onClick={() => finalizeStoryChoice('enhanced')}
+                          className="bg-purple-600 hover:bg-purple-700 text-white px-6"
+                        >
+                          ✨ Finalize Enhanced Story
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Voice Selection - Only show when story is finalized */}
             {showVoiceSelection && finalizedStory && (
               <div className="lg:col-span-2">
@@ -1322,7 +1329,7 @@ export function StoryRecordingMic({
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
                       <span className="font-semibold text-blue-800">Select Voice for Audio Generation</span>
-                      <span className="text-xs text-blue-600">({detectedLanguage})</span>
+                      <span className="text-xs text-blue-600">(Language: {detectedLanguage})</span>
                     </div>
                     <Button
                       onClick={() => setShowVoiceSelection(false)}

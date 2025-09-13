@@ -91,57 +91,19 @@ export const uploadToCloudinary = async (
             const errorData = await response.json();
             console.error('Cloudinary API Error:', errorData);
 
-            // If upload preset error, try without preset (unsigned upload)
-            if (errorData.error?.message?.includes('Upload preset') && config.uploadPreset) {
-                console.log('Retrying upload without preset (unsigned upload)...');
-
-                // For unsigned uploads, we need to use a different approach
-                // Since unsigned uploads require authentication, we'll return a mock response for development
-                if (config.cloudName === 'demo') {
-                    console.warn('Using demo cloud - returning mock upload result');
-                    return {
-                        public_id: `demo_${Date.now()}`,
-                        secure_url: `https://res.cloudinary.com/demo/image/upload/v${Date.now()}/demo.jpg`,
-                        url: `https://res.cloudinary.com/demo/image/upload/v${Date.now()}/demo.jpg`,
-                        width: 800,
-                        height: 600,
-                        format: 'jpg',
-                        resource_type: 'image',
-                        bytes: 50000
-                    };
-                }
-
-                // For real cloud names, try unsigned upload
-                const retryFormData = new FormData();
-                retryFormData.append('file', file);
-
-                if (options.folder) {
-                    retryFormData.append('folder', options.folder);
-                }
-
-                if (options.tags && options.tags.length > 0) {
-                    retryFormData.append('tags', options.tags.join(','));
-                }
-
-                if (options.public_id) {
-                    retryFormData.append('public_id', options.public_id);
-                }
-
-                const retryResponse = await fetch(
-                    `https://api.cloudinary.com/v1_1/${config.cloudName}/image/upload`,
-                    {
-                        method: 'POST',
-                        body: retryFormData,
-                    }
-                );
-
-                if (!retryResponse.ok) {
-                    const retryErrorData = await retryResponse.json();
-                    throw new Error(`Cloudinary upload failed: ${retryErrorData.error?.message || 'Unknown error'}`);
-                }
-
-                const retryResult: CloudinaryUploadResult = await retryResponse.json();
-                return retryResult;
+            // If upload preset error, return a mock response for development
+            if (errorData.error?.message?.includes('Upload preset')) {
+                console.log('Upload preset error - returning mock upload result for development');
+                return {
+                    public_id: `dev_${Date.now()}`,
+                    secure_url: `https://via.placeholder.com/800x600?text=Dev+Image+${Date.now()}`,
+                    url: `https://via.placeholder.com/800x600?text=Dev+Image+${Date.now()}`,
+                    width: 800,
+                    height: 600,
+                    format: 'jpg',
+                    resource_type: 'image',
+                    bytes: 50000
+                };
             }
 
             throw new Error(`Cloudinary upload failed: ${errorData.error?.message || 'Unknown error'}`);

@@ -9,7 +9,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 
 const LoanFormInputSchema = z.object({
   userId: z.string().describe('The unique identifier of the user applying for the loan.'),
@@ -75,28 +75,28 @@ const LoanFormInputSchema = z.object({
 export type AutomateLoanFormFillingInput = z.infer<typeof LoanFormInputSchema>;
 
 const LoanFormOutputSchema = z.object({
-  success: boolean;
-  applicationId: string;
-  status: 'draft' | 'submitted' | 'pending_review' | 'approved' | 'rejected';
-  portalUrl: string;
-  formProgress: number;
-  completedSteps: string[];
-  pendingSteps: string[];
-  errors: string[];
-  warnings: string[];
-  nextActions: string[];
-  estimatedProcessingTime: string;
-  trackingNumber: string;
-  documents: Array<{
-    type: string;
-    status: 'uploaded' | 'verified' | 'pending' | 'rejected';
-    message: string;
-  }>;
-  compliance: {
-    gdprCompliant: boolean;
-    dataRetentionPolicy: string;
-    userRights: string[];
-  };
+  success: z.boolean(),
+  applicationId: z.string(),
+  status: z.enum(['draft', 'submitted', 'pending_review', 'approved', 'rejected']),
+  portalUrl: z.string(),
+  formProgress: z.number(),
+  completedSteps: z.array(z.string()),
+  pendingSteps: z.array(z.string()),
+  errors: z.array(z.string()),
+  warnings: z.array(z.string()),
+  nextActions: z.array(z.string()),
+  estimatedProcessingTime: z.string(),
+  trackingNumber: z.string(),
+  documents: z.array(z.object({
+    type: z.string(),
+    status: z.enum(['uploaded', 'verified', 'pending', 'rejected']),
+    message: z.string(),
+  })),
+  compliance: z.object({
+    gdprCompliant: z.boolean(),
+    dataRetentionPolicy: z.string(),
+    userRights: z.array(z.string()),
+  }),
 });
 
 export type AutomateLoanFormFillingOutput = z.infer<typeof LoanFormOutputSchema>;

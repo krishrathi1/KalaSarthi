@@ -9,7 +9,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 
 const ConsultFinanceAdvisorInputSchema = z.object({
   userId: z.string().describe('The unique identifier of the user seeking financial advice.'),

@@ -4,11 +4,11 @@ import React, { Suspense, lazy } from 'react';
 import { Loader2 } from 'lucide-react';
 
 // Lazy load heavy components
-export const LazyStoryRecordingMic = lazy(() => import('./ui/StoryRecordingMic'));
+export const LazyStoryRecordingMic = lazy(() => import('./ui/StoryRecordingMic').then(m => ({ default: m.StoryRecordingMic })));
 export const LazySmartProductCreator = lazy(() => import('./smart-product-creator'));
-export const LazyVoiceDemo = lazy(() => import('./voice/VoiceDemo'));
-export const LazyVoiceIntegration = lazy(() => import('./voice/VoiceIntegration'));
-export const LazyPerformanceMonitor = lazy(() => import('./PerformanceMonitor'));
+export const LazyVoiceDemo = lazy(() => import('./voice/VoiceDemo').then(m => ({ default: m.VoiceDemo })));
+export const LazyVoiceIntegration = lazy(() => import('./voice/VoiceIntegration').then(m => ({ default: m.VoiceIntegration })));
+export const LazyPerformanceMonitor = lazy(() => import('./PerformanceMonitor').then(m => ({ default: m.PerformanceMonitor })));
 
 // Loading fallback component
 const LoadingFallback = ({ message = 'Loading...' }: { message?: string }) => (
