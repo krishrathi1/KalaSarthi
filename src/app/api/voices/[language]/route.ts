@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getVoicesForLanguage, isLanguageSupported } from '@/lib/voice-mapping';
+import { 
+  getVoicesForLanguage, 
+  isLanguageSupported,
+  getDefaultVoice,
+  getFallbackVoice
+} from '@/lib/voice-mapping';
 
 export async function GET(
   request: NextRequest,
@@ -7,35 +12,31 @@ export async function GET(
 ) {
   try {
     const { language } = params;
-    
+
     if (!isLanguageSupported(language)) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Language not supported',
-          supportedLanguages: Object.keys(require('@/lib/voice-mapping').VOICE_MAPPING)
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        success: false,
+        error: `Language ${language} is not supported`
+      }, { status: 400 });
     }
 
     const voices = getVoicesForLanguage(language);
-    
+    const defaultVoice = getDefaultVoice(language);
+    const fallbackVoice = getFallbackVoice(language);
+
     return NextResponse.json({
       success: true,
       language,
       voices,
-      count: voices.length
+      defaultVoice,
+      fallbackVoice,
+      total: voices.length
     });
   } catch (error) {
-    console.error('Error fetching voices for language:', error);
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to fetch voices',
-        details: error.message 
-      },
-      { status: 500 }
-    );
+    console.error('Error getting voices:', error);
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to get voices for language'
+    }, { status: 500 });
   }
 }

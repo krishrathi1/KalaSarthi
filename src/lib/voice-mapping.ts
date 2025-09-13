@@ -3,6 +3,9 @@ export interface VoiceConfig {
   gender: 'MALE' | 'FEMALE';
   quality: 'Standard' | 'Wavenet' | 'Neural2' | 'Chirp3-HD';
   description?: string;
+  accent?: string;
+  age?: 'young' | 'adult' | 'senior';
+  personality?: 'professional' | 'friendly' | 'warm' | 'authoritative';
 }
 
 export interface LanguageVoiceMap {
@@ -13,35 +16,88 @@ export interface LanguageVoiceMap {
   };
 }
 
-// Comprehensive voice mapping based on your test implementation
+// Comprehensive voice mapping with enhanced Google Cloud TTS voices
 export const VOICE_MAPPING: LanguageVoiceMap = {
   'hi-IN': {
     voices: [
-      { name: 'hi-IN-Neural2-A', gender: 'FEMALE', quality: 'Neural2', description: 'High-quality female voice' },
-      { name: 'hi-IN-Neural2-B', gender: 'MALE', quality: 'Neural2', description: 'High-quality male voice' },
-      { name: 'hi-IN-Neural2-C', gender: 'MALE', quality: 'Neural2', description: 'Alternative male voice' },
-      { name: 'hi-IN-Neural2-D', gender: 'FEMALE', quality: 'Neural2', description: 'Alternative female voice' },
-      { name: 'hi-IN-Wavenet-A', gender: 'FEMALE', quality: 'Wavenet', description: 'Wavenet female voice' },
-      { name: 'hi-IN-Wavenet-B', gender: 'MALE', quality: 'Wavenet', description: 'Wavenet male voice' },
-      { name: 'hi-IN-Standard-A', gender: 'FEMALE', quality: 'Standard', description: 'Standard female voice' },
-      { name: 'hi-IN-Standard-B', gender: 'MALE', quality: 'Standard', description: 'Standard male voice' }
+      { name: 'hi-IN-Neural2-A', gender: 'FEMALE', quality: 'Neural2', description: 'High-quality female voice', accent: 'Indian', age: 'adult', personality: 'warm' },
+      { name: 'hi-IN-Neural2-B', gender: 'MALE', quality: 'Neural2', description: 'High-quality male voice', accent: 'Indian', age: 'adult', personality: 'professional' },
+      { name: 'hi-IN-Neural2-C', gender: 'MALE', quality: 'Neural2', description: 'Alternative male voice', accent: 'Indian', age: 'young', personality: 'friendly' },
+      { name: 'hi-IN-Neural2-D', gender: 'FEMALE', quality: 'Neural2', description: 'Alternative female voice', accent: 'Indian', age: 'young', personality: 'warm' },
+      { name: 'hi-IN-Wavenet-A', gender: 'FEMALE', quality: 'Wavenet', description: 'Wavenet female voice', accent: 'Indian', age: 'adult', personality: 'professional' },
+      { name: 'hi-IN-Wavenet-B', gender: 'MALE', quality: 'Wavenet', description: 'Wavenet male voice', accent: 'Indian', age: 'adult', personality: 'authoritative' },
+      { name: 'hi-IN-Standard-A', gender: 'FEMALE', quality: 'Standard', description: 'Standard female voice', accent: 'Indian', age: 'adult', personality: 'friendly' },
+      { name: 'hi-IN-Standard-B', gender: 'MALE', quality: 'Standard', description: 'Standard male voice', accent: 'Indian', age: 'adult', personality: 'professional' }
+    ],
+    defaultVoice: 'hi-IN-Neural2-A',
+    fallbackVoice: 'hi-IN-Standard-A'
+  },
+  'HI-IN': {
+    voices: [
+      { name: 'hi-IN-Neural2-A', gender: 'FEMALE', quality: 'Neural2', description: 'High-quality female voice', accent: 'Indian', age: 'adult', personality: 'warm' },
+      { name: 'hi-IN-Neural2-B', gender: 'MALE', quality: 'Neural2', description: 'High-quality male voice', accent: 'Indian', age: 'adult', personality: 'professional' },
+      { name: 'hi-IN-Neural2-C', gender: 'MALE', quality: 'Neural2', description: 'Alternative male voice', accent: 'Indian', age: 'young', personality: 'friendly' },
+      { name: 'hi-IN-Neural2-D', gender: 'FEMALE', quality: 'Neural2', description: 'Alternative female voice', accent: 'Indian', age: 'young', personality: 'warm' },
+      { name: 'hi-IN-Wavenet-A', gender: 'FEMALE', quality: 'Wavenet', description: 'Wavenet female voice', accent: 'Indian', age: 'adult', personality: 'professional' },
+      { name: 'hi-IN-Wavenet-B', gender: 'MALE', quality: 'Wavenet', description: 'Wavenet male voice', accent: 'Indian', age: 'adult', personality: 'authoritative' },
+      { name: 'hi-IN-Standard-A', gender: 'FEMALE', quality: 'Standard', description: 'Standard female voice', accent: 'Indian', age: 'adult', personality: 'friendly' },
+      { name: 'hi-IN-Standard-B', gender: 'MALE', quality: 'Standard', description: 'Standard male voice', accent: 'Indian', age: 'adult', personality: 'professional' }
     ],
     defaultVoice: 'hi-IN-Neural2-A',
     fallbackVoice: 'hi-IN-Standard-A'
   },
   'en-IN': {
     voices: [
-      { name: 'en-IN-Neural2-A', gender: 'FEMALE', quality: 'Neural2', description: 'High-quality female voice' },
-      { name: 'en-IN-Neural2-B', gender: 'MALE', quality: 'Neural2', description: 'High-quality male voice' },
-      { name: 'en-IN-Wavenet-A', gender: 'FEMALE', quality: 'Wavenet', description: 'Wavenet female voice' },
-      { name: 'en-IN-Wavenet-B', gender: 'MALE', quality: 'Wavenet', description: 'Wavenet male voice' },
-      { name: 'en-IN-Standard-A', gender: 'FEMALE', quality: 'Standard', description: 'Standard female voice' },
-      { name: 'en-IN-Standard-B', gender: 'MALE', quality: 'Standard', description: 'Standard male voice' },
-      { name: 'en-IN-Standard-C', gender: 'MALE', quality: 'Standard', description: 'Alternative male voice' },
-      { name: 'en-IN-Standard-D', gender: 'FEMALE', quality: 'Standard', description: 'Alternative female voice' }
+      { name: 'en-IN-Neural2-A', gender: 'FEMALE', quality: 'Neural2', description: 'High-quality female voice', accent: 'Indian', age: 'adult', personality: 'warm' },
+      { name: 'en-IN-Neural2-B', gender: 'MALE', quality: 'Neural2', description: 'High-quality male voice', accent: 'Indian', age: 'adult', personality: 'professional' },
+      { name: 'en-IN-Wavenet-A', gender: 'FEMALE', quality: 'Wavenet', description: 'Wavenet female voice', accent: 'Indian', age: 'adult', personality: 'friendly' },
+      { name: 'en-IN-Wavenet-B', gender: 'MALE', quality: 'Wavenet', description: 'Wavenet male voice', accent: 'Indian', age: 'adult', personality: 'authoritative' },
+      { name: 'en-IN-Standard-A', gender: 'FEMALE', quality: 'Standard', description: 'Standard female voice', accent: 'Indian', age: 'adult', personality: 'professional' },
+      { name: 'en-IN-Standard-B', gender: 'MALE', quality: 'Standard', description: 'Standard male voice', accent: 'Indian', age: 'adult', personality: 'friendly' },
+      { name: 'en-IN-Standard-C', gender: 'MALE', quality: 'Standard', description: 'Alternative male voice', accent: 'Indian', age: 'young', personality: 'warm' },
+      { name: 'en-IN-Standard-D', gender: 'FEMALE', quality: 'Standard', description: 'Alternative female voice', accent: 'Indian', age: 'young', personality: 'friendly' }
     ],
     defaultVoice: 'en-IN-Neural2-A',
     fallbackVoice: 'en-IN-Standard-A'
+  },
+  'en-US': {
+    voices: [
+      { name: 'en-US-Neural2-A', gender: 'FEMALE', quality: 'Neural2', description: 'High-quality female voice', accent: 'American', age: 'adult', personality: 'professional' },
+      { name: 'en-US-Neural2-C', gender: 'FEMALE', quality: 'Neural2', description: 'Alternative female voice', accent: 'American', age: 'young', personality: 'friendly' },
+      { name: 'en-US-Neural2-D', gender: 'MALE', quality: 'Neural2', description: 'High-quality male voice', accent: 'American', age: 'adult', personality: 'authoritative' },
+      { name: 'en-US-Neural2-E', gender: 'MALE', quality: 'Neural2', description: 'Alternative male voice', accent: 'American', age: 'young', personality: 'warm' },
+      { name: 'en-US-Neural2-F', gender: 'FEMALE', quality: 'Neural2', description: 'Professional female voice', accent: 'American', age: 'adult', personality: 'professional' },
+      { name: 'en-US-Neural2-G', gender: 'FEMALE', quality: 'Neural2', description: 'Friendly female voice', accent: 'American', age: 'young', personality: 'friendly' },
+      { name: 'en-US-Neural2-H', gender: 'FEMALE', quality: 'Neural2', description: 'Warm female voice', accent: 'American', age: 'adult', personality: 'warm' },
+      { name: 'en-US-Neural2-I', gender: 'MALE', quality: 'Neural2', description: 'Professional male voice', accent: 'American', age: 'adult', personality: 'professional' },
+      { name: 'en-US-Neural2-J', gender: 'MALE', quality: 'Neural2', description: 'Friendly male voice', accent: 'American', age: 'young', personality: 'friendly' },
+      { name: 'en-US-Wavenet-A', gender: 'FEMALE', quality: 'Wavenet', description: 'Wavenet female voice', accent: 'American', age: 'adult', personality: 'professional' },
+      { name: 'en-US-Wavenet-B', gender: 'MALE', quality: 'Wavenet', description: 'Wavenet male voice', accent: 'American', age: 'adult', personality: 'authoritative' },
+      { name: 'en-US-Wavenet-C', gender: 'FEMALE', quality: 'Wavenet', description: 'Wavenet female voice', accent: 'American', age: 'young', personality: 'friendly' },
+      { name: 'en-US-Wavenet-D', gender: 'MALE', quality: 'Wavenet', description: 'Wavenet male voice', accent: 'American', age: 'adult', personality: 'professional' },
+      { name: 'en-US-Wavenet-E', gender: 'FEMALE', quality: 'Wavenet', description: 'Wavenet female voice', accent: 'American', age: 'adult', personality: 'warm' },
+      { name: 'en-US-Wavenet-F', gender: 'FEMALE', quality: 'Wavenet', description: 'Wavenet female voice', accent: 'American', age: 'young', personality: 'friendly' },
+      { name: 'en-US-Wavenet-G', gender: 'FEMALE', quality: 'Wavenet', description: 'Wavenet female voice', accent: 'American', age: 'adult', personality: 'professional' },
+      { name: 'en-US-Wavenet-H', gender: 'FEMALE', quality: 'Wavenet', description: 'Wavenet female voice', accent: 'American', age: 'adult', personality: 'warm' },
+      { name: 'en-US-Wavenet-I', gender: 'MALE', quality: 'Wavenet', description: 'Wavenet male voice', accent: 'American', age: 'adult', personality: 'professional' },
+      { name: 'en-US-Wavenet-J', gender: 'MALE', quality: 'Wavenet', description: 'Wavenet male voice', accent: 'American', age: 'young', personality: 'friendly' }
+    ],
+    defaultVoice: 'en-US-Neural2-A',
+    fallbackVoice: 'en-US-Standard-A'
+  },
+  'en-GB': {
+    voices: [
+      { name: 'en-GB-Neural2-A', gender: 'FEMALE', quality: 'Neural2', description: 'High-quality female voice', accent: 'British', age: 'adult', personality: 'professional' },
+      { name: 'en-GB-Neural2-B', gender: 'MALE', quality: 'Neural2', description: 'High-quality male voice', accent: 'British', age: 'adult', personality: 'authoritative' },
+      { name: 'en-GB-Wavenet-A', gender: 'FEMALE', quality: 'Wavenet', description: 'Wavenet female voice', accent: 'British', age: 'adult', personality: 'warm' },
+      { name: 'en-GB-Wavenet-B', gender: 'MALE', quality: 'Wavenet', description: 'Wavenet male voice', accent: 'British', age: 'adult', personality: 'professional' },
+      { name: 'en-GB-Wavenet-C', gender: 'FEMALE', quality: 'Wavenet', description: 'Wavenet female voice', accent: 'British', age: 'young', personality: 'friendly' },
+      { name: 'en-GB-Wavenet-D', gender: 'MALE', quality: 'Wavenet', description: 'Wavenet male voice', accent: 'British', age: 'adult', personality: 'authoritative' },
+      { name: 'en-GB-Standard-A', gender: 'FEMALE', quality: 'Standard', description: 'Standard female voice', accent: 'British', age: 'adult', personality: 'professional' },
+      { name: 'en-GB-Standard-B', gender: 'MALE', quality: 'Standard', description: 'Standard male voice', accent: 'British', age: 'adult', personality: 'authoritative' }
+    ],
+    defaultVoice: 'en-GB-Neural2-A',
+    fallbackVoice: 'en-GB-Standard-A'
   },
   'bn-IN': {
     voices: [
@@ -193,6 +249,8 @@ export const VOICE_MAPPING: LanguageVoiceMap = {
 export const LANGUAGE_NAMES: { [key: string]: string } = {
   'hi-IN': 'हिन्दी',
   'en-IN': 'English (India)',
+  'en-US': 'English (US)',
+  'en-GB': 'English (UK)',
   'bn-IN': 'বাংলা',
   'gu-IN': 'ગુજરાતી',
   'ta-IN': 'தமிழ்',

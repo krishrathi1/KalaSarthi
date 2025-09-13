@@ -32,15 +32,19 @@ const ImageEnhanceOutputSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🖼️ Image enhancement request received');
     const formData = await request.formData();
     const imageFile = formData.get('image') as File;
 
     if (!imageFile) {
+      console.log('❌ No image file provided');
       return NextResponse.json(
         { error: 'No image file provided' },
         { status: 400 }
       );
     }
+
+    console.log('📁 Image file received:', imageFile.name, imageFile.size, 'bytes');
 
     // Validate file type
     if (!imageFile.type.startsWith('image/')) {

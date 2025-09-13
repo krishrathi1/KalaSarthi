@@ -112,17 +112,22 @@ export class GeminiSpeechService {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             audioData: audioBase64,
-            language
+            language: 'hi-IN', // Use Hindi as primary language for better detection
+            sampleRate: 48000, // Pass the correct sample rate for WEBM OPUS
+            enableMultilingual: true // Enable multilingual support
           })
         });
 
         if (response.ok) {
           const result = await response.json();
+          console.log('🌍 STT detected language:', result.detectedLanguage || result.language);
           return {
             text: result.text || '',
             confidence: result.confidence || 0.9,
-            language,
-            duration: audioBuffer.byteLength / 32000 // 16kHz * 2 bytes per sample
+            language: result.detectedLanguage || result.language || language,
+            detectedLanguage: result.detectedLanguage || result.language,
+            duration: audioBuffer.byteLength / 32000, // 16kHz * 2 bytes per sample
+            isMultilingual: result.isMultilingual || false
           };
         }
       } catch (error) {
@@ -146,15 +151,12 @@ export class GeminiSpeechService {
 
       // Check if Gemini is available
       if (!this.genAI || !this.model) {
-        // Ultimate fallback: Use Web Speech API if available
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-          return this.fallbackSpeechToTextWebAPI(language);
-        }
-
-        // Ultimate fallback: Return placeholder text
+        console.warn('Gemini STT not available, using basic fallback');
+        
+        // Basic fallback: Return a placeholder text instead of empty
         return {
-          text: 'Speech recognition not available. Please configure GOOGLE_AI_API_KEY for full functionality.',
-          confidence: 0.1,
+          text: 'Audio recorded successfully. Please use text input for now.',
+          confidence: 0.5,
           language,
           duration: audioBuffer.byteLength / 16000
         };
@@ -172,25 +174,55 @@ Please provide only the transcribed text without any additional commentary.
 Audio data: ${audioBase64}
       `;
 
-      // Use Gemini to process the audio
-      const result = await this.model.generateContent({
-        contents: [{
-          role: 'user',
-          parts: [
-            { text: prompt },
-            {
-              inlineData: {
-                mimeType: 'audio/wav',
-                data: audioBase64
-              }
+      // Use Gemini to process the audio with retry logic for overload errors
+      let result;
+      let retryCount = 0;
+      const maxRetries = 3;
+
+      while (retryCount < maxRetries) {
+        try {
+          result = await this.model.generateContent({
+            contents: [{
+              role: 'user',
+              parts: [
+                { text: prompt },
+                {
+                  inlineData: {
+                    mimeType: 'audio/wav',
+                    data: audioBase64
+                  }
+                }
+              ]
+            }],
+            generationConfig: {
+              temperature: 0.1,
+              maxOutputTokens: 1000,
             }
-          ]
-        }],
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 1000,
+          });
+          break; // Success, exit retry loop
+        } catch (error: any) {
+          console.error(`Gemini STT attempt ${retryCount + 1} failed:`, error);
+          
+          // Check if it's a quota/overload error
+          if (error.message?.includes('429') || error.message?.includes('503') || error.message?.includes('overloaded')) {
+            retryCount++;
+            if (retryCount < maxRetries) {
+              // Wait before retry (exponential backoff)
+              const waitTime = Math.pow(2, retryCount) * 1000; // 2s, 4s, 8s
+              console.log(`Retrying in ${waitTime}ms...`);
+              await new Promise(resolve => setTimeout(resolve, waitTime));
+              continue;
+            }
+          }
+          
+          // If not a retryable error or max retries reached, throw
+          throw error;
         }
-      });
+      }
+
+      if (!result) {
+        throw new Error('Failed to get result from Gemini after retries');
+      }
 
       const response = await result.response;
       const text = response.text().trim();
@@ -203,9 +235,34 @@ Audio data: ${audioBase64}
       };
 
     } catch (error) {
-      console.error('Gemini STT error:', error);
-      // Final fallback to Web Speech API
-      return this.fallbackSpeechToTextWebAPI(options.language || 'en-US');
+      console.error('Gemini STT error after retries:', error);
+      
+      // Check if it's a network-related error
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isNetworkError = errorMessage.includes('network') || 
+                            errorMessage.includes('fetch') || 
+                            errorMessage.includes('timeout') ||
+                            errorMessage.includes('ECONNREFUSED') ||
+                            errorMessage.includes('ENOTFOUND');
+      
+      if (isNetworkError) {
+        // Don't use Web Speech API for network errors as it will likely fail too
+        return {
+          text: 'Speech recognition temporarily unavailable due to network issues. Please check your internet connection and try again.',
+          confidence: 0.1,
+          language: options.language || 'en-US',
+          duration: 0
+        };
+      }
+      
+      // Skip Web Speech API to avoid network errors
+      // Return a helpful message instead
+      return {
+        text: 'Speech recognition failed. Please try again or use text input instead.',
+        confidence: 0.1,
+        language: options.language || 'en-US',
+        duration: 0
+      };
     }
   }
 
@@ -232,21 +289,72 @@ Audio data: ${audioBase64}
       recognition.continuous = false;
       recognition.interimResults = false;
 
+      let hasResult = false;
+      let timeoutId: NodeJS.Timeout;
+
+      // Set a timeout to prevent hanging
+      timeoutId = setTimeout(() => {
+        if (!hasResult) {
+          recognition.stop();
+          resolve({
+            text: 'Speech recognition timed out. Please try again.',
+            confidence: 0.1,
+            language,
+            duration: 0
+          });
+        }
+      }, 10000); // 10 second timeout
+
       recognition.onresult = (event: any) => {
+        hasResult = true;
+        clearTimeout(timeoutId);
         const result = event.results[0];
-        if (result) {
+        if (result && result[0]) {
           resolve({
             text: result[0].transcript,
             confidence: result[0].confidence || 0.8,
             language,
             duration: 0
           });
+        } else {
+          resolve({
+            text: 'No speech detected. Please try again.',
+            confidence: 0.1,
+            language,
+            duration: 0
+          });
         }
       };
 
-      recognition.onerror = () => {
+      recognition.onerror = (event: any) => {
+        hasResult = true;
+        clearTimeout(timeoutId);
+        console.error('Speech recognition error:', event.error);
+        
+        // Handle specific error types
+        let errorMessage = 'Speech recognition failed. Please try again.';
+        switch (event.error) {
+          case 'network':
+            errorMessage = 'Network error. Please check your internet connection and try again.';
+            break;
+          case 'not-allowed':
+            errorMessage = 'Microphone access denied. Please allow microphone access and try again.';
+            break;
+          case 'no-speech':
+            errorMessage = 'No speech detected. Please speak clearly and try again.';
+            break;
+          case 'audio-capture':
+            errorMessage = 'Microphone not found. Please check your microphone and try again.';
+            break;
+          case 'service-not-allowed':
+            errorMessage = 'Speech recognition service not allowed. Please try again later.';
+            break;
+          default:
+            errorMessage = `Speech recognition failed: ${event.error}. Please try again.`;
+        }
+        
         resolve({
-          text: 'Speech recognition failed. Please try again.',
+          text: errorMessage,
           confidence: 0.1,
           language,
           duration: 0
@@ -254,27 +362,33 @@ Audio data: ${audioBase64}
       };
 
       recognition.onend = () => {
-        // If no result was captured, provide fallback
-        setTimeout(() => {
-          resolve({
-            text: 'No speech detected. Please try again.',
-            confidence: 0.1,
-            language,
-            duration: 0
-          });
-        }, 1000);
+        clearTimeout(timeoutId);
+        // If no result was captured after recognition ends, provide fallback
+        if (!hasResult) {
+          setTimeout(() => {
+            resolve({
+              text: 'No speech detected. Please try again.',
+              confidence: 0.1,
+              language,
+              duration: 0
+            });
+          }, 100);
+        }
       };
 
-      // Start recognition (this would need actual audio input in practice)
-      // For now, we'll just simulate a result
-      setTimeout(() => {
+      // Start recognition
+      try {
+        recognition.start();
+      } catch (error) {
+        clearTimeout(timeoutId);
+        console.error('Failed to start speech recognition:', error);
         resolve({
-          text: 'Voice command processed (fallback mode)',
-          confidence: 0.5,
+          text: 'Speech recognition failed to start. Please try again.',
+          confidence: 0.1,
           language,
-          duration: 1.0
+          duration: 0
         });
-      }, 500);
+      }
     });
   }
 
@@ -541,74 +655,6 @@ Audio data: ${audioBase64}
     });
   }
 
-  /**
-   * Fallback speech-to-text using Web Speech API
-   */
-  private async fallbackSpeechToText(language: string): Promise<SpeechResult> {
-    return new Promise((resolve) => {
-      // Web Speech API fallback
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-      if (!SpeechRecognition) {
-        resolve({
-          text: 'Speech recognition not supported in this browser.',
-          confidence: 0.1,
-          language,
-          duration: 0
-        });
-        return;
-      }
-
-      const recognition = new SpeechRecognition();
-      recognition.lang = language;
-      recognition.continuous = false;
-      recognition.interimResults = false;
-
-      recognition.onresult = (event: any) => {
-        const result = event.results[0];
-        if (result) {
-          resolve({
-            text: result[0].transcript,
-            confidence: result[0].confidence || 0.8,
-            language,
-            duration: 0
-          });
-        }
-      };
-
-      recognition.onerror = () => {
-        resolve({
-          text: 'Speech recognition failed. Please try again.',
-          confidence: 0.1,
-          language,
-          duration: 0
-        });
-      };
-
-      recognition.onend = () => {
-        // If no result was captured, provide fallback
-        setTimeout(() => {
-          resolve({
-            text: 'No speech detected. Please try again.',
-            confidence: 0.1,
-            language,
-            duration: 0
-          });
-        }, 1000);
-      };
-
-      // Start recognition (this would need actual audio input in practice)
-      // For now, we'll just simulate a result
-      setTimeout(() => {
-        resolve({
-          text: 'Voice command processed (fallback mode)',
-          confidence: 0.5,
-          language,
-          duration: 1.0
-        });
-      }, 500);
-    });
-  }
 
   /**
    * Convert ArrayBuffer to base64

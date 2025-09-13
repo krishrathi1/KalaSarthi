@@ -50,6 +50,19 @@ export const uploadToCloudinary = async (
         // Handle upload presets - only add if we have a valid preset
         if (config.uploadPreset && config.uploadPreset.trim() !== '') {
             formData.append('upload_preset', config.uploadPreset);
+        } else {
+            // For development without proper Cloudinary setup, return a mock URL
+            console.warn('⚠️ No Cloudinary upload preset configured. Using mock URL for development.');
+            return {
+                public_id: 'mock-image-' + Date.now(),
+                secure_url: 'https://via.placeholder.com/400x300?text=Mock+Image',
+                url: 'https://via.placeholder.com/400x300?text=Mock+Image',
+                width: 400,
+                height: 300,
+                format: 'jpg',
+                resource_type: 'image',
+                bytes: 0
+            };
         }
 
         formData.append('file', file);

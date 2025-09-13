@@ -166,7 +166,7 @@ export function IntelligentVoiceButton({
         return;
       }
 
-      // Check if we're on the artisan buddy page FIRST
+      // Check if we're on special pages that need different handling
       const currentPath = window.location.pathname;
       console.log('Processing audio on path:', currentPath);
       
@@ -213,8 +213,21 @@ export function IntelligentVoiceButton({
         return;
       }
 
+      if (currentPath === '/smart-product-creator') {
+        console.log('On Smart Product Creator page - using dedicated story mic instead');
+        
+        // On smart product creator page, show message to use dedicated story mic
+        setIsProcessing(false);
+        toast({
+          title: "Use Story Microphone",
+          description: "Please use the dedicated story recording microphone on this page for recording your product story.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       // For other pages, process with intelligent voice assistant
-      console.log('Not on Artisan Buddy page - processing with voice assistant');
+      console.log('Not on special pages - processing with voice assistant for navigation');
       
       // Combine audio chunks
       const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
