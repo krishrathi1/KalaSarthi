@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 43 56% 92%; /* #F2E8D5 */
+    --foreground: 222.2 84% 4.9%;
+    --card: 43 56% 92%; /* Adjusted to match background */
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 43 56% 92%; /* Adjusted to match background */
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 15 69% 62%; /* #E07A5F */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 43 56% 92%; /* Same as background for a clean look */
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 43 33% 85%; /* Muted version of accent */
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 43 33% 85%; /* #D8C3A3 */
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 15 50% 85%; /* Softer border color derived from primary */
+    --input: 15 50% 85%; /* Softer input color */
+    --ring: 15 69% 62%;
+    --radius: 0.5rem;
+    --chart-1: 15 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --sidebar-background: 15 25% 35%; /* Darker, desaturated terracotta */
+    --sidebar-foreground: 43 56% 92%;
+    --sidebar-primary: 43 56% 92%;
+    --sidebar-primary-foreground: 15 25% 35%;
+    --sidebar-accent: 15 45% 55%;
+    --sidebar-accent-foreground: 43 56% 92%;
+    --sidebar-border: 15 35% 45%;
+    --sidebar-ring: 43 56% 92%;
+  }
+
+  .dark {
+    --background: 15 15% 15%;
+    --foreground: 43 56% 92%;
+    --card: 15 15% 18%;
+    --card-foreground: 43 56% 92%;
+    --popover: 15 15% 18%;
+    --popover-foreground: 43 56% 92%;
+    --primary: 15 69% 62%;
+    --primary-foreground: 15 15% 15%;
+    --secondary: 15 20% 25%;
+    --secondary-foreground: 43 56% 92%;
+    --muted: 15 20% 25%;
+    --muted-foreground: 43 33% 75%;
+    --accent: 43 33% 85%;
+    --accent-foreground: 15 15% 15%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 43 56% 92%;
+    --border: 15 20% 30%;
+    --input: 15 20% 30%;
+    --ring: 15 69% 62%;
+    --chart-1: 15 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --sidebar-background: 15 15% 15%;
+    --sidebar-foreground: 43 56% 92%;
+    --sidebar-primary: 43 56% 92%;
+    --sidebar-primary-foreground: 15 15% 15%;
+    --sidebar-accent: 15 69% 62%;
+    --sidebar-accent-foreground: 15 15% 15%;
+    --sidebar-border: 15 20% 30%;
+    --sidebar-ring: 15 69% 62%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  }
+
+  /* Rupee symbol font support */
+  .rupee-symbol {
+    font-family: 'Noto Sans', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-weight: 500;
+  }
+
+  /* Ensure rupee symbol displays properly */
+  .price-text {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+}

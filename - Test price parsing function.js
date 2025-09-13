@@ -1,0 +1,7 @@
+- Test price parsing function
+- Test rating parsing function  
+- Test review count parsing function
+- Mock browser for main scraping function to avoid actual web requests
+- Test error handling
+- Test URL construction
+- Test product data structure
