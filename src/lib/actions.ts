@@ -1,4 +1,3 @@
-// This file contains no code and is not used.
 "use server";
 
 import {

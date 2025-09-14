@@ -45,8 +45,9 @@ export default function CartPage() {
     const [orderPlaced, setOrderPlaced] = useState(false);
     const [placedOrder, setPlacedOrder] = useState<any>(null);
 
+
     // Shipping address state
-    const [shippingAddress, setShippingAddress] = useState({
+    const [shippingAddress, setShippingAddress] = useState<Record<string, string>>({
         fullName: '',
         street: '',
         city: '',
@@ -138,17 +139,17 @@ export default function CartPage() {
         }
 
         const orderData = {
-            shippingAddress,
+            shippingAddress: shippingAddress as any,
             notes: orderNotes,
             useCart: true, // Use items from cart
             taxRate: 0.18, // 18% GST
-            shippingCost: (cart?.totalAmount ?? 0) >= 500 ? 0 : 50, // Free shipping above ₹500
+            shippingCost: (cart?.totalAmount || 0) >= 500 ? 0 : 50, // Free shipping above ₹500
             discount: 0
         };
 
         const result = await createOrder(orderData);
 
-        if (result && typeof result === 'object' && 'success' in result && result.success) {
+        if (result && result.success) {
             setPlacedOrder(result.order);
             setOrderPlaced(true);
             // Clear cart after successful order

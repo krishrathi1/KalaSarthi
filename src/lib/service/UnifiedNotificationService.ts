@@ -1,5 +1,4 @@
 import connectDB from '../mongodb';
-import { sendNotifications, SendNotificationsInput } from '@/ai/flows/notification-agent';
 
 interface NotificationTemplate {
   type: 'finance_alert' | 'loan_status' | 'payment_reminder' | 'document_request';

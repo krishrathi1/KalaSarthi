@@ -19,12 +19,13 @@ import { Button } from "./ui/button";
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/context/language-context";
 import { features, t, translateAsync } from "@/lib/i18n";
+import { useAuth } from "@/context/auth-context";
 
 export function Dashboard() {
   const { language, isTranslating } = useLanguage();
   const [translatedGreeting, setTranslatedGreeting] = useState('Namaste');
   const [translatedWelcome, setTranslatedWelcome] = useState('Welcome to KalaSarthi...');
-
+  const { userProfile } = useAuth();
   useEffect(() => {
     const loadTranslations = async () => {
       try {
@@ -48,7 +49,7 @@ export function Dashboard() {
 
       <div>
         <h1 className="text-4xl font-headline font-bold">
-          {translatedGreeting}, Ramu!
+          {translatedGreeting}, {userProfile?.name}!
           {isTranslating && (
             <span className="ml-2 inline-flex items-center">
               <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>

@@ -16,6 +16,7 @@ interface StoryRecordingMicProps {
   disabled?: boolean;
   showVoiceOptions?: boolean;
   enhancedStory?: string; // Enhanced story from AI
+  setEnhancedStory?: (story: string) => void; // Setter for enhanced story
   onFinalizedStory?: (finalStory: string, audioBlob: Blob, summary?: string) => void; // Callback when story is finalized
   finalizedStoryFromParent?: string; // Finalized story from parent component
 }
@@ -28,6 +29,7 @@ export function StoryRecordingMic({
   disabled = false,
   showVoiceOptions = true,
   enhancedStory,
+  setEnhancedStory,
   onFinalizedStory,
   finalizedStoryFromParent
 }: StoryRecordingMicProps) {
@@ -354,10 +356,10 @@ export function StoryRecordingMic({
           
           if (transcription?.text && !transcription.text.includes('Speech recognition failed')) {
             console.log('✅ Speech recognition successful:', transcription.text);
-            console.log('🌍 Detected language:', transcription.detectedLanguage || transcription.language);
+            console.log('🌍 Detected language:', transcription.language);
             
             // Use detected language from STT or fallback to our detection
-            const detectedLang = transcription.detectedLanguage || detectLanguage(transcription.text);
+            const detectedLang = detectLanguage(transcription.text);
             setDetectedLanguage(detectedLang);
             
             // Store raw transcript without voice styling
@@ -469,7 +471,9 @@ export function StoryRecordingMic({
         // For now, we'll create a simple enhancement
         // In a real implementation, this would call an AI service
         const enhancedText = await enhanceStoryWithAI(lastTranscript);
-        setEnhancedStory(enhancedText);
+        if (setEnhancedStory) {
+          setEnhancedStory(enhancedText);
+        }
         
         toast({
           title: "Story Enhanced!",
@@ -521,7 +525,7 @@ export function StoryRecordingMic({
   const finalizeStoryChoice = async (choice: 'original' | 'enhanced') => {
     setStoryChoice(choice);
     const storyToFinalize = choice === 'original' ? lastTranscript : enhancedStory;
-    setFinalizedStory(storyToFinalize);
+    setFinalizedStory(storyToFinalize ?? '');
     
     // Fetch voices for the detected language
     const voices = await fetchGoogleVoices(detectedLanguage);
@@ -851,7 +855,9 @@ export function StoryRecordingMic({
         setLastTranscript(editedStory);
       } else if (showEditStory && editedStory === enhancedStory) {
         // Editing enhanced story
-        setEnhancedStory(editedStory);
+        if (setEnhancedStory) {
+          setEnhancedStory(editedStory);
+        }
       } else {
         // Default to original story
         setLastTranscript(editedStory);

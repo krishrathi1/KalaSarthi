@@ -125,9 +125,7 @@ export class GeminiSpeechService {
             text: result.text || '',
             confidence: result.confidence || 0.9,
             language: result.detectedLanguage || result.language || language,
-            detectedLanguage: result.detectedLanguage || result.language,
-            duration: audioBuffer.byteLength / 32000, // 16kHz * 2 bytes per sample
-            isMultilingual: result.isMultilingual || false
+            duration: audioBuffer.byteLength / 32000 // 16kHz * 2 bytes per sample
           };
         }
       } catch (error) {

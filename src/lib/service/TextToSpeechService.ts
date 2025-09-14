@@ -58,7 +58,7 @@ export class TextToSpeechService {
       let selectedVoice = voice;
       if (!selectedVoice) {
         // First try to get optimal voice from our mapping
-        selectedVoice = this.getOptimalVoice(language, gender);
+        selectedVoice = this.getOptimalVoice(language, gender) ?? undefined;
         
         // If no optimal voice found, fallback to API lookup
         if (!selectedVoice && voices.voices) {
@@ -110,11 +110,22 @@ export class TextToSpeechService {
         throw new Error('No audio content received from TTS service');
       }
 
-      // Convert Uint8Array to ArrayBuffer
-      const audioBuffer = response.audioContent.buffer.slice(
-        response.audioContent.byteOffset,
-        response.audioContent.byteOffset + response.audioContent.byteLength
-      );
+      // Convert audioContent to ArrayBuffer
+      let audioBuffer: ArrayBuffer;
+      if (typeof response.audioContent === 'string') {
+        // If audioContent is a base64 string, decode it
+        const buffer = Buffer.from(response.audioContent, 'base64');
+        const slicedBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+        audioBuffer = slicedBuffer instanceof ArrayBuffer ? slicedBuffer : new ArrayBuffer(buffer.byteLength);
+      } else {
+        // If audioContent is Uint8Array or Buffer
+        const buffer = response.audioContent as Uint8Array;
+        const sliced = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+        // Ensure audioBuffer is ArrayBuffer type
+        audioBuffer = sliced instanceof ArrayBuffer
+          ? sliced
+          : new ArrayBuffer(buffer.byteLength);
+      }
 
       return audioBuffer;
 
@@ -179,10 +190,16 @@ export class TextToSpeechService {
       }
 
       // Convert Uint8Array to ArrayBuffer
-      const audioBuffer = response.audioContent.buffer.slice(
-        response.audioContent.byteOffset,
-        response.audioContent.byteOffset + response.audioContent.byteLength
-      );
+      let audioBuffer: ArrayBuffer;
+      if (typeof response.audioContent === 'string') {
+        // If audioContent is a base64 string, decode it
+        const buffer = Buffer.from(response.audioContent, 'base64');
+        audioBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
+      } else {
+        // If audioContent is Uint8Array or Buffer
+        const buffer = response.audioContent as Uint8Array;
+        audioBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
+      }
 
       return audioBuffer;
 
@@ -327,7 +344,7 @@ export class TextToSpeechService {
       break?: number;
       speed?: number;
     } = {}
-  ): string {
+  ): Promise<string> {
     const { pause = 0, emphasis = [], break: breakTime = 0, speed = 1.0 } = options;
 
     let ssml = `<speak>`;

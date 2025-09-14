@@ -2,6 +2,7 @@ import { google } from 'googleapis';
 import { JWT } from 'google-auth-library';
 
 export interface SalesOrder {
+  timestamp: string;
   orderId: string;
   artisanId: string;
   artisanName: string;
@@ -59,7 +60,7 @@ export class GoogleSheetsService {
   private static instance: GoogleSheetsService;
   private sheets: any;
   private spreadsheetId: string;
-  private jwtClient: JWT;
+  private jwtClient!: JWT;
 
   private constructor() {
     this.spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID || '';
@@ -194,7 +195,7 @@ export class GoogleSheetsService {
 
       // Convert rows to objects
       const headers = rows[0];
-      let orders: SalesOrder[] = rows.slice(1).map(row => {
+      let orders: SalesOrder[] = rows.slice(1).map((row: string[]) => {
         const order: any = {};
         headers.forEach((header: string, index: number) => {
           const value = row[index] || '';
@@ -368,7 +369,7 @@ export class GoogleSheetsService {
       const rows = response.data.values || [];
       const stats: any = {};
 
-      rows.forEach(row => {
+      rows.forEach((row: string[]) => {
         if (row[0] && row[1]) {
           stats[row[0]] = row[1];
         }

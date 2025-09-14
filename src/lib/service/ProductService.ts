@@ -26,6 +26,23 @@ export class ProductService {
         try {
             await connectDB();
 
+            // Ensure specifications.dimensions is always an object
+            if (productData?.specifications?.dimensions && typeof productData.specifications.dimensions === "string") {
+                // Attempt to parse the string into known dimension properties, otherwise skip
+                const dimStr = productData.specifications.dimensions as string;
+                const dims: { length?: number; width?: number; height?: number; weight?: number } = {};
+                const regex = /(\w+):\s*([\d.]+)/g;
+                let match;
+                while ((match = regex.exec(dimStr)) !== null) {
+                    const key = match[1].toLowerCase();
+                    const value = parseFloat(match[2]);
+                    if (['length', 'width', 'height', 'weight'].includes(key)) {
+                        dims[key as keyof typeof dims] = value;
+                    }
+                }
+                productData.specifications.dimensions = dims;
+            }
+
             const product = new Product({
                 ...productData,
                 productId: productData.productId || uuidv4(),

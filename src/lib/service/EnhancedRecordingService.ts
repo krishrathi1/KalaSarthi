@@ -68,9 +68,7 @@ export class EnhancedRecordingService {
    * Check if recording is supported
    */
   public isSupported(): boolean {
-    return !!(navigator.mediaDevices && 
-              navigator.mediaDevices.getUserMedia && 
-              typeof MediaRecorder !== 'undefined');
+    return !!(navigator.mediaDevices && typeof MediaRecorder !== 'undefined');
   }
 
   /**
@@ -174,7 +172,7 @@ export class EnhancedRecordingService {
 
           // Create audio blob
           const audioBlob = new Blob(this.audioChunks, { 
-            type: this.mediaRecorder.mimeType || 'audio/webm' 
+            type: this.mediaRecorder?.mimeType || 'audio/webm' 
           });
 
           // Process transcription using the same API as universal mic

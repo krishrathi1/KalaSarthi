@@ -103,7 +103,8 @@ export class EnhancedTextToSpeechService {
           // Import translation service dynamically to avoid circular dependencies
           const { TranslationService } = await import('./TranslationService');
           const translationService = TranslationService.getInstance();
-          translatedText = await translationService.translateText(text, language, sourceLanguage);
+          const translationResult = await translationService.translateText(text, language, sourceLanguage);
+          translatedText = translationResult.translatedText;
           processedText = translatedText;
         } catch (error) {
           console.warn('Translation failed, using original text:', error);
@@ -146,10 +147,27 @@ export class EnhancedTextToSpeechService {
       }
 
       // Convert to ArrayBuffer
-      const audioBuffer = response.audioContent.buffer.slice(
-        response.audioContent.byteOffset,
-        response.audioContent.byteOffset + response.audioContent.byteLength
-      );
+      let audioBuffer: ArrayBuffer;
+      if (typeof response.audioContent === 'string') {
+        // If it's a base64 string, decode it
+        audioBuffer = Buffer.from(response.audioContent, 'base64').buffer;
+      } else if (response.audioContent instanceof Uint8Array) {
+        const slicedBuffer = response.audioContent.buffer.slice(
+          response.audioContent.byteOffset,
+          response.audioContent.byteOffset + response.audioContent.byteLength
+        );
+        audioBuffer = slicedBuffer instanceof ArrayBuffer ? slicedBuffer : new ArrayBuffer(slicedBuffer.byteLength);
+        if (!(slicedBuffer instanceof ArrayBuffer)) {
+          // Copy data if it's a SharedArrayBuffer
+          const view = new Uint8Array(audioBuffer);
+          view.set(new Uint8Array(slicedBuffer));
+        }
+      } else if (typeof Buffer !== 'undefined' && Buffer.isBuffer(response.audioContent)) {
+        const buf: Buffer = response.audioContent as Buffer;
+        audioBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
+      } else {
+        throw new Error('Unknown audioContent type');
+      }
 
       // Cache the result
       this.setCachedAudio(cacheKey, audioBuffer);
@@ -166,7 +184,7 @@ export class EnhancedTextToSpeechService {
         processingTime
       };
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Enhanced TTS error:', error);
       throw new Error(`Enhanced TTS failed: ${error.message}`);
     }
@@ -450,10 +468,25 @@ export class EnhancedTextToSpeechService {
         throw new Error('No audio content received from TTS service');
       }
 
-      const audioBuffer = response.audioContent.buffer.slice(
-        response.audioContent.byteOffset,
-        response.audioContent.byteOffset + response.audioContent.byteLength
-      );
+      let audioBuffer: ArrayBuffer;
+      if (typeof response.audioContent === 'string') {
+        audioBuffer = Buffer.from(response.audioContent, 'base64').buffer;
+      } else if (response.audioContent instanceof Uint8Array) {
+        const slicedBuffer = response.audioContent.buffer.slice(
+          response.audioContent.byteOffset,
+          response.audioContent.byteOffset + response.audioContent.byteLength
+        );
+        audioBuffer = slicedBuffer instanceof ArrayBuffer ? slicedBuffer : new ArrayBuffer(slicedBuffer.byteLength);
+        if (!(slicedBuffer instanceof ArrayBuffer)) {
+          const view = new Uint8Array(audioBuffer);
+          view.set(new Uint8Array(slicedBuffer));
+        }
+      } else if (typeof Buffer !== 'undefined' && Buffer.isBuffer(response.audioContent)) {
+        const buf: Buffer = response.audioContent as Buffer;
+        audioBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
+      } else {
+        throw new Error('Unknown audioContent type');
+      }
 
       return {
         audioBuffer,
@@ -463,7 +496,7 @@ export class EnhancedTextToSpeechService {
         processingTime: Date.now() - startTime
       };
 
-    } catch (error) {
+    } catch (error : any) {
       console.error('Enhanced SSML synthesis error:', error);
       throw new Error(`Enhanced SSML synthesis failed: ${error.message}`);
     }

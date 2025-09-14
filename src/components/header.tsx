@@ -220,7 +220,7 @@ export function Header() {
         <SidebarTrigger className="md:hidden" />
         <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
           <GlobalTranslationToggle />
-          <Button variant="outline" onClick={() => router.push('/login')}>
+          <Button variant="outline" onClick={() => router.push('/auth')}>
             Sign In
           </Button>
         </div>
