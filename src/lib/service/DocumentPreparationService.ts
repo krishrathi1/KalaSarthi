@@ -1,5 +1,5 @@
-import { prepareDocuments, PrepareDocumentsInput, PrepareDocumentsOutput } from '@/ai/flows/document-prep-agent';
-import { extractRequirementsFromDocument, ExtractRequirementsFromDocumentInput, ExtractRequirementsFromDocumentOutput } from '@/ai/flows/ocr-agent';
+import { prepareDocuments, DocumentPrepConfig, DocumentPrepResult } from '@/ai/flows/document-prep-agent';
+import { extractRequirementsFromDocument, OCRConfig, OCRResult } from '@/ai/flows/ocr-agent';
 import connectDB from '../mongodb';
 import LoanApplication from '../models/LoanApplication';
 
@@ -46,15 +46,14 @@ export class DocumentPreparationService {
         };
       }
 
-      let extractedRequirements: ExtractRequirementsFromDocumentOutput | null = null;
+  let extractedRequirements: OCRResult | null = null;
 
       // Extract requirements from source documents using OCR agent
       if (request.sourceDocuments && request.sourceDocuments.length > 0) {
         for (const doc of request.sourceDocuments) {
           try {
-            // Pass only the document URL as required by the function signature
-            extractedRequirements = await extractRequirementsFromDocument(doc.url);
-            break; // Use first successful extraction
+            extractedRequirements = await extractRequirementsFromDocument({ document: doc });
+            break;
           } catch (error) {
             console.error(`Failed to extract from ${doc.url}:`, error);
             continue;
@@ -85,38 +84,24 @@ export class DocumentPreparationService {
 
       const documentsNeeded = this.getDocumentsNeeded(request.documentType, application);
 
-      const prepInput: PrepareDocumentsInput = {
+      const prepInput: DocumentPrepConfig = {
         artisanProfile,
-        schemeId: request.requirements?.schemeId || 'loan_application',
-        documentsNeeded,
-        ocrRequirements: extractedRequirements ? {
-          requirements: extractedRequirements.requirements
-            ? extractedRequirements.requirements.map((req: any) =>
-                typeof req === 'string' ? req : req.name ?? JSON.stringify(req)
-              )
-            : [],
-          eligibilityCriteria: extractedRequirements.eligibilityCriteria ?? [],
-          documentsNeeded: extractedRequirements.documentsNeeded ?? [],
-          applicationSteps: extractedRequirements.applicationSteps ?? []
-        } : {
-          requirements: request.requirements?.customRequirements || [],
-          eligibilityCriteria: [],
-          documentsNeeded: [],
-          applicationSteps: []
-        }
+        requirements: extractedRequirements
+          ? extractedRequirements.extractedRequirements
+          : (request.requirements?.customRequirements || documentsNeeded)
       };
 
-      const prepResult: PrepareDocumentsOutput = await prepareDocuments(prepInput);
+  const prepResult: DocumentPrepResult = await prepareDocuments(prepInput);
 
-      if (prepResult.documents.length > 0) {
-        const preparedDoc = prepResult.documents[0];
+      if (prepResult.preparedDocuments.length > 0) {
+        const preparedDoc = prepResult.preparedDocuments[0];
 
         return {
           success: true,
           preparedDocument: {
-            type: preparedDoc.documentType,
-            content: preparedDoc.content,
-            format: preparedDoc.format,
+            type: preparedDoc.requirementId || 'unknown',
+            content: preparedDoc.filePath || '',
+            format: 'pdf',
             generatedAt: new Date()
           },
           extractedData: extractedRequirements,
@@ -143,12 +128,8 @@ export class DocumentPreparationService {
    */
   static async extractDocumentData(documentUrl: string, documentType: string): Promise<any> {
     try {
-      // Pass only the documentUrl string as required by the function signature
-      const extractedData = await extractRequirementsFromDocument(documentUrl);
-
-      // Process extracted data based on document type
+      const extractedData = await extractRequirementsFromDocument({ document: { url: documentUrl, type: documentType } });
       return this.processExtractedData(extractedData, documentType);
-
     } catch (error: any) {
       console.error('Document data extraction error:', error);
       return {
@@ -250,38 +231,16 @@ export class DocumentPreparationService {
   /**
    * Process extracted OCR data based on document type
    */
-  private static processExtractedData(extractedData: ExtractRequirementsFromDocumentOutput, documentType: string): any {
+  private static processExtractedData(extractedData: OCRResult, documentType: string): any {
     const processed = {
       documentType,
-      extractedText: extractedData.extractedText,
+      extractedRequirements: extractedData.extractedRequirements,
       structuredData: {} as any,
       confidence: 0.8 // Placeholder confidence score
     };
 
-    // Extract structured data based on document type
-    switch (documentType) {
-      case 'aadhaar':
-        processed.structuredData = this.extractAadhaarData(extractedData.extractedText!);
-        break;
-
-      case 'pan':
-        processed.structuredData = this.extractPANData(extractedData.extractedText!);
-        break;
-
-      case 'bank_statement':
-        processed.structuredData = this.extractBankData(extractedData.extractedText!);
-        break;
-
-      default:
-        processed.structuredData = {
-          rawText: extractedData.extractedText,
-          requirements: extractedData.requirements,
-          eligibilityCriteria: extractedData.eligibilityCriteria,
-          documentsNeeded: extractedData.documentsNeeded,
-          applicationSteps: extractedData.applicationSteps
-        };
-    }
-
+    // Example: Extract structured data based on document type (mock)
+    // You can add more logic here if OCRResult structure changes
     return processed;
   }
 

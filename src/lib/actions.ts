@@ -2,19 +2,19 @@
 
 import {
   interactWithArtisanDigitalTwin as interactWithArtisanDigitalTwinFlow,
-  type DigitalTwinChatInput,
+  type InteractWithArtisanDigitalTwinInput,
 } from "@/ai/flows/ai-digital-twin-chatbot";
 import {
   getCulturalTrendSuggestions as getCulturalTrendSuggestionsFlow,
-  type CulturalTrendInput,
+  type CulturalTrendSuggestionsInput,
 } from "@/ai/flows/cultural-trend-suggestions";
 import {
   matchBuyersWithArtisans as matchBuyersWithArtisansFlow,
-  type MatchmakingInput,
+  type MatchBuyersWithArtisansInput,
 } from "@/ai/flows/buyer-artisan-matchmaking";
 import {
   generateProductStory as generateProductStoryFlow,
-  type ProductStoryInput,
+  type GenerateProductStoryInput,
 } from "@/ai/flows/generate-product-story";
 
 
@@ -47,7 +47,7 @@ export async function analyzeTrends(artisanProfession: string, limit: number = 2
 }
 
 export async function interactWithArtisanDigitalTwin(
-  input: DigitalTwinChatInput
+  input: InteractWithArtisanDigitalTwinInput
 ) {
   try {
     const result = await interactWithArtisanDigitalTwinFlow(input);
@@ -59,7 +59,7 @@ export async function interactWithArtisanDigitalTwin(
 }
 
 export async function getCulturalTrendSuggestions(
-  input: CulturalTrendInput
+  input: CulturalTrendSuggestionsInput
 ) {
   try {
     const result = await getCulturalTrendSuggestionsFlow(input);
@@ -71,7 +71,7 @@ export async function getCulturalTrendSuggestions(
 }
 
 export async function matchBuyersWithArtisans(
-  input: MatchmakingInput
+  input: MatchBuyersWithArtisansInput
 ) {
   try {
     const result = await matchBuyersWithArtisansFlow(input);
@@ -83,7 +83,7 @@ export async function matchBuyersWithArtisans(
 }
 
 export async function generateProductStory(
-  input: ProductStoryInput
+  input: GenerateProductStoryInput
 ) {
   try {
     const result = await generateProductStoryFlow(input);

@@ -32,9 +32,9 @@ const AuthPage: React.FC = () => {
       if (userProfile.role === 'buyer') {
         router.push('/marketplace');
       } else if (userProfile.role === 'artisan') {
-        router.push('/dashboard');
+        router.push('/');
       } else {
-        router.push('/dashboard');
+        router.push('/');
       }
     }
   }, [user, userProfile, loading, router]);
@@ -55,9 +55,9 @@ const AuthPage: React.FC = () => {
           if (result.data.role === 'buyer') {
             router.push('/marketplace');
           } else if (result.data.role === 'artisan') {
-            router.push('/dashboard');
+            router.push('/');
           } else {
-            router.push('/dashboard');
+            router.push('/');
           }
         } else {
           // New user, show registration form
@@ -82,9 +82,9 @@ const AuthPage: React.FC = () => {
     if (userData.role === 'buyer') {
       router.push('/marketplace');
     } else if (userData.role === 'artisan') {
-      router.push('/dashboard');
+      router.push('/');
     } else {
-      router.push('/dashboard');
+      router.push('/');
     }
   };
 

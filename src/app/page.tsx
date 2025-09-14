@@ -22,7 +22,7 @@ export default function Home() {
       } else if (userProfile.role === 'artisan') {
         router.push('/');
       } else {
-        router.push('/dashboard');
+        router.push('/');
       }
     }
   }, [userProfile, loading, router]);
