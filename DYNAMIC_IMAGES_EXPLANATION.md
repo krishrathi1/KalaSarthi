@@ -181,4 +181,3 @@ The image system is now:
 - ✅ **Maintainable**: Clean, organized code structure
 
 No more hardcoded images! The system now generates relevant, unique images for every product based on the search query and product details.
-                       

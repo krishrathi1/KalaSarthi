@@ -122,48 +122,15 @@ Return only the enhanced story in ${detectedLanguage}, nothing else.`;
         try {
           // If we have an image, use multimodal approach
           if (imageUrl) {
-            // Check if imageUrl is a data URL (base64) or regular URL
-            if (imageUrl.startsWith('data:image/')) {
-              // Handle base64 data URL
-              const base64Data = imageUrl.split(',')[1];
-              if (!base64Data) {
-                throw new Error('Invalid base64 image data');
-              }
-              result = await model.generateContent([
-                prompt,
-                {
-                  inlineData: {
-                    mimeType: 'image/jpeg',
-                    data: base64Data
-                  }
+            result = await model.generateContent([
+              prompt,
+              {
+                inlineData: {
+                  mimeType: 'image/jpeg',
+                  data: imageUrl.split(',')[1] // Remove data:image/jpeg;base64, prefix
                 }
-              ]);
-            } else {
-              // Handle regular URL - fetch and convert to base64
-              try {
-                const response = await fetch(imageUrl);
-                if (!response.ok) {
-                  throw new Error(`Failed to fetch image: ${response.status}`);
-                }
-                const arrayBuffer = await response.arrayBuffer();
-                const base64Data = Buffer.from(arrayBuffer).toString('base64');
-                const mimeType = response.headers.get('content-type') || 'image/jpeg';
-
-                result = await model.generateContent([
-                  prompt,
-                  {
-                    inlineData: {
-                      mimeType: mimeType,
-                      data: base64Data
-                    }
-                  }
-                ]);
-              } catch (fetchError) {
-                console.error('Failed to fetch image for story enhancement:', fetchError);
-                // Fallback to text-only if image fetch fails
-                result = await model.generateContent(prompt);
               }
-            }
+            ]);
           } else {
             // Text-only approach
             result = await model.generateContent(prompt);

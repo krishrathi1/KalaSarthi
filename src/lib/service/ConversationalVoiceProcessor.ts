@@ -247,7 +247,7 @@ export class ConversationalVoiceProcessor {
       case 'create product':
       case 'new product':
         return {
-          response: "Let's create a new product. Opening the Product Creator.",
+          response: "Let's create a new product. Opening the Smart Product Creator.",
           action: 'navigate',
           target: '/smart-product-creator'
         };
@@ -283,11 +283,11 @@ Provide a helpful, concise response. If they need to navigate somewhere or perfo
       const lowerText = originalText.toLowerCase();
 
       if (lowerText.includes('how') && lowerText.includes('create')) {
-        return "To create a product, say 'create product' and I'll take you to the Product Creator where I can guide you through each step.";
+        return "To create a product, say 'create product' and I'll take you to the Smart Product Creator where I can guide you through each step.";
       }
 
       if (lowerText.includes('what') && lowerText.includes('features')) {
-        return "KalaBandhu has features like Product Creator, TrendSpotter, marketplace, finance tracking, and buyer matching. What would you like to explore?";
+        return "KalaBandhu has features like Smart Product Creator, TrendSpotter, marketplace, finance tracking, and buyer matching. What would you like to explore?";
       }
 
       if (lowerText.includes('help')) {

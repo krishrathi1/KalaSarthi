@@ -92,7 +92,7 @@ export class DialogflowService {
         intent: 'product_creation',
         confidence: 0.9,
         parameters: { product_type: 'general' },
-        fulfillmentText: 'मैं आपको नया प्रोडक्ट बनाने में मदद करूंगा। Product Creator पर जा रहे हैं...',
+        fulfillmentText: 'मैं आपको नया प्रोडक्ट बनाने में मदद करूंगा। Smart Product Creator पर जा रहे हैं...',
         action: 'navigate'
       };
     }
@@ -187,7 +187,7 @@ export class DialogflowService {
         intent: 'product_creation',
         confidence: 0.9,
         parameters: { product_type: 'general' },
-        fulfillmentText: 'I\'ll help you create a new product. Taking you to Product Creator...',
+        fulfillmentText: 'I\'ll help you create a new product. Taking you to Smart Product Creator...',
         action: 'navigate'
       };
     }

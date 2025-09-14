@@ -210,7 +210,7 @@ export class RealtimeService {
         break;
 
       case 'ping':
-        this.sendToClient(clientId, { type: 'pong', payload: {}, timestamp: new Date() });
+        this.sendToClient(clientId, { type: 'pong', payload: {} });
         break;
 
       default:
@@ -282,8 +282,7 @@ export class FinanceRealtimeService {
       {
         type: 'sales_update',
         payload: salesData,
-        userId,
-        timestamp: new Date()
+        userId
       }
     );
   }
@@ -297,8 +296,7 @@ export class FinanceRealtimeService {
       {
         type: 'loan_update',
         payload: loanData,
-        userId,
-        timestamp: new Date()
+        userId
       }
     );
   }
@@ -312,8 +310,7 @@ export class FinanceRealtimeService {
       {
         type: 'alert',
         payload: alertData,
-        userId,
-        timestamp: new Date()
+        userId
       }
     );
   }
@@ -327,8 +324,7 @@ export class FinanceRealtimeService {
       {
         type: 'dashboard_update',
         payload: dashboardData,
-        userId,
-        timestamp: new Date()
+        userId
       }
     );
   }

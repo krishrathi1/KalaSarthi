@@ -1,6 +1,6 @@
 graph TD
     %% Start Point
-    START([User Initiates Product Creator]) --> AUTH_CHECK{User Authenticated?}
+    START([User Initiates Smart Product Creator]) --> AUTH_CHECK{User Authenticated?}
 
     %% Authentication Branch
     AUTH_CHECK -->|No| LOGIN_REDIRECT[Redirect to Login]

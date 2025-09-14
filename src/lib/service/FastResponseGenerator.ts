@@ -135,7 +135,7 @@ export class FastResponseGenerator {
   private getNavigationResponse(message: string, language: string): FastResponse {
     if (message.includes('product') || message.includes('creator')) {
       return {
-        response: language === 'hi' ? 'मैं आपको Product Creator पर ले जा रहा हूं...' : 'Taking you to Product Creator...',
+        response: language === 'hi' ? 'मैं आपको Smart Product Creator पर ले जा रहा हूं...' : 'Taking you to Smart Product Creator...',
         shouldNavigate: true,
         navigationTarget: '/smart-product-creator',
         isFast: true
@@ -169,8 +169,8 @@ export class FastResponseGenerator {
   private getProductCreationResponse(language: string): FastResponse {
     return {
       response: language === 'hi' 
-        ? 'बहुत अच्छा! मैं आपको नया प्रोडक्ट बनाने में मदद कर सकता हूं। क्या आप चाहते हैं कि मैं आपको Product Creator पर ले जाऊं?'
-        : 'Great! I can help you create a new product. Would you like me to take you to the Product Creator?',
+        ? 'बहुत अच्छा! मैं आपको नया प्रोडक्ट बनाने में मदद कर सकता हूं। क्या आप चाहते हैं कि मैं आपको Smart Product Creator पर ले जाऊं?'
+        : 'Great! I can help you create a new product. Would you like me to take you to the Smart Product Creator?',
       shouldNavigate: true,
       navigationTarget: '/smart-product-creator',
       isFast: true

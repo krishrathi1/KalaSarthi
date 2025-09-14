@@ -214,7 +214,7 @@ export function IntelligentVoiceButton({
       }
 
       if (currentPath === '/smart-product-creator') {
-        console.log('On Product Creator page - using dedicated story mic instead');
+        console.log('On Smart Product Creator page - using dedicated story mic instead');
         
         // On smart product creator page, show message to use dedicated story mic
         setIsProcessing(false);
