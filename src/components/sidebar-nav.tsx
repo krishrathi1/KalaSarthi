@@ -45,13 +45,8 @@ export function SidebarNav() {
   const [translatedAppName, setTranslatedAppName] = useState('KalaSarthi');
   const [translatedTagline, setTranslatedTagline] = useState('From Kanchipuram to California...');
 
-  // Filter menu items based on user role and hidden status
+  // Filter menu items based on user role
   const filteredMenuItems = menuItems.filter(item => {
-    // Hide items marked as hidden
-    if (item.hidden) {
-      return false;
-    }
-    
     // For unauthenticated users, show more public-friendly items
     if (!userProfile) {
       const publicFriendlyRoutes = [
