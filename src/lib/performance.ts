@@ -130,11 +130,13 @@ export function throttle<T extends (...args: any[]) => any>(
 /**
  * Lazy load component with loading state
  */
+import { lazy } from 'react';
+
 export function lazyLoad<T extends React.ComponentType<any>>(
   importFunc: () => Promise<{ default: T }>,
   fallback?: React.ComponentType
 ) {
-  return React.lazy(importFunc);
+  return lazy(importFunc);
 }
 
 /**

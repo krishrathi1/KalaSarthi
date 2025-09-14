@@ -84,9 +84,11 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/ws": "^8.18.1",
     "genkit-cli": "^1.14.1",
     "handlebars-loader": "^1.7.3",
     "imports-loader": "^5.0.0",

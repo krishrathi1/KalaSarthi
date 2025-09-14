@@ -677,7 +677,7 @@ export function t(key: string | { [key: string]: string }, lang: LanguageCode) {
     }
     const pathAsKey = menuItems.find(item => item.path === key);
     if (pathAsKey) {
-        return t(pathAsKey.label, lang);
+        return pathAsKey.label[lang] || pathAsKey.label['en'] || Object.values(pathAsKey.label)[0] || key;
     }
     return key;
 }
@@ -917,7 +917,7 @@ export const menuItems = [
     },
     {
       label: {
-        en: 'Smart Product Creator',
+        en: 'Product Creator',
         hi: 'स्मार्ट उत्पाद निर्माता',
         ta: 'ஸ்மார்ட் தயாரிப்பு உருவாக்கி',
         bn: 'স্মার্ট প্রোডাক্ট ক্রিয়েটর',
@@ -1211,7 +1211,7 @@ export const features = [
     color: "text-red-500",
   },
   {
-    title: {en: 'Smart Product Creator', hi: 'स्मार्ट उत्पाद निर्माता', ta: 'ஸ்மார்ட் தயாரிப்பு உருவாக்கி', bn: 'স্মার্ট প্রোডাক্ট ক্রিয়েটর', te: 'స్మార్ట్ ప్రాడక్ట్ క్రియేటర్'},
+    title: {en: 'Product Creator', hi: 'स्मार्ट उत्पाद निर्माता', ta: 'ஸ்மார்ட் தயாரிப்பு உருவாக்கி', bn: 'স্মার্ট প্রোডাক্ট ক্রিয়েটর', te: 'స్మార్ట్ ప్రాడక్ట్ క్రియేటర్'},
     description: {en: "AI-powered product creation and management system for artisans.", hi: "कारीगरों के लिए AI-संचालित उत्पाद निर्माण और प्रबंधन प्रणाली।", ta: "கைவினைஞர்களுக்கான AI-சக்திமிக்க தயாரிப்பு உருவாக்கம் மற்றும் நிர்வாக அமைப்பு.", bn: "শিল্পীদের জন্য AI-চালিত পণ্য তৈরি এবং ব্যবস্থাপনা সিস্টেম।", te: "కళాకారుల కోసం AI- శక్తితో కూడిన ఉత్పత్తి సృష్టి మరియు నిర్వహణ వ్యవస్థ."},
     icon: Sparkles,
     path: "/smart-product-creator",

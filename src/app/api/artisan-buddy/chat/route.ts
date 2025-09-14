@@ -42,7 +42,7 @@ async function generateDynamicResponse(message: string, language: string): Promi
         (lowerMessage.includes('प्रोडक्ट') || lowerMessage.includes('product')) && 
         (lowerMessage.includes('बनाना') || lowerMessage.includes('create') || lowerMessage.includes('करना') || lowerMessage.includes('karna'))) {
       return {
-        response: 'बहुत अच्छा! मैं आपको नया प्रोडक्ट बनाने में मदद कर सकता हूं। क्या आप चाहते हैं कि मैं आपको Smart Product Creator पर ले जाऊं?',
+        response: 'बहुत अच्छा! मैं आपको नया प्रोडक्ट बनाने में मदद कर सकता हूं। क्या आप चाहते हैं कि मैं आपको Product Creator पर ले जाऊं?',
         shouldNavigate: true,
         navigationTarget: '/smart-product-creator'
       };
@@ -53,7 +53,7 @@ async function generateDynamicResponse(message: string, language: string): Promi
         (lowerMessage.includes('product') && lowerMessage.includes('karna')) ||
         (lowerMessage.includes('नया') && lowerMessage.includes('product'))) {
       return {
-        response: 'बहुत अच्छा! मैं आपको नया प्रोडक्ट बनाने में मदद कर सकता हूं। क्या आप चाहते हैं कि मैं आपको Smart Product Creator पर ले जाऊं?',
+        response: 'बहुत अच्छा! मैं आपको नया प्रोडक्ट बनाने में मदद कर सकता हूं। क्या आप चाहते हैं कि मैं आपको Product Creator पर ले जाऊं?',
         shouldNavigate: true,
         navigationTarget: '/smart-product-creator'
       };
@@ -97,7 +97,7 @@ async function generateDynamicResponse(message: string, language: string): Promi
   // English responses
   if (lowerMessage.includes('new') && (lowerMessage.includes('product') || lowerMessage.includes('create') || lowerMessage.includes('make'))) {
     return {
-      response: 'Great! I can help you create a new product. Would you like me to take you to the Smart Product Creator?',
+      response: 'Great! I can help you create a new product. Would you like me to take you to the Product Creator?',
       shouldNavigate: true,
       navigationTarget: '/smart-product-creator'
     };

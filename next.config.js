@@ -3,7 +3,7 @@ const nextConfig = {
   // Development optimizations
   compress: process.env.NODE_ENV === 'production',
   poweredByHeader: false,
-  
+
   // TypeScript and ESLint optimizations for dev
   typescript: {
     ignoreBuildErrors: process.env.NODE_ENV === 'development',
@@ -11,7 +11,7 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: process.env.NODE_ENV === 'development',
   },
-  
+
   // Experimental features for performance
   experimental: {
     optimizeCss: process.env.NODE_ENV === 'production',
@@ -19,7 +19,7 @@ const nextConfig = {
     // Reduce memory usage
     memoryBasedWorkersCount: true,
   },
-  
+
   // Turbopack configuration for faster dev builds
   turbopack: {
     rules: {
@@ -222,12 +222,6 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'images.unsplash.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
         hostname: 'source.unsplash.com',
         port: '',
         pathname: '/**',
@@ -253,95 +247,6 @@ const nextConfig = {
     '@google-cloud/text-to-speech',
     '@google-cloud/speech'
   ],
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'placehold.co',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'res.cloudinary.com',
-        port: '',
-        pathname: '/**',
-      },
-      // E-commerce platform image hostnames
-      {
-        protocol: 'https',
-        hostname: 'images-na.ssl-images-amazon.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'm.media-amazon.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'rukminim1.flixcart.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'rukminim2.flixcart.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'i.etsystatic.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'images.pexels.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: '5.imimg.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'i.ebayimg.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'images-static.nykaa.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'ui-avatars.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'via.placeholder.com',
-        port: '',
-        pathname: '/**',
-      },
-    ],
-  },
 };
 
 module.exports = nextConfig;

@@ -7,9 +7,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { VoiceIntegration } from './VoiceIntegration';
 import { Volume2, Mic } from 'lucide-react';
 
+interface VoiceConfig {
+  name: string;
+  gender: string;
+  quality: string;
+  accent?: string;
+  age?: string;
+  personality?: string;
+  description?: string;
+}
+
 export function VoiceExample() {
   const [text, setText] = useState('Hello! This is a demonstration of Google Cloud Text-to-Speech with multiple voices and languages.');
-  const [selectedVoice, setSelectedVoice] = useState(null);
+  const [selectedVoice, setSelectedVoice] = useState<VoiceConfig | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState('en-US');
 
   const sampleTexts = [

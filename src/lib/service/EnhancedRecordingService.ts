@@ -1,5 +1,5 @@
 /**
- * Enhanced Recording Service for Smart Product Creator
+ * Enhanced Recording Service for Product Creator
  * Applies the successful universal mic workflow to product creation
  */
 

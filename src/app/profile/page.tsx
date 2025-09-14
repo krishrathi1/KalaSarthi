@@ -275,7 +275,7 @@ export default function ProfilePage() {
         router.push('/smart-product-creator');
         toast({
             title: "🎨 Voice Action",
-            description: "Opening Smart Product Creator",
+            description: "Opening Product Creator",
         });
     };
 

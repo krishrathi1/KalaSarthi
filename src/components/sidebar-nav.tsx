@@ -105,7 +105,7 @@ export function SidebarNav() {
               >
                 <Link href={item.path} prefetch={true}>
                   <item.icon />
-                  <span>{t(item.label, language)}</span>
+                  <span>{(item.label[language] || item.label['en'] || Object.values(item.label)[0]) as string}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

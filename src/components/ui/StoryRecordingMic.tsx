@@ -354,10 +354,10 @@ export function StoryRecordingMic({
           
           if (transcription?.text && !transcription.text.includes('Speech recognition failed')) {
             console.log('✅ Speech recognition successful:', transcription.text);
-            console.log('🌍 Detected language:', transcription.detectedLanguage || transcription.language);
+            console.log('🌍 Detected language:', transcription.language);
             
             // Use detected language from STT or fallback to our detection
-            const detectedLang = transcription.detectedLanguage || detectLanguage(transcription.text);
+            const detectedLang = detectLanguage(transcription.text);
             setDetectedLanguage(detectedLang);
             
             // Store raw transcript without voice styling
@@ -469,7 +469,9 @@ export function StoryRecordingMic({
         // For now, we'll create a simple enhancement
         // In a real implementation, this would call an AI service
         const enhancedText = await enhanceStoryWithAI(lastTranscript);
-        setEnhancedStory(enhancedText);
+        if (onStoryRecorded && recordedAudio) {
+          onStoryRecorded(enhancedText, recordedAudio);
+        }
         
         toast({
           title: "Story Enhanced!",
@@ -520,7 +522,7 @@ export function StoryRecordingMic({
 
   const finalizeStoryChoice = async (choice: 'original' | 'enhanced') => {
     setStoryChoice(choice);
-    const storyToFinalize = choice === 'original' ? lastTranscript : enhancedStory;
+    const storyToFinalize = choice === 'original' ? lastTranscript : '';
     setFinalizedStory(storyToFinalize);
     
     // Fetch voices for the detected language
@@ -851,7 +853,9 @@ export function StoryRecordingMic({
         setLastTranscript(editedStory);
       } else if (showEditStory && editedStory === enhancedStory) {
         // Editing enhanced story
-        setEnhancedStory(editedStory);
+        if (onStoryRecorded && recordedAudio) {
+          onStoryRecorded(editedStory, recordedAudio);
+        }
       } else {
         // Default to original story
         setLastTranscript(editedStory);

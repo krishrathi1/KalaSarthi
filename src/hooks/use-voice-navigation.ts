@@ -120,11 +120,12 @@ if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSp
 const commandKeywords: { [key: string]: { path: string, keywords: { [K in LanguageCode]?: string[] } } } = {};
 
 menuItems.forEach(item => {
-    const key = t(item.label, 'en')!.toLowerCase().replace(/\.?/g, '').replace(/ /g, '-');
+    const translatedLabel = item.label['en'] || Object.values(item.label)[0] || '';
+    const key = translatedLabel.toLowerCase().replace(/\.?/g, '').replace(/ /g, '-');
     const keywords: { [K in LanguageCode]?: string[] } = {};
     for (const langCode in languages) {
         const code = langCode as LanguageCode;
-        const translatedLabel = t(item.label, code);
+        const translatedLabel = item.label[code] || item.label['en'] || Object.values(item.label)[0] || '';
         if (translatedLabel) {
             keywords[code] = [translatedLabel.toLowerCase()];
         }
@@ -323,7 +324,7 @@ export const useVoiceNavigation = () => {
     // Try dynamic translation matching for menu items
     for (const item of menuItems) {
       try {
-        const translatedLabel = await translateAsync(item.label, language);
+        const translatedLabel = item.label[language] || item.label['en'] || Object.values(item.label)[0] || '';
         if (translatedLabel && command.includes(translatedLabel.toLowerCase())) {
           router.push(item.path);
           toast({

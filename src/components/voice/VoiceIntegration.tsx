@@ -70,18 +70,41 @@ export function VoiceIntegration({
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Load available voices from the speech service
+
   useEffect(() => {
     loadLanguages();
   }, []);
 
   useEffect(() => {
     if (selectedLanguage) {
-      debouncedLoadVoices(selectedLanguage);
+      const loadVoices = async () => {
+        try {
+          setIsLoading(true);
+          const data = await withCache(
+            `voices-${selectedLanguage}`,
+            async () => {
+              const response = await fetch(`/api/voices/${selectedLanguage}`);
+              const result = await response.json();
+              if (!result.success) throw new Error(result.error);
+              return result.voices;
+            },
+            { ttl: CACHE_TTL.MEDIUM }
+          );
+          setVoices(data);
+        } catch (error) {
+          console.error('Failed to load voices:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      loadVoices();
       if (onLanguageChange) {
         onLanguageChange(selectedLanguage);
       }
     }
-  }, [selectedLanguage, onLanguageChange, debouncedLoadVoices]);
+  }, [selectedLanguage, onLanguageChange]);
 
   useEffect(() => {
     if (voices.length > 0 && !selectedVoice) {
@@ -213,11 +236,6 @@ export function VoiceIntegration({
   const debouncedPlayText = useMemo(
     () => debounce(playText, 300),
     [playText]
-  );
-
-  const debouncedLoadVoices = useMemo(
-    () => debounce(loadVoices, 200),
-    [loadVoices]
   );
 
   const getQualityColor = (quality: string) => {

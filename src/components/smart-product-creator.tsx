@@ -3735,7 +3735,7 @@ Return only the enhanced story, no additional commentary.`;
           <div>
             <CardTitle className="font-headline flex items-center gap-2">
               <Sparkles className="size-6 text-primary" />
-              Smart Product Creator
+              Product Creator
             </CardTitle>
             <CardDescription>
               Create compelling product stories with AI-enhanced images and authentic voice narration

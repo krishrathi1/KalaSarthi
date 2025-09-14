@@ -59,7 +59,7 @@ export class NavigationService {
   private async handleProductCreation(parameters: Record<string, any>): Promise<TaskCompletionResult> {
     return {
       success: true,
-      message: 'Taking you to Smart Product Creator to create a new product...',
+      message: 'Taking you to Product Creator to create a new product...',
       action: {
         type: 'navigate',
         target: '/smart-product-creator',

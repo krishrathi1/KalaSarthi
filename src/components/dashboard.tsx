@@ -70,16 +70,16 @@ export function Dashboard() {
             <CardHeader>
               <div className="flex items-center gap-4">
                 <feature.icon className={`size-8 ${feature.color}`} />
-                <CardTitle className="font-headline">{t(feature.title, language)}</CardTitle>
+                <CardTitle className="font-headline">{feature.title[language] || feature.title.en || 'Feature'}</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="flex-1">
-              <CardDescription>{t(feature.description, language)}</CardDescription>
+              <CardDescription>{feature.description[language] || feature.description.en || 'Description'}</CardDescription>
             </CardContent>
             <div className="p-6 pt-0">
               <Button asChild variant="outline" className="w-full">
                 <Link href={feature.path}>
-                  {t('open', language)} <ArrowRight className="ml-2" />
+                  {t('open', language) || 'Open'} <ArrowRight className="ml-2" />
                 </Link>
               </Button>
             </div>
