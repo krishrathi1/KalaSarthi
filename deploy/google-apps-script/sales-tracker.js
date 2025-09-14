@@ -1,6 +1,6 @@
 /**
  * Google Apps Script for KalaBandhu Sales Data Automation
- * This script automates sales data storage and retrieval for the Finance Tracker
+ * This script automates sales data storage and retrieval for the DigitalKhata
  */
 
 // Global variables

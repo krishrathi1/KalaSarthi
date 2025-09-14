@@ -1,4 +1,4 @@
-# Smart Product Creator Workflow
+# Product Creator Workflow
 
 ## Overview
 AI-powered product creation tool for artisans with voice guidance and automated content generation.

@@ -1,4 +1,4 @@
-# AI Image Generator Setup Guide
+# Design Generator Setup Guide
 
 ## 🚀 **Complete Setup Instructions**
 
@@ -86,7 +86,7 @@ The required packages are already installed:
    npm run dev
    ```
 
-2. **Visit the AI Image Generator:**
+2. **Visit the Design Generator:**
    - Go to: http://localhost:9002/ai-image-generator
 
 3. **Test with a sample image:**

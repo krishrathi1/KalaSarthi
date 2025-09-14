@@ -13,7 +13,10 @@ export async function POST(request: NextRequest) {
     console.log('Story enhancement request:', { 
       story: story?.substring(0, 100) + '...', 
       language, 
-      hasImageUrl: !!imageUrl 
+      hasImageUrl: !!imageUrl,
+      imageUrlType: typeof imageUrl,
+      imageUrlLength: imageUrl?.length || 0,
+      imageUrlPrefix: imageUrl?.substring(0, 50) || 'none'
     });
 
     if (!story) {
@@ -25,6 +28,12 @@ export async function POST(request: NextRequest) {
 
     // Initialize Gemini directly
     const apiKey = process.env.GOOGLE_AI_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY;
+    
+    console.log('API Key check:', {
+      hasGoogleAIKey: !!process.env.GOOGLE_AI_API_KEY,
+      hasNextPublicKey: !!process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY,
+      finalApiKey: apiKey ? 'Present' : 'Missing'
+    });
     
     if (!apiKey) {
       console.warn('GOOGLE_AI_API_KEY not found, using fallback');
@@ -40,6 +49,8 @@ export async function POST(request: NextRequest) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    
+    console.log('Gemini model initialized successfully');
 
     // Voice style instructions
     const voiceInstructions = {
@@ -54,7 +65,10 @@ export async function POST(request: NextRequest) {
 
     // Detect the language of the input story
     const isHindi = /[\u0900-\u097F]/.test(story);
-    const detectedLanguage = isHindi ? 'Hindi' : 'English';
+    // Use the language parameter from frontend, but fallback to detection if not provided
+    const detectedLanguage = language === 'hi-IN' || language === 'hi' ? 'Hindi' : 
+                           language === 'en-US' || language === 'en' ? 'English' :
+                           isHindi ? 'Hindi' : 'English';
     
     console.log(`🌍 Story language detected: ${detectedLanguage} (${isHindi ? 'Hindi' : 'English'})`);
 
@@ -113,6 +127,12 @@ Return only the enhanced story in ${detectedLanguage}, nothing else.`;
     let enhancedStory = '';
     
     try {
+      console.log('Starting Gemini API call...', {
+        hasImageUrl: !!imageUrl,
+        promptLength: prompt.length,
+        model: 'gemini-1.5-flash'
+      });
+      
       // Retry logic for Gemini API overload/rate limit errors
       let result;
       let retryCount = 0;
@@ -120,21 +140,45 @@ Return only the enhanced story in ${detectedLanguage}, nothing else.`;
 
       while (retryCount < maxRetries) {
         try {
+          console.log(`Gemini API attempt ${retryCount + 1}/${maxRetries}`);
+          
           // If we have an image, use multimodal approach
-          if (imageUrl) {
-            result = await model.generateContent([
-              prompt,
-              {
-                inlineData: {
-                  mimeType: 'image/jpeg',
-                  data: imageUrl.split(',')[1] // Remove data:image/jpeg;base64, prefix
+          if (imageUrl && imageUrl.startsWith('data:image/')) {
+            console.log('Using multimodal approach with image');
+            
+            // Extract base64 data properly
+            let base64Data = imageUrl;
+            if (imageUrl.includes(',')) {
+              base64Data = imageUrl.split(',')[1]; // Remove data:image/jpeg;base64, prefix
+            }
+            
+            console.log('Image data length:', base64Data.length);
+            
+            // Validate that we have actual image data
+            if (!base64Data || base64Data.length < 100) {
+              console.log('Invalid image data, falling back to text-only approach');
+              console.log('Base64 data length:', base64Data?.length || 0);
+              result = await model.generateContent(prompt);
+            } else {
+              result = await model.generateContent([
+                prompt,
+                {
+                  inlineData: {
+                    mimeType: 'image/jpeg',
+                    data: base64Data
+                  }
                 }
-              }
-            ]);
+              ]);
+            }
+          } else if (imageUrl) {
+            console.log('Image URL is not a data URL, using text-only approach');
+            console.log('Image URL type:', typeof imageUrl);
+            result = await model.generateContent(prompt);
           } else {
-            // Text-only approach
+            console.log('Using text-only approach');
             result = await model.generateContent(prompt);
           }
+          console.log('Gemini API call successful');
           break; // Success, exit retry loop
         } catch (error: any) {
           console.error(`Gemini generation attempt ${retryCount + 1} failed:`, error);
@@ -164,12 +208,22 @@ Return only the enhanced story in ${detectedLanguage}, nothing else.`;
       enhancedStory = response.text();
     } catch (error) {
       console.error('Gemini generation error after retries:', error);
-      // Return error instead of fallback story
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : undefined
+      });
+      
+      // Return more specific error information
       return NextResponse.json({
         success: false,
-        error: 'Failed to enhance story with AI',
+        error: `Failed to enhance story with AI: ${error instanceof Error ? error.message : 'Unknown error'}`,
         originalStory: story,
-        language: language
+        language: language,
+        debugInfo: {
+          errorType: error instanceof Error ? error.name : 'Unknown',
+          errorMessage: error instanceof Error ? error.message : 'Unknown error'
+        }
       }, { status: 500 });
     }
 

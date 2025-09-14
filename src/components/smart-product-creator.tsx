@@ -20,7 +20,7 @@ import { uploadToCloudinary } from "@/lib/cloudinary";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConversationalVoiceProcessor } from "@/lib/service/ConversationalVoiceProcessor";
 import { StoryRecordingMic } from "@/components/ui/StoryRecordingMic";
-import { redirect, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 interface ProductFormData {
   name: string;
@@ -115,7 +115,6 @@ export function SmartProductCreator() {
     expectedProfit: '', // desired profit margin
   });
   const [showPricingInputs, setShowPricingInputs] = useState(true);
-
 
   // UI state
   const [showCamera, setShowCamera] = useState(false);
@@ -219,27 +218,39 @@ Requirements:
 
 Return only the enhanced story, no additional commentary.`;
 
+      const requestData = {
+        story: transcription,
+        imageUrl: imagePreview, // Pass the actual image URL
+        language: /[\u0900-\u097F]/.test(transcription) ? 'hi-IN' : 'en-US', // Detect language from transcription
+        voiceStyle: 'default' // Default voice style, can be enhanced later
+      };
+      
+      console.log('Sending story enhancement request:', {
+        storyLength: transcription.length,
+        hasImageUrl: !!imagePreview,
+        language: requestData.language,
+        imageUrlType: typeof imagePreview
+      });
+
       const response = await fetch('/api/story-enhancement', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          story: transcription,
-          imageUrl: imagePreview, // Pass the actual image URL
-          language: /[\u0900-\u097F]/.test(transcription) ? 'hi-IN' : 'en-US', // Detect language from transcription
-          voiceStyle: 'default' // Default voice style, can be enhanced later
-        })
+        body: JSON.stringify(requestData)
       });
 
       const result = await response.json();
+      console.log('Story enhancement response:', result);
+      
       if (result.success && result.enhancedStory) {
         setEnhancedTranscription(result.enhancedStory);
         setShowStoryEnhancement(false);
-
+        
         toast({
           title: "Story Enhanced!",
           description: "Your story has been transformed into a compelling customer-attracting narrative.",
         });
       } else {
+        console.error('Story enhancement failed:', result.error);
         throw new Error(result.error || 'Failed to enhance story');
       }
     } catch (error) {
@@ -256,15 +267,15 @@ Return only the enhanced story, no additional commentary.`;
 
   // Story recording handlers
   const handleStoryRecorded = (transcript: string, audioBlob: Blob) => {
-    setTranscription(transcript);
+            setTranscription(transcript);
     setAudioBlob(audioBlob);
-    setShowStoryEnhancement(true);
+            setShowStoryEnhancement(true);
     addDebugLog(`🎤 Story recorded: "${transcript}"`);
-
-    toast({
-      title: "Story Captured!",
-      description: "Your story has been recorded. Would you like to enhance it?",
-    });
+            
+            toast({
+              title: "Story Captured!",
+              description: "Your story has been recorded. Would you like to enhance it?",
+            });
   };
 
   const handleStoryCleared = () => {
@@ -277,11 +288,11 @@ Return only the enhanced story, no additional commentary.`;
   const handleFinalizedStory = (finalStory: string, audioBlob: Blob | null) => {
     console.log('Finalized story:', finalStory);
     console.log('Audio blob:', audioBlob);
-
+    
     // Update the transcription to the finalized story
     setTranscription(finalStory);
     setFinalizedStory(finalStory);
-
+    
     // Update product description with story summary
     if (finalStory && finalStory.length > 0) {
       const storySummary = finalStory.length > 200 ? finalStory.substring(0, 200) + '...' : finalStory;
@@ -290,7 +301,7 @@ Return only the enhanced story, no additional commentary.`;
         description: storySummary
       }));
     }
-
+    
     // Show success message
     toast({
       title: "Story Finalized!",
@@ -301,33 +312,33 @@ Return only the enhanced story, no additional commentary.`;
   // Helper functions
   const calculatePriceFromAnalysis = (analysis: any): number => {
     if (!analysis) return 0;
-
+    
     // Basic price calculation based on analysis
     let basePrice = 100; // Base price
-
+    
     if (analysis.materials) {
       const materialMultiplier = analysis.materials.length * 10;
       basePrice += materialMultiplier;
     }
-
+    
     if (analysis.dimensions) {
       const volume = (analysis.dimensions.length || 0) * (analysis.dimensions.width || 0) * (analysis.dimensions.height || 0);
       basePrice += volume * 0.1;
     }
-
+    
     return Math.round(basePrice);
   };
 
   const generateTagsFromAnalysis = (analysis: any): string[] => {
     if (!analysis) return [];
-
+    
     const tags: string[] = [];
-
+    
     if (analysis.category) tags.push(analysis.category);
     if (analysis.materials) tags.push(...analysis.materials);
     if (analysis.colors) tags.push(...analysis.colors);
     if (analysis.productType) tags.push(analysis.productType);
-
+    
     return [...new Set(tags)]; // Remove duplicates
   };
 
@@ -623,7 +634,7 @@ Return only the enhanced story, no additional commentary.`;
       return [result.secure_url];
     } catch (error) {
       console.error('Error uploading image to Cloudinary:', error);
-
+      
       // For development, return a placeholder image URL instead of throwing
       console.warn('Using placeholder image for development');
       return ['https://via.placeholder.com/800x600?text=Product+Image'];
@@ -697,10 +708,9 @@ Return only the enhanced story, no additional commentary.`;
           title: "Product Created",
           description: "Your product has been created successfully!",
         });
+
         resetForm();
         router.push("/dashboard/inventory");
-
-
       } else {
         throw new Error(result_api.error || 'Failed to create product');
       }
@@ -820,11 +830,11 @@ Return only the enhanced story, no additional commentary.`;
         if (event.error !== 'network') {
           console.error('Speech recognition error:', event.error);
         }
-
+        
         // Handle different error types gracefully
         let errorMessage = 'Real-time transcription disabled.';
         let errorTitle = 'Speech Recognition Error';
-
+        
         switch (event.error) {
           case 'network':
             errorMessage = 'Network error - real-time transcription disabled. Recording will still work with server-side processing.';
@@ -854,7 +864,7 @@ Return only the enhanced story, no additional commentary.`;
           default:
             errorMessage = `Error: ${event.error}. Real-time transcription disabled.`;
         }
-
+        
         // Only show toast for critical errors, not network issues
         if (event.error !== 'network') {
           toast({
@@ -1076,7 +1086,7 @@ Return only the enhanced story, no additional commentary.`;
         setProcessingStep("");
         setProgress(0);
         setShowComparison(false);
-
+        
         // Show user-friendly error message
         const errorMessage = handleFileUploadError(error, file.name);
         toast({
@@ -2244,8 +2254,8 @@ Return only the enhanced story, no additional commentary.`;
       if (validateStepCompletion(voiceWorkflowStep)) {
         setVoiceWorkflowStep(nextStep);
         setCurrentStep(nextStep === 'audio_recording' ? 'audio-recording' :
-          nextStep === 'pricing_setup' ? 'pricing-engine' :
-            nextStep === 'product_details' ? 'product-details' : 'image-upload');
+                      nextStep === 'pricing_setup' ? 'pricing-engine' :
+                      nextStep === 'product_details' ? 'product-details' : 'image-upload');
 
         const guidance = getVoiceGuidanceForStep(nextStep);
         setVoiceFeedback(guidance.message);
@@ -2267,8 +2277,8 @@ Return only the enhanced story, no additional commentary.`;
 
       setVoiceWorkflowStep(prevStep);
       setCurrentStep(prevStep === 'audio_recording' ? 'audio-recording' :
-        prevStep === 'pricing_setup' ? 'pricing-engine' :
-          prevStep === 'product_details' ? 'product-details' : 'image-upload');
+                    prevStep === 'pricing_setup' ? 'pricing-engine' :
+                    prevStep === 'product_details' ? 'product-details' : 'image-upload');
 
       const guidance = getVoiceGuidanceForStep(prevStep);
       setVoiceFeedback(guidance.message);
@@ -2722,35 +2732,35 @@ Return only the enhanced story, no additional commentary.`;
   // Step 2: Audio Recording (Dedicated Story Mic)
   const renderAudioRecordingStep = () => {
     return (
-      <div className="space-y-6">
-        <div className="text-center">
+    <div className="space-y-6">
+      <div className="text-center">
           <h2 className="text-2xl font-bold mb-2">Share Your Story</h2>
           <p className="text-muted-foreground">Tell us about your product's craftsmanship and inspiration</p>
-        </div>
+      </div>
 
-        {/* Input Mode Toggle */}
-        <div className="flex justify-center">
+      {/* Input Mode Toggle */}
+      <div className="flex justify-center">
           <div className="bg-muted rounded-lg p-1 flex gap-1">
-            <Button
-              onClick={() => setInputMode('voice')}
-              variant={inputMode === 'voice' ? 'default' : 'ghost'}
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <Mic className="size-4" />
+          <Button
+            onClick={() => setInputMode('voice')}
+            variant={inputMode === 'voice' ? 'default' : 'ghost'}
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <Mic className="size-4" />
               Voice
-            </Button>
-            <Button
-              onClick={() => setInputMode('text')}
-              variant={inputMode === 'text' ? 'default' : 'ghost'}
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <span className="size-4">📝</span>
+          </Button>
+          <Button
+            onClick={() => setInputMode('text')}
+            variant={inputMode === 'text' ? 'default' : 'ghost'}
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <span className="size-4">📝</span>
               Text
-            </Button>
-          </div>
+          </Button>
         </div>
+      </div>
 
         {/* Voice Input Section */}
         {inputMode === 'voice' && (
@@ -2766,7 +2776,7 @@ Return only the enhanced story, no additional commentary.`;
                   onFinalizedStory={handleFinalizedStory}
                   finalizedStoryFromParent={finalizedStory}
                 />
-              </div>
+        </div>
             </div>
 
             {/* Recording Status */}
@@ -2789,36 +2799,36 @@ Return only the enhanced story, no additional commentary.`;
                   </Badge>
                 </div>
                 <p className="text-gray-700 leading-relaxed">{transcription}</p>
-
+                
                 {/* Story Enhancement */}
                 {showStoryEnhancement && (
                   <div className="mt-4 pt-4 border-t">
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={enhanceStory}
-                        disabled={isEnhancingStory}
-                        size="sm"
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        {isEnhancingStory ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={enhanceStory}
+                          disabled={isEnhancingStory}
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          {isEnhancingStory ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
                             Enhancing...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="size-4 mr-2" />
-                            Enhance with AI
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        onClick={() => setShowStoryEnhancement(false)}
-                        variant="outline"
-                        size="sm"
-                      >
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="size-4 mr-2" />
+                              Enhance with AI
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          onClick={() => setShowStoryEnhancement(false)}
+                          variant="outline"
+                          size="sm"
+                        >
                         Skip
-                      </Button>
+                        </Button>
                     </div>
                   </div>
                 )}
@@ -2831,15 +2841,15 @@ Return only the enhanced story, no additional commentary.`;
                         <Sparkles className="size-4" />
                         Enhanced Story
                       </h4>
-                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
-                        {enhancedTranscription.length} chars
-                      </Badge>
+                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                          {enhancedTranscription.length} chars
+                        </Badge>
                     </div>
-
+                    
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                       <p className="text-green-800 leading-relaxed font-medium">{enhancedTranscription}</p>
                     </div>
-
+                    
                     <div className="mt-3 flex gap-2">
                       <Button
                         onClick={() => {
@@ -2865,7 +2875,7 @@ Return only the enhanced story, no additional commentary.`;
                         Keep Original
                       </Button>
                     </div>
-
+                    
                   </div>
                 )}
               </div>
@@ -2880,22 +2890,22 @@ Return only the enhanced story, no additional commentary.`;
                 </p>
               </div>
             )}
-          </div>
-        )}
+        </div>
+      )}
 
-        {/* Text Input Section */}
-        {inputMode === 'text' && (
+      {/* Text Input Section */}
+      {inputMode === 'text' && (
           <div className="space-y-4">
             <Textarea
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
-              placeholder="Tell us about your product's craftsmanship, materials, and cultural significance..."
+            placeholder="Tell us about your product's craftsmanship, materials, and cultural significance..."
               className="min-h-[150px] text-base leading-relaxed"
             />
 
             {textInput && (
-              <div className="text-right text-sm text-muted-foreground">
-                {textInput.length} characters
+            <div className="text-right text-sm text-muted-foreground">
+              {textInput.length} characters
               </div>
             )}
 
@@ -2918,15 +2928,15 @@ Return only the enhanced story, no additional commentary.`;
                 className="bg-blue-600 hover:bg-blue-700"
                 disabled={!textInput.trim()}
               >
-                Save Story
+              Save Story
               </Button>
-            </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Universal Mic Integration - No local audio controls needed */}
-      </div>
-    );
+      {/* Universal Mic Integration - No local audio controls needed */}
+    </div>
+  );
   };
 
   // Auto-generate product details when reaching step 3
@@ -2936,7 +2946,7 @@ Return only the enhanced story, no additional commentary.`;
       const timer = setTimeout(() => {
         generateProductDetails();
       }, 1000);
-
+      
       return () => clearTimeout(timer);
     }
   }, [currentStep, imagePreview, transcription, productForm.name]);
@@ -2953,7 +2963,7 @@ Return only the enhanced story, no additional commentary.`;
     }
 
     setIsGeneratingDescription(true);
-
+    
     try {
       const response = await fetch('/api/generate-product-details', {
         method: 'POST',
@@ -2966,10 +2976,10 @@ Return only the enhanced story, no additional commentary.`;
       });
 
       const result = await response.json();
-
+      
       if (result.success && result.productDetails) {
         const details = result.productDetails;
-
+        
         // Auto-fill all product form fields
         setProductForm(prev => ({
           ...prev,
@@ -3071,7 +3081,7 @@ Return only the enhanced story, no additional commentary.`;
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="product-name">Product Name <span className="text-red-500">*</span></Label>
+                <Label htmlFor="product-name">Product Name <span className="text-red-500">*</span></Label>
                   {productForm.name && (
                     <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
                       ✨ AI Generated
@@ -3112,7 +3122,7 @@ Return only the enhanced story, no additional commentary.`;
 
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Label htmlFor="product-category">Category <span className="text-red-500">*</span></Label>
+              <Label htmlFor="product-category">Category <span className="text-red-500">*</span></Label>
                 {productForm.category && (
                   <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
                     ✨ AI Generated
@@ -3213,7 +3223,7 @@ Return only the enhanced story, no additional commentary.`;
 
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Label>Materials</Label>
+              <Label>Materials</Label>
                 {productForm.materials.length > 0 && (
                   <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
                     ✨ AI Generated
@@ -3233,7 +3243,7 @@ Return only the enhanced story, no additional commentary.`;
 
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Label>Tags {productForm.tags.length > 0 && <span className="text-sm text-muted-foreground">({productForm.tags.length} tags)</span>}</Label>
+              <Label>Tags {productForm.tags.length > 0 && <span className="text-sm text-muted-foreground">({productForm.tags.length} tags)</span>}</Label>
                 {productForm.tags.length > 0 && (
                   <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
                     ✨ AI Generated
@@ -3288,449 +3298,449 @@ Return only the enhanced story, no additional commentary.`;
   // Step 4: Pricing Engine
   const renderPricingEngineStep = () => {
     return (
-      <div className="space-y-6">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">Step 4: Fair Price Engine</h2>
-          <p className="text-muted-foreground">Tell us about your effort and costs for realistic pricing</p>
-          {isContinuousListening && (
-            <div className="mt-2 text-sm text-purple-600 bg-purple-50 px-3 py-1 rounded-full inline-block">
-              💡 Voice commands active - say "next" to proceed or "back" to return
-            </div>
-          )}
-        </div>
-
-        {showPricingInputs ? (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>🛠️ Your Craftsmanship Input</CardTitle>
-                <CardDescription>
-                  Help us calculate a fair price by sharing details about your time, materials, and costs
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="time-spent">⏰ Time Spent (hours)</Label>
-                    <Input
-                      id="time-spent"
-                      type="number"
-                      placeholder="e.g., 24"
-                      value={artisanInputs.timeSpent}
-                      onChange={(e) => setArtisanInputs(prev => ({ ...prev, timeSpent: e.target.value }))}
-                    />
-                    <p className="text-xs text-muted-foreground">Total hours you spent making this product</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="material-costs">🧵 Material Costs (₹)</Label>
-                    <Input
-                      id="material-costs"
-                      type="number"
-                      placeholder="e.g., 500"
-                      value={artisanInputs.materialCosts}
-                      onChange={(e) => setArtisanInputs(prev => ({ ...prev, materialCosts: e.target.value }))}
-                    />
-                    <p className="text-xs text-muted-foreground">Cost of cloth, thread, dyes, etc.</p>
-                  </div>
-                </div>
-
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="other-costs">🔧 Other Costs (₹)</Label>
-                    <Input
-                      id="other-costs"
-                      type="number"
-                      placeholder="e.g., 100"
-                      value={artisanInputs.otherCosts}
-                      onChange={(e) => setArtisanInputs(prev => ({ ...prev, otherCosts: e.target.value }))}
-                    />
-                    <p className="text-xs text-muted-foreground">Tools, transportation, packaging</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="expected-profit">💰 Desired Profit Margin (%)</Label>
-                    <Input
-                      id="expected-profit"
-                      type="number"
-                      placeholder="e.g., 30"
-                      value={artisanInputs.expectedProfit}
-                      onChange={(e) => setArtisanInputs(prev => ({ ...prev, expectedProfit: e.target.value }))}
-                    />
-                    <p className="text-xs text-muted-foreground">How much profit do you want to make?</p>
-                  </div>
-                </div>
-
-                <div className="pt-4">
-                  <Button
-                    onClick={() => {
-                      if (!artisanInputs.timeSpent || !artisanInputs.materialCosts) {
-                        toast({
-                          title: "Missing Information",
-                          description: "Please fill in at least time spent and material costs.",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-                      setShowPricingInputs(false);
-                      analyzePricing();
-                    }}
-                    className="w-full bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700"
-                    size="lg"
-                  >
-                    🚀 Calculate Fair Price
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        ) : !pricingAnalysis ? (
-          <div className="text-center py-12">
-            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Calculating your fair price...</p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Cost Breakdown */}
-            <Card>
-              <CardHeader>
-                <CardTitle>💰 Your Cost Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium">Materials:</span> ₹{artisanInputs.materialCosts || 0}
-                  </div>
-                  <div>
-                    <span className="font-medium">Other Costs:</span> ₹{artisanInputs.otherCosts || 0}
-                  </div>
-                  <div>
-                    <span className="font-medium">Time Value:</span> ₹{pricingAnalysis.timeValue || 0}
-                  </div>
-                  <div>
-                    <span className="font-medium">Profit Margin:</span> {artisanInputs.expectedProfit || 0}%
-                  </div>
-                </div>
-                <div className="mt-4 pt-4 border-t">
-                  <div className="flex justify-between font-bold text-lg">
-                    <span>Total Cost:</span>
-                    <span>₹{pricingAnalysis.totalCost}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Pricing Analysis Results */}
-            <div className="grid md:grid-cols-3 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    💰 Fair Price
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-green-600">
-                    ₹{pricingAnalysis.suggestedPrice}
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Based on your actual costs
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    📈 Your Profit
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-blue-600">
-                    ₹{pricingAnalysis.profitAmount}
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {pricingAnalysis.profitMargin}% margin
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    🎯 Market Position
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-purple-600">
-                    {pricingAnalysis.marketPosition}%
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Above market average
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Recommendations */}
-            <Card>
-              <CardHeader>
-                <CardTitle>🎯 Pricing Recommendations</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {pricingAnalysis.recommendations?.map((rec: string, index: number) => (
-                    <div key={index} className="flex items-start gap-3">
-                      <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center text-white text-sm font-bold mt-0.5">
-                        {index + 1}
-                      </div>
-                      <p className="text-sm">{rec}</p>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="flex gap-3">
-              <Button
-                onClick={() => setShowPricingInputs(true)}
-                variant="outline"
-                className="flex-1"
-              >
-                ← Edit Costs
-              </Button>
-              <Button
-                onClick={() => {
-                  setPricingApproved(true);
-                  // Auto-fill the price in product form
-                  setProductForm(prev => ({
-                    ...prev,
-                    price: pricingAnalysis.suggestedPrice
-                  }));
-                  toast({
-                    title: "Price Approved! ✅",
-                    description: `₹${pricingAnalysis.suggestedPrice} will be used for your product.`,
-                  });
-                  // Auto-advance to next step
-                  goToNextStep();
-                }}
-                className="flex-1 bg-green-600 hover:bg-green-700"
-              >
-                ✅ Approve Price & Continue
-              </Button>
-            </div>
+    <div className="space-y-6">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold mb-2">Step 4: Fair Price Engine</h2>
+        <p className="text-muted-foreground">Tell us about your effort and costs for realistic pricing</p>
+        {isContinuousListening && (
+          <div className="mt-2 text-sm text-purple-600 bg-purple-50 px-3 py-1 rounded-full inline-block">
+            💡 Voice commands active - say "next" to proceed or "back" to return
           </div>
         )}
       </div>
-    );
+
+      {showPricingInputs ? (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>🛠️ Your Craftsmanship Input</CardTitle>
+              <CardDescription>
+                Help us calculate a fair price by sharing details about your time, materials, and costs
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="time-spent">⏰ Time Spent (hours)</Label>
+                  <Input
+                    id="time-spent"
+                    type="number"
+                    placeholder="e.g., 24"
+                    value={artisanInputs.timeSpent}
+                    onChange={(e) => setArtisanInputs(prev => ({ ...prev, timeSpent: e.target.value }))}
+                  />
+                  <p className="text-xs text-muted-foreground">Total hours you spent making this product</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="material-costs">🧵 Material Costs (₹)</Label>
+                  <Input
+                    id="material-costs"
+                    type="number"
+                    placeholder="e.g., 500"
+                    value={artisanInputs.materialCosts}
+                    onChange={(e) => setArtisanInputs(prev => ({ ...prev, materialCosts: e.target.value }))}
+                  />
+                  <p className="text-xs text-muted-foreground">Cost of cloth, thread, dyes, etc.</p>
+                </div>
+              </div>
+
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="other-costs">🔧 Other Costs (₹)</Label>
+                  <Input
+                    id="other-costs"
+                    type="number"
+                    placeholder="e.g., 100"
+                    value={artisanInputs.otherCosts}
+                    onChange={(e) => setArtisanInputs(prev => ({ ...prev, otherCosts: e.target.value }))}
+                  />
+                  <p className="text-xs text-muted-foreground">Tools, transportation, packaging</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="expected-profit">💰 Desired Profit Margin (%)</Label>
+                  <Input
+                    id="expected-profit"
+                    type="number"
+                    placeholder="e.g., 30"
+                    value={artisanInputs.expectedProfit}
+                    onChange={(e) => setArtisanInputs(prev => ({ ...prev, expectedProfit: e.target.value }))}
+                  />
+                  <p className="text-xs text-muted-foreground">How much profit do you want to make?</p>
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <Button
+                  onClick={() => {
+                    if (!artisanInputs.timeSpent || !artisanInputs.materialCosts) {
+                      toast({
+                        title: "Missing Information",
+                        description: "Please fill in at least time spent and material costs.",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    setShowPricingInputs(false);
+                    analyzePricing();
+                  }}
+                  className="w-full bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700"
+                  size="lg"
+                >
+                  🚀 Calculate Fair Price
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : !pricingAnalysis ? (
+        <div className="text-center py-12">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Calculating your fair price...</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Cost Breakdown */}
+          <Card>
+            <CardHeader>
+              <CardTitle>💰 Your Cost Breakdown</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium">Materials:</span> ₹{artisanInputs.materialCosts || 0}
+                </div>
+                <div>
+                  <span className="font-medium">Other Costs:</span> ₹{artisanInputs.otherCosts || 0}
+                </div>
+                <div>
+                  <span className="font-medium">Time Value:</span> ₹{pricingAnalysis.timeValue || 0}
+                </div>
+                <div>
+                  <span className="font-medium">Profit Margin:</span> {artisanInputs.expectedProfit || 0}%
+                </div>
+              </div>
+              <div className="mt-4 pt-4 border-t">
+                <div className="flex justify-between font-bold text-lg">
+                  <span>Total Cost:</span>
+                  <span>₹{pricingAnalysis.totalCost}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Pricing Analysis Results */}
+          <div className="grid md:grid-cols-3 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  💰 Fair Price
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-green-600">
+                  ₹{pricingAnalysis.suggestedPrice}
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Based on your actual costs
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  📈 Your Profit
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">
+                  ₹{pricingAnalysis.profitAmount}
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {pricingAnalysis.profitMargin}% margin
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  🎯 Market Position
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-purple-600">
+                  {pricingAnalysis.marketPosition}%
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Above market average
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Recommendations */}
+          <Card>
+            <CardHeader>
+              <CardTitle>🎯 Pricing Recommendations</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {pricingAnalysis.recommendations?.map((rec: string, index: number) => (
+                  <div key={index} className="flex items-start gap-3">
+                    <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center text-white text-sm font-bold mt-0.5">
+                      {index + 1}
+                    </div>
+                    <p className="text-sm">{rec}</p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex gap-3">
+            <Button
+              onClick={() => setShowPricingInputs(true)}
+              variant="outline"
+              className="flex-1"
+            >
+              ← Edit Costs
+            </Button>
+            <Button
+              onClick={() => {
+                setPricingApproved(true);
+                // Auto-fill the price in product form
+                setProductForm(prev => ({
+                  ...prev,
+                  price: pricingAnalysis.suggestedPrice
+                }));
+                toast({
+                  title: "Price Approved! ✅",
+                  description: `₹${pricingAnalysis.suggestedPrice} will be used for your product.`,
+                });
+                // Auto-advance to next step
+                goToNextStep();
+              }}
+              className="flex-1 bg-green-600 hover:bg-green-700"
+            >
+              ✅ Approve Price & Continue
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
   };
 
   // Step 1: Image Upload
   const renderImageUploadStep = () => {
     return (
-      <div className="space-y-6">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">Step 1: Upload Product Image</h2>
-          <p className="text-muted-foreground">Upload or capture a photo of your handmade product</p>
-          {isContinuousListening && (
-            <div className="mt-2 text-sm text-blue-600 bg-blue-50 px-3 py-1 rounded-full inline-block">
-              💡 Voice commands active - say "next" when ready
-            </div>
-          )}
-        </div>
+    <div className="space-y-6">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold mb-2">Step 1: Upload Product Image</h2>
+        <p className="text-muted-foreground">Upload or capture a photo of your handmade product</p>
+        {isContinuousListening && (
+          <div className="mt-2 text-sm text-blue-600 bg-blue-50 px-3 py-1 rounded-full inline-block">
+            💡 Voice commands active - say "next" when ready
+          </div>
+        )}
+      </div>
 
-        {/* Image Upload Section */}
-        <div className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              {/* Image Preview with Slider */}
-              <div className="relative aspect-video w-full border-2 border-dashed rounded-lg flex items-center justify-center overflow-hidden bg-muted/50">
-                {!imageFile ? (
-                  <div className="text-center text-muted-foreground p-4">
-                    <Upload className="mx-auto size-12 mb-2" />
-                    <p className="text-sm">Upload or capture product image</p>
-                  </div>
-                ) : !originalImage ? (
-                  <div className="text-center text-muted-foreground p-4">
-                    <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                    <p className="text-sm">Processing image...</p>
-                  </div>
-                ) : (
-                  <div className="relative w-full h-full">
-                    {/* Original Image (Background) */}
-                    <Image
-                      src={originalImage}
-                      alt="Original image"
-                      layout="fill"
-                      objectFit="contain"
+      {/* Image Upload Section */}
+      <div className="space-y-4">
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            {/* Image Preview with Slider */}
+            <div className="relative aspect-video w-full border-2 border-dashed rounded-lg flex items-center justify-center overflow-hidden bg-muted/50">
+              {!imageFile ? (
+                <div className="text-center text-muted-foreground p-4">
+                  <Upload className="mx-auto size-12 mb-2" />
+                  <p className="text-sm">Upload or capture product image</p>
+                </div>
+              ) : !originalImage ? (
+                <div className="text-center text-muted-foreground p-4">
+                  <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                  <p className="text-sm">Processing image...</p>
+                </div>
+              ) : (
+                <div className="relative w-full h-full">
+                  {/* Original Image (Background) */}
+                  <Image
+                    src={originalImage}
+                    alt="Original image"
+                    layout="fill"
+                    objectFit="contain"
+                    className="absolute inset-0 rounded-lg"
+                  />
+
+                  {/* Enhanced Image (Foreground with clip-path) */}
+                  {enhancedImage && (
+                    <div
                       className="absolute inset-0 rounded-lg"
-                    />
-
-                    {/* Enhanced Image (Foreground with clip-path) */}
-                    {enhancedImage && (
-                      <div
-                        className="absolute inset-0 rounded-lg"
-                        style={{
-                          clipPath: `inset(0 ${100 - comparisonSlider}% 0 0)`
-                        }}
-                      >
-                        <Image
-                          src={enhancedImage}
-                          alt="Enhanced image"
-                          layout="fill"
-                          objectFit="contain"
-                        />
-                      </div>
-                    )}
-
-                    {/* Slider Line */}
-                    {enhancedImage && (
-                      <div
-                        className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg z-10"
-                        style={{ left: `${comparisonSlider}%` }}
-                      >
-                        <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 bg-white rounded-full shadow-lg border-2 border-gray-300 flex items-center justify-center">
-                          <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Slider Input */}
-                    {enhancedImage && (
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={comparisonSlider}
-                        onChange={(e) => setComparisonSlider(Number(e.target.value))}
-                        onMouseDown={() => setIsDragging(true)}
-                        onMouseUp={() => setIsDragging(false)}
-                        className="absolute bottom-2 left-1/2 -translate-x-1/2 w-2/3 h-1 bg-white/30 rounded appearance-none cursor-pointer slider"
-                        style={{
-                          background: `linear-gradient(to right, #6b7280 0%, #6b7280 ${comparisonSlider}%, #ffffff30 ${comparisonSlider}%, #ffffff30 100%)`
-                        }}
+                      style={{
+                        clipPath: `inset(0 ${100 - comparisonSlider}% 0 0)`
+                      }}
+                    >
+                      <Image
+                        src={enhancedImage}
+                        alt="Enhanced image"
+                        layout="fill"
+                        objectFit="contain"
                       />
-                    )}
-
-                    {/* Labels */}
-                    {enhancedImage && (
-                      <div className="absolute top-2 left-2 right-2 flex justify-between text-xs text-white/80 font-medium">
-                        <span>Original</span>
-                        <span>Enhanced</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex flex-col items-center gap-2 h-20"
-                  variant="outline"
-                >
-                  <Upload className="size-6" />
-                  <span className="text-xs">Gallery</span>
-                </Button>
-                <Button
-                  onClick={openCamera}
-                  className="flex flex-col items-center gap-2 h-20"
-                  variant="outline"
-                >
-                  <Camera className="size-6" />
-                  <span className="text-xs">Camera</span>
-                </Button>
-              </div>
-
-              {/* AI Enhancement Button */}
-              {imageFile && !enhancedImage && (
-                <Button
-                  onClick={analyzeImage}
-                  disabled={isAnalyzingImage}
-                  className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
-                  size="sm"
-                >
-                  {isAnalyzingImage ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                      Enhancing...
-                    </>
-                  ) : (
-                    <>
-                      ✨ Enhance with AI
-                    </>
+                    </div>
                   )}
-                </Button>
-              )}
 
-              {/* Enhancement Action Buttons */}
-              {enhancedImage && (
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => {
-                      setImagePreview(originalImage);
-                      // Set basic imageAnalysis if not already set
-                      if (!imageAnalysis) {
-                        setImageAnalysis({
-                          productType: 'Handcrafted Product',
-                          category: 'Handicrafts',
-                          materials: ['Various'],
-                          colors: ['Natural'],
-                          description: 'A beautiful handcrafted product',
-                          estimatedValue: '₹2,000 - ₹15,000'
-                        });
-                      }
-                      toast({
-                        title: "Using original image",
-                        description: "You can always re-enable enhancement later.",
-                      });
-                    }}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                  >
-                    Use Original
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setImagePreview(enhancedImage);
-                      // Set basic imageAnalysis if not already set
-                      if (!imageAnalysis) {
-                        setImageAnalysis({
-                          productType: 'Enhanced Handcrafted Product',
-                          category: 'Handicrafts',
-                          materials: ['Various'],
-                          colors: ['Natural'],
-                          description: 'An AI-enhanced handcrafted product with professional styling',
-                          estimatedValue: '₹2,000 - ₹15,000'
-                        });
-                      }
-                      toast({
-                        title: "Using enhanced image ✨",
-                        description: "AI enhancement applied successfully!",
-                      });
-                    }}
-                    className="flex-1"
-                    size="sm"
-                  >
-                    Use Enhanced
-                  </Button>
+                  {/* Slider Line */}
+                  {enhancedImage && (
+                    <div
+                      className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg z-10"
+                      style={{ left: `${comparisonSlider}%` }}
+                    >
+                      <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 bg-white rounded-full shadow-lg border-2 border-gray-300 flex items-center justify-center">
+                        <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Slider Input */}
+                  {enhancedImage && (
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={comparisonSlider}
+                      onChange={(e) => setComparisonSlider(Number(e.target.value))}
+                      onMouseDown={() => setIsDragging(true)}
+                      onMouseUp={() => setIsDragging(false)}
+                      className="absolute bottom-2 left-1/2 -translate-x-1/2 w-2/3 h-1 bg-white/30 rounded appearance-none cursor-pointer slider"
+                      style={{
+                        background: `linear-gradient(to right, #6b7280 0%, #6b7280 ${comparisonSlider}%, #ffffff30 ${comparisonSlider}%, #ffffff30 100%)`
+                      }}
+                    />
+                  )}
+
+                  {/* Labels */}
+                  {enhancedImage && (
+                    <div className="absolute top-2 left-2 right-2 flex justify-between text-xs text-white/80 font-medium">
+                      <span>Original</span>
+                      <span>Enhanced</span>
+                    </div>
+                  )}
                 </div>
               )}
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleGalleryUpload}
-              />
             </div>
+          </div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex flex-col items-center gap-2 h-20"
+                variant="outline"
+              >
+                <Upload className="size-6" />
+                <span className="text-xs">Gallery</span>
+              </Button>
+              <Button
+                onClick={openCamera}
+                className="flex flex-col items-center gap-2 h-20"
+                variant="outline"
+              >
+                <Camera className="size-6" />
+                <span className="text-xs">Camera</span>
+              </Button>
+            </div>
+
+            {/* AI Enhancement Button */}
+            {imageFile && !enhancedImage && (
+              <Button
+                onClick={analyzeImage}
+                disabled={isAnalyzingImage}
+                className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                size="sm"
+              >
+                {isAnalyzingImage ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                    Enhancing...
+                  </>
+                ) : (
+                  <>
+                    ✨ Enhance with AI
+                  </>
+                )}
+              </Button>
+            )}
+
+            {/* Enhancement Action Buttons */}
+            {enhancedImage && (
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    setImagePreview(originalImage);
+                    // Set basic imageAnalysis if not already set
+                    if (!imageAnalysis) {
+                      setImageAnalysis({
+                        productType: 'Handcrafted Product',
+                        category: 'Handicrafts',
+                        materials: ['Various'],
+                        colors: ['Natural'],
+                        description: 'A beautiful handcrafted product',
+                        estimatedValue: '₹2,000 - ₹15,000'
+                      });
+                    }
+                    toast({
+                      title: "Using original image",
+                      description: "You can always re-enable enhancement later.",
+                    });
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                >
+                  Use Original
+                </Button>
+                <Button
+                  onClick={() => {
+                    setImagePreview(enhancedImage);
+                    // Set basic imageAnalysis if not already set
+                    if (!imageAnalysis) {
+                      setImageAnalysis({
+                        productType: 'Enhanced Handcrafted Product',
+                        category: 'Handicrafts',
+                        materials: ['Various'],
+                        colors: ['Natural'],
+                        description: 'An AI-enhanced handcrafted product with professional styling',
+                        estimatedValue: '₹2,000 - ₹15,000'
+                      });
+                    }
+                    toast({
+                      title: "Using enhanced image ✨",
+                      description: "AI enhancement applied successfully!",
+                    });
+                  }}
+                  className="flex-1"
+                  size="sm"
+                >
+                  Use Enhanced
+                </Button>
+              </div>
+            )}
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleGalleryUpload}
+            />
           </div>
         </div>
       </div>
-    );
+    </div>
+  );
   };
 
   return (

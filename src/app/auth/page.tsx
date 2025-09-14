@@ -31,10 +31,9 @@ const AuthPage: React.FC = () => {
       // User is authenticated and has a profile, redirect based on role
       if (userProfile.role === 'buyer') {
         router.push('/marketplace');
-      } else if (userProfile.role === 'artisan') {
-        router.push('/');
       } else {
-        router.push('/');
+        // For artisans and other roles, show the main dashboard
+        router.push('/dashboard');
       }
     }
   }, [user, userProfile, loading, router]);
@@ -55,9 +54,9 @@ const AuthPage: React.FC = () => {
           if (result.data.role === 'buyer') {
             router.push('/marketplace');
           } else if (result.data.role === 'artisan') {
-            router.push('/');
+            router.push('/dashboard');
           } else {
-            router.push('/');
+            router.push('/dashboard');
           }
         } else {
           // New user, show registration form
@@ -82,9 +81,9 @@ const AuthPage: React.FC = () => {
     if (userData.role === 'buyer') {
       router.push('/marketplace');
     } else if (userData.role === 'artisan') {
-      router.push('/');
+      router.push('/dashboard');
     } else {
-      router.push('/');
+      router.push('/dashboard');
     }
   };
 

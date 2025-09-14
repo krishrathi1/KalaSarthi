@@ -1,7 +1,7 @@
-# Finance Tracker and Sales Advisor Implementation Summary
+# DigitalKhata and Sales Advisor Implementation Summary
 
 ## 🎯 Overview
-This document summarizes the implementation of the Production-grade agentic workflow for Finance Tracker and Sales Advisor in the KalaBandhu project. The system provides comprehensive financial analytics, AI-powered insights, and automated loan application assistance.
+This document summarizes the implementation of the Production-grade agentic workflow for DigitalKhata and Sales Advisor in the KalaBandhu project. The system provides comprehensive financial analytics, AI-powered insights, and automated loan application assistance.
 
 ## 🏗️ Architecture Components Implemented
 
