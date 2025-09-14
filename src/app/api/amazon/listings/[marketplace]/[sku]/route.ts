@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { marketplace: string; sku: string } }
+  { params }: { params: Promise<{ marketplace: string; sku: string }> }
 ) {
-  const { marketplace, sku } = params;
+  const { marketplace, sku } = await params;
   const accessToken = request.headers.get('authorization')?.replace('Bearer ', '');
 
   if (!accessToken) {

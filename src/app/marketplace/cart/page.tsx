@@ -43,7 +43,7 @@ export default function CartPage() {
     const [updatingItems, setUpdatingItems] = useState<Set<string>>(new Set());
     const [showCheckout, setShowCheckout] = useState(false);
     const [orderPlaced, setOrderPlaced] = useState(false);
-    const [placedOrder, setPlacedOrder] = useState(null);
+    const [placedOrder, setPlacedOrder] = useState<any>(null);
 
     // Shipping address state
     const [shippingAddress, setShippingAddress] = useState({
@@ -57,7 +57,7 @@ export default function CartPage() {
     });
 
     const [orderNotes, setOrderNotes] = useState('');
-    const [addressErrors, setAddressErrors] = useState({});
+    const [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
 
     const handleQuantityChange = async (productId: string, newQuantity: number) => {
         setUpdatingItems(prev => new Set(prev).add(productId));
@@ -100,11 +100,11 @@ export default function CartPage() {
     };
 
     const validateAddress = () => {
-        const errors = {};
+        const errors: Record<string, string> = {};
         const required = ['fullName', 'street', 'city', 'state', 'zipCode', 'phone'];
 
         required.forEach(field => {
-            if (!shippingAddress[field].trim()) {
+            if (!(shippingAddress as any)[field].trim()) {
                 errors[field] = `${field.charAt(0).toUpperCase() + field.slice(1).replace(/([A-Z])/g, ' $1')} is required`;
             }
         });
@@ -142,13 +142,13 @@ export default function CartPage() {
             notes: orderNotes,
             useCart: true, // Use items from cart
             taxRate: 0.18, // 18% GST
-            shippingCost: cart.totalAmount >= 500 ? 0 : 50, // Free shipping above ₹500
+            shippingCost: (cart?.totalAmount ?? 0) >= 500 ? 0 : 50, // Free shipping above ₹500
             discount: 0
         };
 
         const result = await createOrder(orderData);
 
-        if (result.success) {
+        if (result && typeof result === 'object' && 'success' in result && result.success) {
             setPlacedOrder(result.order);
             setOrderPlaced(true);
             // Clear cart after successful order

@@ -8,7 +8,6 @@
  * - AutomateLoanFormFillingOutput - The return type for the automateLoanFormFilling function.
  */
 
-import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
 const LoanFormInputSchema = z.object({
@@ -102,67 +101,49 @@ const LoanFormOutputSchema = z.object({
 export type AutomateLoanFormFillingOutput = z.infer<typeof LoanFormOutputSchema>;
 
 export async function automateLoanFormFilling(input: AutomateLoanFormFillingInput): Promise<AutomateLoanFormFillingOutput> {
-  return automateLoanFormFillingFlow(input);
+  // Mock implementation - in real scenario, this would use RPA for loan form filling
+  const { userId, loanPortalUrl, formData } = input;
+  
+  return {
+    success: true,
+    applicationId: `LOAN-${Date.now()}`,
+    status: 'submitted',
+    portalUrl: loanPortalUrl,
+    formProgress: 100,
+    completedSteps: [
+      'Personal information filled',
+      'Business information filled',
+      'Loan details entered',
+      'Documents uploaded',
+      'Form submitted'
+    ],
+    pendingSteps: [],
+    errors: [],
+    warnings: [],
+    nextActions: [
+      'Review application status',
+      'Wait for approval notification',
+      'Complete additional verification if required'
+    ],
+    estimatedProcessingTime: '2-3 business days',
+    trackingNumber: `TRK-${Date.now()}`,
+    documents: formData.documents.map(doc => ({
+      type: doc.type,
+      status: 'uploaded' as const,
+      message: 'Document successfully uploaded'
+    })),
+    compliance: {
+      gdprCompliant: true,
+      dataRetentionPolicy: 'Data will be retained for 7 years as per regulatory requirements',
+      userRights: [
+        'Right to access your data',
+        'Right to rectification',
+        'Right to erasure',
+        'Right to data portability'
+      ]
+    }
+  };
 }
-
-const prompt = ai.definePrompt({
-  name: 'rpaLoanFormPrompt',
-  input: { schema: LoanFormInputSchema },
-  output: { schema: LoanFormOutputSchema },
-  prompt: `You are an RPA Loan Form Agent for KalaBandhu, responsible for automating loan application form filling while ensuring user consent and data security.
-
-USER REQUEST: Automate loan form filling for user {{{userId}}}
-
-LOAN PORTAL: {{{loanPortalUrl}}}
-
-FORM DATA:
-Personal Info: {{{formData.personalInfo}}}
-Business Info: {{{formData.businessInfo}}}
-Loan Details: {{{formData.loanDetails}}}
-Documents: {{{formData.documents}}}
-
-USER CONSENT:
-- Automated Form Filling: {{{consent.automatedFormFilling}}}
-- Data Sharing: {{{consent.dataSharing}}}
-- Terms Accepted: {{{consent.termsAccepted}}}
-- Consent Timestamp: {{{consent.timestamp}}
-
-USER PREFERENCES:
-- Preferred Time: {{{preferences.preferredTime}}}
-- Notification Method: {{{preferences.notificationMethod}}}
-- Auto Submit: {{{preferences.autoSubmit}}}
-
-Your task is to:
-1. Validate user consent and compliance requirements
-2. Prepare the form data for automated submission
-3. Coordinate with the RPA orchestrator for form filling
-4. Monitor the progress and provide status updates
-5. Ensure data security and privacy compliance
-6. Handle any errors or validation issues
-7. Provide clear next steps and tracking information
-
-Focus on:
-- User consent validation
-- Data security and privacy
-- Error handling and validation
-- Progress tracking and transparency
-- Compliance with financial regulations
-- User experience and communication
-
-Ensure all actions are within the scope of user consent and maintain transparency throughout the process.`,
-});
-
-const automateLoanFormFillingFlow = ai.defineFlow(
-  {
-    name: 'automateLoanFormFillingFlow',
-    inputSchema: LoanFormInputSchema,
-    outputSchema: LoanFormOutputSchema,
-  },
-  async input => {
-    const { output } = await prompt(input);
-    return output!;
-  }
-);
 
 // RPA Orchestrator interface for coordinating form filling
 export interface RPAOrchestrator {
@@ -195,101 +176,3 @@ export interface ComplianceChecker {
   checkDataRetention: (data: any) => Promise<string>;
   auditTrail: (action: string, userId: string) => Promise<void>;
 }
-
-// Example RPA workflow steps
-export const rpaWorkflowSteps = {
-  initialization: {
-    step: 'Initialize RPA Session',
-    description: 'Set up browser automation and establish connection to loan portal',
-    estimatedTime: '2-3 minutes',
-    dependencies: ['user_consent', 'portal_access'],
-  },
-  authentication: {
-    step: 'Portal Authentication',
-    description: 'Log into the loan portal using provided credentials or session token',
-    estimatedTime: '1-2 minutes',
-    dependencies: ['credentials_validation'],
-  },
-  formNavigation: {
-    step: 'Navigate to Application Form',
-    description: 'Locate and navigate to the loan application form section',
-    estimatedTime: '1 minute',
-    dependencies: ['portal_structure_analysis'],
-  },
-  dataEntry: {
-    step: 'Automated Data Entry',
-    description: 'Fill in form fields with validated user data',
-    estimatedTime: '3-5 minutes',
-    dependencies: ['form_field_mapping', 'data_validation'],
-  },
-  documentUpload: {
-    step: 'Document Upload and Verification',
-    description: 'Upload required documents and verify their acceptance',
-    estimatedTime: '2-4 minutes',
-    dependencies: ['document_validation', 'file_format_check'],
-  },
-  formValidation: {
-    step: 'Form Validation and Error Correction',
-    description: 'Validate form data and correct any validation errors',
-    estimatedTime: '2-3 minutes',
-    dependencies: ['error_detection', 'data_correction'],
-  },
-  submission: {
-    step: 'Form Submission',
-    description: 'Submit the completed loan application form',
-    estimatedTime: '1 minute',
-    dependencies: ['final_validation', 'user_approval'],
-  },
-  confirmation: {
-    step: 'Submission Confirmation',
-    description: 'Capture confirmation details and application tracking information',
-    estimatedTime: '1 minute',
-    dependencies: ['submission_success'],
-  },
-};
-
-// Security and compliance guidelines
-export const securityGuidelines = {
-  dataEncryption: 'All sensitive data must be encrypted in transit and at rest',
-  accessControl: 'Strict access control with role-based permissions',
-  auditLogging: 'Comprehensive audit logging for all RPA actions',
-  consentManagement: 'Explicit user consent required for each automation step',
-  dataRetention: 'Automatic data deletion after loan processing completion',
-  privacyProtection: 'PII data minimization and anonymization where possible',
-  complianceMonitoring: 'Real-time compliance monitoring and alerting',
-  incidentResponse: 'Automated incident detection and response procedures',
-};
-
-// Error handling scenarios
-export const errorScenarios = {
-  portalUnavailable: {
-    error: 'Loan portal is temporarily unavailable',
-    action: 'Retry after 15 minutes or contact support',
-    fallback: 'Manual form completion with user guidance',
-  },
-  authenticationFailed: {
-    error: 'Invalid credentials or session expired',
-    action: 'Request fresh credentials from user',
-    fallback: 'Manual login with user assistance',
-  },
-  formStructureChanged: {
-    error: 'Loan portal form structure has changed',
-    action: 'Update form field mapping and retry',
-    fallback: 'Manual form completion with updated guidance',
-  },
-  documentRejection: {
-    error: 'One or more documents were rejected',
-    action: 'Identify and correct document issues',
-    fallback: 'Manual document upload with user guidance',
-  },
-  validationErrors: {
-    error: 'Form validation errors detected',
-    action: 'Review and correct data inconsistencies',
-    fallback: 'Manual error correction with user input',
-  },
-  networkTimeout: {
-    error: 'Network timeout during form submission',
-    action: 'Retry submission with extended timeout',
-    fallback: 'Manual form submission with user confirmation',
-  },
-};

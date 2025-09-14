@@ -313,13 +313,8 @@ const FinanceAggregatorOutputSchema = z.object({
   errors: z.array(z.string()),
 });
 
-const financeAggregatorFlow = ai.defineFlow(
-  {
-    name: 'financeAggregatorFlow',
-    inputSchema: FinanceAggregatorInputSchema,
-    outputSchema: FinanceAggregatorOutputSchema,
-  },
-  async (request: FinanceAggregatorRequest): Promise<FinanceAggregatorResponse> => {
+// Mock implementation - in real scenario, this would use AI for finance aggregation
+async function financeAggregatorFlow(request: FinanceAggregatorRequest): Promise<FinanceAggregatorResponse> {
     const startTime = Date.now();
     const response: FinanceAggregatorResponse = {
       success: false,
@@ -377,8 +372,7 @@ const financeAggregatorFlow = ai.defineFlow(
 
     response.processingTime = Date.now() - startTime;
     return response;
-  }
-);
+}
 
 export async function runFinanceAggregator(request: FinanceAggregatorRequest): Promise<FinanceAggregatorResponse> {
   return await financeAggregatorFlow(request);

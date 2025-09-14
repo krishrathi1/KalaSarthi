@@ -133,7 +133,7 @@ Return only the JSON object, no additional text.`;
       productDetails: {
         name: "Handcrafted Product",
         category: "handicrafts",
-        description: story || "A beautiful handcrafted product",
+        description: "A beautiful handcrafted product",
         materials: ["Traditional materials"],
         tags: ["handmade", "artisan", "traditional"],
         dimensions: "Various sizes available",

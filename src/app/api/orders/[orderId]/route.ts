@@ -5,10 +5,10 @@ import { OrderService } from '@/lib/service/OrderService';
 // GET - Get specific order by ID
 export async function GET(
     request: NextRequest,
-    { params }: { params: { orderId: string } }
+    { params }: { params: Promise<{ orderId: string }> }
 ) {
     try {
-        const { orderId } = params;
+        const { orderId } = await params;
 
         if (!orderId) {
             return NextResponse.json({
@@ -36,10 +36,10 @@ export async function GET(
 // PUT - Update order (admin/artisan only)
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { orderId: string } }
+    { params }: { params: Promise<{ orderId: string }> }
 ) {
     try {
-        const { orderId } = params;
+        const { orderId } = await params;
         const updateData = await request.json();
 
         if (!orderId) {

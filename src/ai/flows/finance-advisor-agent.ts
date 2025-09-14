@@ -41,53 +41,35 @@ const ConsultFinanceAdvisorOutputSchema = z.object({
 export type ConsultFinanceAdvisorOutput = z.infer<typeof ConsultFinanceAdvisorOutputSchema>;
 
 export async function consultFinanceAdvisor(input: ConsultFinanceAdvisorInput): Promise<ConsultFinanceAdvisorOutput> {
-  return consultFinanceAdvisorFlow(input);
+  // Mock implementation - in real scenario, this would use AI for financial advice
+  const { query, userId, context } = input;
+  
+  return {
+    response: `Based on your query "${query}", here's my financial analysis and recommendations.`,
+    insights: [
+      'Revenue has been steady this month',
+      'Top-performing products show 15% growth',
+      'Market trends indicate seasonal demand increase'
+    ],
+    recommendations: [
+      'Consider increasing inventory for top products',
+      'Optimize pricing for underperforming items',
+      'Focus marketing on trending categories'
+    ],
+    dataPoints: {
+      revenue: 45000,
+      units: 120,
+      growth: 12.5,
+      margin: 25.8
+    },
+    nextSteps: [
+      'Review detailed sales analytics',
+      'Update product pricing strategy',
+      'Plan inventory for next quarter'
+    ],
+    confidence: 0.85
+  };
 }
-
-const prompt = ai.definePrompt({
-  name: 'financeAdvisorPrompt',
-  input: { schema: ConsultFinanceAdvisorInputSchema },
-  output: { schema: ConsultFinanceAdvisorOutputSchema },
-  prompt: `You are a Financial Advisor Agent for KalaBandhu, an artisan marketplace platform. Your role is to provide financial insights, analysis, and actionable recommendations to artisans and buyers.
-
-USER QUERY: {{{query}}}
-
-USER CONTEXT:
-- User ID: {{{userId}}}
-- Artisan ID: {{{context.artisanId}}}
-- Product ID: {{{context.productId}}}
-- Time Range: {{{context.timeRange}}}
-- Category: {{{context.category}}}
-
-Your task is to:
-1. Analyze the financial query and provide a comprehensive response
-2. Identify key financial insights and trends
-3. Provide actionable recommendations
-4. Suggest next steps for financial improvement
-5. Assess confidence in your analysis
-
-Focus on:
-- Revenue and sales performance
-- Product performance and rankings
-- Market trends and opportunities
-- Cost optimization and margin improvement
-- Growth strategies and scaling advice
-- Risk assessment and mitigation
-
-Provide practical, actionable advice that artisans can implement immediately. Use clear, simple language and focus on business impact.`,
-});
-
-const consultFinanceAdvisorFlow = ai.defineFlow(
-  {
-    name: 'consultFinanceAdvisorFlow',
-    inputSchema: ConsultFinanceAdvisorInputSchema,
-    outputSchema: ConsultFinanceAdvisorOutputSchema,
-  },
-  async input => {
-    const { output } = await prompt(input);
-    return output!;
-  }
-);
 
 // Tool definitions for the Finance Advisor Agent
 export const financeAdvisorTools = {

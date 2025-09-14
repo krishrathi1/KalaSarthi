@@ -13,15 +13,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { statusUpdates, notifications } = await trackApplicationStatus({
-      applications,
-      artisanId,
+    const { statusUpdates } = await trackApplicationStatus({
+      applicationIds: applications,
     });
 
     return NextResponse.json({
       message: 'Application status tracking completed',
       statusUpdates,
-      notifications,
     });
 
   } catch (error) {

@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export async function POST(request: NextRequest) {
+  let story = '';
+  let language = 'hi'; // Default language
   try {
-    const { story, imageUrl, language = 'hi', voiceStyle = 'default' } = await request.json();
+    const requestBody = await request.json();
+    story = requestBody.story;
+    const { imageUrl, language: reqLanguage = 'hi', voiceStyle = 'default' } = requestBody;
+    language = reqLanguage; // Update with request language
 
     console.log('Story enhancement request:', { 
       story: story?.substring(0, 100) + '...', 
@@ -24,19 +29,13 @@ export async function POST(request: NextRequest) {
     if (!apiKey) {
       console.warn('GOOGLE_AI_API_KEY not found, using fallback');
       
-      // Detect language for fallback
-      const isHindi = /[\u0900-\u097F]/.test(story);
-      const fallbackStory = isHindi 
-        ? `यह एक पारंपरिक लकड़ी का खिलौना है जो आम के पेड़ की लकड़ी से बनाया जाता है। यह खिलौना हमारे परिवार में 200 सालों से बनाया जा रहा है। हम इस परंपरा को 200 सालों से चलाते आ रहे हैं और यह हमारी पाँचवीं पीढ़ी है। यह केवल एक खिलौना नहीं, बल्कि हमारी कला और समर्पण का प्रतीक है।`
-        : `This is a traditional wooden toy made from mango wood. This toy has been made in our family for 200 years. We have been carrying on this tradition for 200 years and this is our fifth generation. This is not just a toy, but a symbol of our art and dedication.`;
-      
+      // Return error when API key is missing
       return NextResponse.json({
-        success: true,
-        enhancedStory: fallbackStory,
+        success: false,
+        error: 'Google AI API key is required for story enhancement',
         originalStory: story,
-        language: isHindi ? 'hi-IN' : 'en-US',
-        isFallback: true
-      });
+        language: language
+      }, { status: 500 });
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -165,8 +164,13 @@ Return only the enhanced story in ${detectedLanguage}, nothing else.`;
       enhancedStory = response.text();
     } catch (error) {
       console.error('Gemini generation error after retries:', error);
-      // Fallback story - keep it simple and authentic
-      enhancedStory = `यह एक पारंपरिक लकड़ी का खिलौना है जो आम के पेड़ की लकड़ी से बनाया जाता है। यह खिलौना हमारे परिवार में 200 सालों से बनाया जा रहा है। हम इस परंपरा को 200 सालों से चलाते आ रहे हैं और यह हमारी पाँचवीं पीढ़ी है। यह केवल एक खिलौना नहीं, बल्कि हमारी कला और समर्पण का प्रतीक है।`;
+      // Return error instead of fallback story
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to enhance story with AI',
+        originalStory: story,
+        language: language
+      }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -174,25 +178,18 @@ Return only the enhanced story in ${detectedLanguage}, nothing else.`;
       enhancedStory: enhancedStory,
       originalStory: story,
       language: language,
-      isFallback: enhancedStory.includes('यह एक पारंपरिक लकड़ी का खिलौना है') // Check if fallback was used
+      isFallback: false
     });
 
   } catch (error) {
     console.error('Story enhancement error:', error);
     
-    // Detect language for error fallback
-    const isHindi = /[\u0900-\u097F]/.test(story);
-    const fallbackStory = isHindi 
-      ? `यह एक पारंपरिक लकड़ी का खिलौना है जो आम के पेड़ की लकड़ी से बनाया जाता है। यह खिलौना हमारे परिवार में 200 सालों से बनाया जा रहा है। हम इस परंपरा को 200 सालों से चलाते आ रहे हैं और यह हमारी पाँचवीं पीढ़ी है। यह केवल एक खिलौना नहीं, बल्कि हमारी कला और समर्पण का प्रतीक है।`
-      : `This is a traditional wooden toy made from mango wood. This toy has been made in our family for 200 years. We have been carrying on this tradition for 200 years and this is our fifth generation. This is not just a toy, but a symbol of our art and dedication.`;
-    
+    // Return error instead of fallback story
     return NextResponse.json({
-      success: true,
-      enhancedStory: fallbackStory,
+      success: false,
+      error: error instanceof Error ? error.message : 'Story enhancement failed',
       originalStory: story,
-      language: isHindi ? 'hi-IN' : 'en-US',
-      isFallback: true,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
+      language: language
+    }, { status: 500 });
   }
 }

@@ -4,10 +4,10 @@ import { NextRequest, NextResponse } from 'next/server';
 // GET - Get orders for a specific artisan
 export async function GET(
     request: NextRequest,
-    { params }: { params: { artisanId: string } }
+    { params }: { params: Promise<{ artisanId: string }> }
 ) {
     try {
-        const { artisanId } = params;
+        const { artisanId } = await params;
         const { searchParams } = request.nextUrl;
         const status = searchParams.get('status');
 
