@@ -67,12 +67,15 @@ export class AIAssistedNavigationService {
    */
   private createFallbackGeminiService(): GeminiSpeechService {
     return {
-      speechToText: async (audioBuffer: ArrayBuffer, options: any) => ({
-        text: 'Speech recognition not available. Please configure GOOGLE_AI_API_KEY.',
-        confidence: 0.1,
-        language: options?.language || 'en-US',
-        duration: audioBuffer.byteLength / 16000
-      }),
+      speechToText: async (audioBuffer: ArrayBuffer, options: any) => {
+        console.warn('Speech recognition not available. Please configure GOOGLE_AI_API_KEY.');
+        return {
+          text: '',
+          confidence: 0.1,
+          language: options?.language || 'en-US',
+          duration: audioBuffer.byteLength / 16000
+        };
+      },
       textToSpeech: async (text: string, options: any) => new ArrayBuffer(0),
       processVoiceCommand: async (audioBuffer: ArrayBuffer, context: string) => ({
         intent: 'query',

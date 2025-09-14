@@ -1,5 +1,5 @@
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 
 export interface TrendSummarizationInput {
   artisanProfession: string;

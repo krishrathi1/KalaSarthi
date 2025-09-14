@@ -1,10 +1,13 @@
 
 import type { Metadata } from "next";
+import React from "react";
 import { Toaster } from "@/components/ui/toaster"
 import { LanguageProvider } from "@/context/language-context";
 import { GlobalTranslationProvider } from "@/components/global-translation-provider";
 import { AuthProvider } from "@/context/auth-context";
 import LayoutWrapper from "@/components/layout/LayoutWrapper";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { PerformanceMonitor } from "@/components/PerformanceMonitor";
 import "./globals.css";
 
 
@@ -62,15 +65,18 @@ export default function RootLayout({
         <link rel="icon" type="image/svg+xml" sizes="512x512" href="/icon-512x512.svg" />
       </head>
       <body className="font-body antialiased">
-        <AuthProvider>
-          <LanguageProvider>
-            <GlobalTranslationProvider />
-            <LayoutWrapper>
-              {children}
-            </LayoutWrapper>
-          </LanguageProvider>
-        </AuthProvider>
+        <ErrorBoundary>
+          <AuthProvider>
+            <LanguageProvider>
+              <GlobalTranslationProvider />
+              <LayoutWrapper>
+                {children}
+              </LayoutWrapper>
+            </LanguageProvider>
+          </AuthProvider>
+        </ErrorBoundary>
         <Toaster />
+        <PerformanceMonitor />
       </body>
     </html>
   );

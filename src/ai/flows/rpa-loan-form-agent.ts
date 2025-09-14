@@ -9,7 +9,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 
 const LoanFormInputSchema = z.object({
   userId: z.string().describe('The unique identifier of the user applying for the loan.'),

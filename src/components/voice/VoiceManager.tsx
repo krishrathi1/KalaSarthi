@@ -13,6 +13,9 @@ interface VoiceConfig {
   gender: 'MALE' | 'FEMALE';
   quality: 'Standard' | 'Wavenet' | 'Neural2' | 'Chirp3-HD';
   description?: string;
+  accent?: string;
+  age?: 'young' | 'adult' | 'senior';
+  personality?: 'professional' | 'friendly' | 'warm' | 'authoritative';
 }
 
 interface Language {
@@ -202,6 +205,25 @@ export function VoiceManager({
     return gender === 'FEMALE' ? '👩' : '👨';
   };
 
+  const getPersonalityIcon = (personality?: string) => {
+    switch (personality) {
+      case 'professional': return '💼';
+      case 'friendly': return '😊';
+      case 'warm': return '🤗';
+      case 'authoritative': return '👔';
+      default: return '🎭';
+    }
+  };
+
+  const getAgeIcon = (age?: string) => {
+    switch (age) {
+      case 'young': return '🧑‍🎓';
+      case 'adult': return '👨‍💼';
+      case 'senior': return '👴';
+      default: return '👤';
+    }
+  };
+
   return (
     <Card className={className}>
       <CardHeader>
@@ -256,6 +278,16 @@ export function VoiceManager({
                       <Badge className={getQualityColor(voice.quality)}>
                         {voice.quality}
                       </Badge>
+                      {voice.personality && (
+                        <span title={`Personality: ${voice.personality}`}>
+                          {getPersonalityIcon(voice.personality)}
+                        </span>
+                      )}
+                      {voice.age && (
+                        <span title={`Age: ${voice.age}`}>
+                          {getAgeIcon(voice.age)}
+                        </span>
+                      )}
                     </div>
                   </SelectItem>
                 ))}
@@ -270,9 +302,29 @@ export function VoiceManager({
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">{selectedVoice.name}</p>
-                <p className="text-sm text-gray-600">
-                  {getGenderIcon(selectedVoice.gender)} {selectedVoice.gender} • {selectedVoice.quality}
-                </p>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <span>{getGenderIcon(selectedVoice.gender)} {selectedVoice.gender}</span>
+                  <span>•</span>
+                  <span>{selectedVoice.quality}</span>
+                  {selectedVoice.accent && (
+                    <>
+                      <span>•</span>
+                      <span>{selectedVoice.accent}</span>
+                    </>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  {selectedVoice.personality && (
+                    <span className="text-xs text-gray-500" title={`Personality: ${selectedVoice.personality}`}>
+                      {getPersonalityIcon(selectedVoice.personality)} {selectedVoice.personality}
+                    </span>
+                  )}
+                  {selectedVoice.age && (
+                    <span className="text-xs text-gray-500" title={`Age: ${selectedVoice.age}`}>
+                      {getAgeIcon(selectedVoice.age)} {selectedVoice.age}
+                    </span>
+                  )}
+                </div>
                 {selectedVoice.description && (
                   <p className="text-xs text-gray-500 mt-1">{selectedVoice.description}</p>
                 )}

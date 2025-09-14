@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 
 const ImageAnalysisInputSchema = z.object({
   imageData: z.string().describe('Base64 encoded image data'),

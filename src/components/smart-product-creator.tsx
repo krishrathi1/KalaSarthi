@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { Camera, Upload, Sparkles, Mic, MicOff, Play, Pause } from "lucide-react";
 import {
@@ -14,10 +14,12 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { safeFetch, handleFileUploadError } from "@/lib/error-handler";
 import { useAuth } from "@/context/auth-context";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConversationalVoiceProcessor } from "@/lib/service/ConversationalVoiceProcessor";
+import { StoryRecordingMic } from "@/components/ui/StoryRecordingMic";
 
 interface ProductFormData {
   name: string;
@@ -34,6 +36,8 @@ interface ProductFormData {
   };
   quantity: number;
   tags: string[];
+  weight: number;
+  careInstructions: string;
 }
 
 type WizardStep = 'image-upload' | 'audio-recording' | 'product-details' | 'pricing-engine';
@@ -57,26 +61,19 @@ export function SmartProductCreator() {
   const [imageAnalysis, setImageAnalysis] = useState<any>(null);
   const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
 
-  // Audio recording state
-  const [isRecording, setIsRecording] = useState(false);
+  // Audio recording state (now using universal mic)
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
-  const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [transcription, setTranscription] = useState<string>("");
   const [enhancedTranscription, setEnhancedTranscription] = useState<string>("");
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [showStoryEnhancement, setShowStoryEnhancement] = useState(false);
+  const [isEnhancingStory, setIsEnhancingStory] = useState(false);
+  const [finalizedStory, setFinalizedStory] = useState<string>("");
+  const [interimTranscript, setInterimTranscript] = useState<string>("");
+  const [finalTranscript, setFinalTranscript] = useState<string>("");
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-
-  // Real-time speech recognition state
-  const [speechRecognition, setSpeechRecognition] = useState<any>(null);
-  const [interimTranscription, setInterimTranscription] = useState<string>("");
-  const [finalTranscription, setFinalTranscription] = useState<string>("");
-  const [isRealtimeSupported, setIsRealtimeSupported] = useState(false);
-  const [isRealtimeActive, setIsRealtimeActive] = useState(false);
-  const [voiceActivityLevel, setVoiceActivityLevel] = useState(0);
 
   // Voice command recognition state
   const [isContinuousListening, setIsContinuousListening] = useState(false);
@@ -99,7 +96,9 @@ export function SmartProductCreator() {
     colors: [],
     dimensions: { length: 0, width: 0, height: 0, weight: 0 },
     quantity: 1,
-    tags: []
+    tags: [],
+    weight: 0,
+    careInstructions: ""
   });
 
   // Pricing engine state
@@ -165,6 +164,169 @@ export function SmartProductCreator() {
 
   // Initialize conversational voice processor
   const conversationalProcessor = ConversationalVoiceProcessor.getInstance();
+
+  // Story enhancement function
+  const enhanceStory = async () => {
+    if (!transcription) return;
+
+    setIsEnhancingStory(true);
+    try {
+      // Create a comprehensive prompt that includes image analysis and story enhancement
+      const imageAnalysisContext = imageAnalysis ? `
+Image Analysis Context:
+- Product Type: ${imageAnalysis.productType || 'Unknown'}
+- Category: ${imageAnalysis.category || 'Unknown'}
+- Materials: ${imageAnalysis.materials?.join(', ') || 'Not specified'}
+- Colors: ${imageAnalysis.colors?.join(', ') || 'Not specified'}
+- Description: ${imageAnalysis.description || 'No description available'}
+- Cultural Elements: ${imageAnalysis.culturalElements?.join(', ') || 'Not specified'}
+- Craft Techniques: ${imageAnalysis.craftTechniques?.join(', ') || 'Not specified'}
+` : 'No image analysis available.';
+
+      const enhancementPrompt = `You are a professional marketing copywriter specializing in handmade and artisanal products. Your task is to transform a basic product story into a compelling, customer-attracting narrative.
+
+${imageAnalysisContext}
+
+Original Story from Artisan: "${transcription}"
+
+Please enhance this story by:
+
+1. **Analyzing the Product**: Use the image analysis to understand the product's unique characteristics, materials, and cultural significance.
+
+2. **Creating Emotional Connection**: Write in a way that makes customers feel connected to the artisan's journey and the product's cultural heritage.
+
+3. **Highlighting Craftsmanship**: Emphasize the skill, time, and dedication that went into creating this piece.
+
+4. **Adding Sensory Details**: Include descriptions that appeal to the senses (sight, touch, smell, sound).
+
+5. **Cultural Storytelling**: Weave in cultural significance, traditions, and the artisan's personal connection to their craft.
+
+6. **Customer Benefits**: Explain why this product is special and what makes it worth purchasing.
+
+7. **Call to Action**: End with a compelling reason for customers to buy this unique piece.
+
+Requirements:
+- Write in an engaging, conversational tone
+- Keep it between 150-300 words
+- Make it specific to this product (not generic)
+- Use vivid, descriptive language
+- Include the artisan's personal touch
+- Make it irresistible to potential customers
+- Write in the same language as the original story (Hindi/English)
+
+Return only the enhanced story, no additional commentary.`;
+
+      const response = await fetch('/api/story-enhancement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          story: transcription,
+          imageUrl: imagePreview, // Pass the actual image URL
+          language: /[\u0900-\u097F]/.test(transcription) ? 'hi-IN' : 'en-US', // Detect language from transcription
+          voiceStyle: 'default' // Default voice style, can be enhanced later
+        })
+      });
+
+      const result = await response.json();
+      if (result.success && result.enhancedStory) {
+        setEnhancedTranscription(result.enhancedStory);
+        setShowStoryEnhancement(false);
+        
+        toast({
+          title: "Story Enhanced!",
+          description: "Your story has been transformed into a compelling customer-attracting narrative.",
+        });
+      } else {
+        throw new Error(result.error || 'Failed to enhance story');
+      }
+    } catch (error) {
+      console.error('Story enhancement failed:', error);
+      toast({
+        title: "Enhancement Failed",
+        description: "Could not enhance your story. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsEnhancingStory(false);
+    }
+  };
+
+  // Story recording handlers
+  const handleStoryRecorded = (transcript: string, audioBlob: Blob) => {
+            setTranscription(transcript);
+    setAudioBlob(audioBlob);
+            setShowStoryEnhancement(true);
+    addDebugLog(`🎤 Story recorded: "${transcript}"`);
+            
+            toast({
+              title: "Story Captured!",
+              description: "Your story has been recorded. Would you like to enhance it?",
+            });
+  };
+
+  const handleStoryCleared = () => {
+    setTranscription('');
+    setAudioBlob(null);
+    setShowStoryEnhancement(false);
+    addDebugLog('🎤 Story recording cleared');
+  };
+
+  const handleFinalizedStory = (finalStory: string, audioBlob: Blob | null) => {
+    console.log('Finalized story:', finalStory);
+    console.log('Audio blob:', audioBlob);
+    
+    // Update the transcription to the finalized story
+    setTranscription(finalStory);
+    setFinalizedStory(finalStory);
+    
+    // Update product description with story summary
+    if (finalStory && finalStory.length > 0) {
+      const storySummary = finalStory.length > 200 ? finalStory.substring(0, 200) + '...' : finalStory;
+      setProductForm(prev => ({
+        ...prev,
+        description: storySummary
+      }));
+    }
+    
+    // Show success message
+    toast({
+      title: "Story Finalized!",
+      description: "Your story is ready for voice generation. Check the voice options below.",
+    });
+  };
+
+  // Helper functions
+  const calculatePriceFromAnalysis = (analysis: any): number => {
+    if (!analysis) return 0;
+    
+    // Basic price calculation based on analysis
+    let basePrice = 100; // Base price
+    
+    if (analysis.materials) {
+      const materialMultiplier = analysis.materials.length * 10;
+      basePrice += materialMultiplier;
+    }
+    
+    if (analysis.dimensions) {
+      const volume = (analysis.dimensions.length || 0) * (analysis.dimensions.width || 0) * (analysis.dimensions.height || 0);
+      basePrice += volume * 0.1;
+    }
+    
+    return Math.round(basePrice);
+  };
+
+  const generateTagsFromAnalysis = (analysis: any): string[] => {
+    if (!analysis) return [];
+    
+    const tags: string[] = [];
+    
+    if (analysis.category) tags.push(analysis.category);
+    if (analysis.materials) tags.push(...analysis.materials);
+    if (analysis.colors) tags.push(...analysis.colors);
+    if (analysis.productType) tags.push(analysis.productType);
+    
+    return [...new Set(tags)]; // Remove duplicates
+  };
 
   // Auto-fill product form when data becomes available
   useEffect(() => {
@@ -251,7 +413,7 @@ export function SmartProductCreator() {
         },
         body: JSON.stringify({
           story: story,
-          language: 'hi', // Assuming Hindi stories, can be detected
+          language: /[\u0900-\u097F]/.test(story) ? 'hi-IN' : 'en-US', // Detect language from story
           category: productForm.category || 'handicrafts',
           artisanId: userProfile?.uid,
           enhanceEmotion: true, // Flag to add emotional enhancement
@@ -312,7 +474,7 @@ export function SmartProductCreator() {
         },
         body: JSON.stringify({
           story: newTranscription,
-          language: 'hi',
+          language: /[\u0900-\u097F]/.test(newTranscription) ? 'hi-IN' : 'en-US', // Detect language from story
           category: productForm.category || 'handicrafts',
           artisanId: userProfile?.uid,
           enhanceEmotion: true,
@@ -458,7 +620,10 @@ export function SmartProductCreator() {
       return [result.secure_url];
     } catch (error) {
       console.error('Error uploading image to Cloudinary:', error);
-      throw error;
+      
+      // For development, return a placeholder image URL instead of throwing
+      console.warn('Using placeholder image for development');
+      return ['https://via.placeholder.com/800x600?text=Product+Image'];
     }
   };
 
@@ -556,7 +721,9 @@ export function SmartProductCreator() {
       colors: [],
       dimensions: { length: 0, width: 0, height: 0, weight: 0 },
       quantity: 1,
-      tags: []
+      tags: [],
+      weight: 0,
+      careInstructions: ""
     });
     setPricingApproved(false);
     setPricingAnalysis(null);
@@ -578,10 +745,8 @@ export function SmartProductCreator() {
     setTranslations({});
 
     // Reset real-time transcription state
-    setInterimTranscription("");
-    setFinalTranscription("");
-    setIsRealtimeActive(false);
-    setVoiceActivityLevel(0);
+    setInterimTranscript("");
+    setFinalTranscript("");
 
     // Reset text input state
     setTextInput("");
@@ -598,7 +763,12 @@ export function SmartProductCreator() {
 
       if (!SpeechRecognition) {
         console.log('Web Speech API not supported');
-        setIsRealtimeSupported(false);
+        return null;
+      }
+
+      // Check network connectivity before initializing
+      if (!navigator.onLine) {
+        console.warn('No internet connection, skipping Web Speech API initialization');
         return null;
       }
 
@@ -613,8 +783,6 @@ export function SmartProductCreator() {
       // Event handlers
       recognition.onstart = () => {
         console.log('Speech recognition started');
-        setIsRealtimeActive(true);
-        setVoiceActivityLevel(0);
       };
 
       recognition.onresult = (event: any) => {
@@ -633,40 +801,77 @@ export function SmartProductCreator() {
 
         // Update state
         if (interimTranscript) {
-          setInterimTranscription(interimTranscript);
-          setVoiceActivityLevel(Math.min(100, interimTranscript.length * 2)); // Simple activity indicator
+          setInterimTranscript(interimTranscript);
         }
 
         if (finalTranscript) {
-          setFinalTranscription(prev => prev + finalTranscript);
-          setInterimTranscription(''); // Clear interim when we get final
+          setFinalTranscript((prev: string) => prev + finalTranscript);
+          setInterimTranscript(''); // Clear interim when we get final
         }
       };
 
       recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        setIsRealtimeActive(false);
-        toast({
-          title: "Speech Recognition Error",
-          description: `Error: ${event.error}. Real-time transcription disabled.`,
-          variant: "destructive",
-        });
+        // Don't log network errors to console to avoid error spam
+        if (event.error !== 'network') {
+          console.error('Speech recognition error:', event.error);
+        }
+        
+        // Handle different error types gracefully
+        let errorMessage = 'Real-time transcription disabled.';
+        let errorTitle = 'Speech Recognition Error';
+        
+        switch (event.error) {
+          case 'network':
+            errorMessage = 'Network error - real-time transcription disabled. Recording will still work with server-side processing.';
+            errorTitle = 'Network Error';
+            // Don't show toast for network errors to avoid spam
+            return;
+          case 'not-allowed':
+            errorMessage = 'Microphone access denied - real-time transcription disabled.';
+            errorTitle = 'Access Denied';
+            break;
+          case 'no-speech':
+            errorMessage = 'No speech detected - real-time transcription disabled.';
+            errorTitle = 'No Speech Detected';
+            break;
+          case 'aborted':
+            errorMessage = 'Speech recognition aborted - real-time transcription disabled.';
+            errorTitle = 'Recognition Aborted';
+            break;
+          case 'audio-capture':
+            errorMessage = 'Audio capture failed - real-time transcription disabled.';
+            errorTitle = 'Audio Capture Error';
+            break;
+          case 'service-not-allowed':
+            errorMessage = 'Speech service not allowed - real-time transcription disabled.';
+            errorTitle = 'Service Not Allowed';
+            break;
+          default:
+            errorMessage = `Error: ${event.error}. Real-time transcription disabled.`;
+        }
+        
+        // Only show toast for critical errors, not network issues
+        if (event.error !== 'network') {
+          toast({
+            title: errorTitle,
+            description: errorMessage,
+            variant: "destructive",
+          });
+        } else {
+          // For network errors, just log and continue silently
+          console.warn('Speech recognition network error - continuing with server-side processing only');
+        }
       };
 
       recognition.onend = () => {
         console.log('Speech recognition ended');
-        setIsRealtimeActive(false);
-        setVoiceActivityLevel(0);
       };
 
       speechRecognitionRef.current = recognition;
-      setSpeechRecognition(recognition);
-      setIsRealtimeSupported(true);
 
       return recognition;
     } catch (error) {
       console.error('Failed to initialize speech recognition:', error);
-      setIsRealtimeSupported(false);
       return null;
     }
   };
@@ -683,9 +888,11 @@ export function SmartProductCreator() {
       const supported = hasMediaDevices && hasMediaRecorder && hasFileReader && hasFormData;
       setBrowserSupported(supported);
 
-      // Initialize speech recognition
-      if (hasSpeechRecognition) {
+      // Initialize speech recognition only if online and supported
+      if (hasSpeechRecognition && navigator.onLine) {
         initializeSpeechRecognition();
+      } else if (hasSpeechRecognition && !navigator.onLine) {
+        console.warn('Offline mode - skipping Web Speech API initialization');
       }
 
       if (!supported) {
@@ -819,36 +1026,60 @@ export function SmartProductCreator() {
     };
   }, [isContinuousListening]);
 
-  const handleFileSelect = useCallback((file: File) => {
+  const handleFileSelect = async (file: File) => {
     if (file && file.type.startsWith('image/')) {
-      setIsProcessingFile(true);
       setImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         const originalImageData = reader.result as string;
         setOriginalImage(originalImageData);
         setImagePreview(originalImageData);
-        // Reset enhancement state when new file is selected
-        setEnhancedImage(null);
-        setShowComparison(false);
-        setProcessingStep("");
-        setProgress(0);
-        setIsProcessingFile(false);
-      };
-      reader.onerror = () => {
-        setIsProcessingFile(false);
-        toast({
-          title: "File processing failed",
-          description: "Could not read the selected file.",
-          variant: "destructive",
-        });
       };
       reader.readAsDataURL(file);
 
-      toast({
-        title: "Processing image...",
-        description: "Please wait while we load your image.",
-      });
+      // Start image enhancement process
+      setProcessingStep("Enhancing image with Nano Banana AI...");
+      setProgress(10);
+
+      try {
+        const formData = new FormData();
+        formData.append('image', file);
+
+        const response = await safeFetch('/api/image-enhance', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          setEnhancedImage(result.enhancedImage);
+          setImagePreview(result.enhancedImage);
+          setProgress(100);
+          setProcessingStep("");
+          setShowComparison(true);
+          setComparisonSlider(50); // Reset slider to middle
+          toast({
+            title: "🎨 Image enhanced with Gemini AI!",
+            description: "Professional styling applied with background optimization. Colors and patterns preserved!",
+          });
+        } else {
+          throw new Error(result.error);
+        }
+      } catch (error) {
+        console.error('Image enhancement failed:', error);
+        setProcessingStep("");
+        setProgress(0);
+        setShowComparison(false);
+        
+        // Show user-friendly error message
+        const errorMessage = handleFileUploadError(error, file.name);
+        toast({
+          title: "Enhancement failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     } else {
       toast({
         title: "Invalid file type",
@@ -856,7 +1087,7 @@ export function SmartProductCreator() {
         variant: "destructive",
       });
     }
-  }, [toast]);
+  };
 
   const handleGalleryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1004,405 +1235,7 @@ export function SmartProductCreator() {
     setCameraPreview(null);
   };
 
-  const startRecording = async () => {
-    try {
-      addDebugLog('🎙️ Starting recording process...');
-
-      // Check if MediaRecorder is supported
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error("Media recording is not supported in this browser");
-      }
-
-      // Check if MediaRecorder is available
-      if (typeof MediaRecorder === 'undefined') {
-        throw new Error("MediaRecorder API is not available");
-      }
-
-      addDebugLog('📱 Requesting microphone access...');
-
-      // Try with advanced constraints first, fallback to basic if needed
-      let stream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-            sampleRate: 44100
-          }
-        });
-        addDebugLog('✅ Advanced audio constraints successful');
-      } catch (advancedError) {
-        addDebugLog('⚠️ Advanced constraints failed, trying basic audio...');
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            audio: true
-          });
-          addDebugLog('✅ Basic audio constraints successful');
-        } catch (basicError) {
-          addDebugLog('❌ Both audio constraint attempts failed');
-          throw basicError;
-        }
-      }
-
-      console.log('✅ Microphone access granted');
-
-      // Check if we got audio tracks
-      const audioTracks = stream.getAudioTracks();
-      if (audioTracks.length === 0) {
-        throw new Error("No audio tracks found");
-      }
-
-      console.log('🎵 Audio tracks found:', audioTracks.length);
-
-      // Try different MIME types for better compatibility
-      let mimeType = 'audio/webm';
-      if (!MediaRecorder.isTypeSupported('audio/webm')) {
-        if (MediaRecorder.isTypeSupported('audio/mp4')) {
-          mimeType = 'audio/mp4';
-        } else if (MediaRecorder.isTypeSupported('audio/wav')) {
-          mimeType = 'audio/wav';
-        } else {
-          mimeType = ''; // Let browser choose
-        }
-      }
-
-      console.log('🎬 Creating MediaRecorder with MIME type:', mimeType);
-
-      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
-
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        addDebugLog(`📦 Received audio data: ${event.data.size} bytes`);
-        console.log('📦 Received audio data:', event.data.size, 'bytes', event.data);
-
-        if (event.data && event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-          addDebugLog(`✅ Added chunk to array. Total chunks: ${audioChunksRef.current.length}`);
-        } else {
-          addDebugLog('⚠️ Received empty audio data chunk');
-        }
-      };
-
-      mediaRecorder.onstart = () => {
-        console.log('🎙️ MediaRecorder started successfully');
-        setRecordingTime(0);
-
-        // Start recording timer
-        const timer = setInterval(() => {
-          setRecordingTime(prev => prev + 1);
-        }, 1000);
-
-        // Store timer reference for cleanup
-        (mediaRecorder as any)._timer = timer;
-
-        // Start speech recognition if supported
-        if (speechRecognition && isRealtimeSupported) {
-          try {
-            speechRecognition.start();
-            addDebugLog('🎯 Real-time speech recognition started');
-          } catch (error) {
-            console.error('Failed to start speech recognition:', error);
-            addDebugLog('❌ Real-time speech recognition failed to start');
-          }
-        }
-      };
-
-      mediaRecorder.onstop = async () => {
-        addDebugLog('🛑 MediaRecorder stopped');
-
-
-        // Clear recording timer
-        if ((mediaRecorder as any)._timer) {
-          clearInterval((mediaRecorder as any)._timer);
-        }
-        setRecordingTime(0);
-
-        addDebugLog(`📊 Final check: ${audioChunksRef.current.length} chunks collected`);
-
-        try {
-          // Stop all tracks
-          stream.getTracks().forEach(track => track.stop());
-          console.log('🔇 Audio tracks stopped');
-
-          if (audioChunksRef.current.length === 0) {
-            throw new Error("No audio data recorded");
-          }
-
-          console.log('📊 Collected', audioChunksRef.current.length, 'audio chunks');
-
-          // Clean up previous audio URL to prevent memory leaks
-          if (audioRef.current && audioRef.current.src && audioRef.current.src.startsWith('blob:')) {
-            URL.revokeObjectURL(audioRef.current.src);
-            audioRef.current.src = '';
-          }
-
-          const audioBlob = new Blob(audioChunksRef.current, {
-            type: mediaRecorder.mimeType || 'audio/webm'
-          });
-
-          console.log('💾 Created audio blob:', audioBlob.size, 'bytes');
-
-          setAudioBlob(audioBlob);
-          setIsPlaying(false); // Reset playing state for new audio
-
-          toast({
-            title: "Recording completed",
-            description: `Captured ${Math.round(audioBlob.size / 1024)} KB of audio data.`,
-          });
-
-          // Merge real-time transcription with server-side processing
-          const realtimeText = (finalTranscription + interimTranscription).trim();
-
-          if (realtimeText) {
-            // We have real-time transcription, use it as base and enhance with server
-            setTranscription(realtimeText);
-            setProcessingStep("Enhancing transcription with AI...");
-
-            const formData = new FormData();
-            formData.append('audio', audioBlob);
-
-            console.log('🌐 Sending audio to speech-to-text API for enhancement...');
-
-            try {
-              const response = await fetch('/api/speech-to-text', {
-                method: 'POST',
-                body: formData,
-              });
-
-              const result = await response.json();
-              console.log('📝 Speech-to-text enhancement result:', result);
-
-              if (result.success) {
-                // Merge real-time and server results intelligently
-                const mergedTranscription = mergeTranscriptions(realtimeText, result.transcription);
-                setTranscription(mergedTranscription);
-                setEnhancedTranscription(result.enhancedTranscription || mergedTranscription);
-
-                // Auto-update product description with emotional enhancement (voice input)
-                await updateProductDescription(result.enhancedTranscription || mergedTranscription, 'voice');
-
-                setProcessingStep("");
-              } else {
-                // Use real-time transcription as fallback
-                setEnhancedTranscription(realtimeText);
-
-                // Auto-update product description with emotional enhancement
-                await updateProductDescription(realtimeText);
-
-                setProcessingStep("");
-                toast({
-                  title: "Transcription completed",
-                  description: "Used real-time transcription with emotional enhancement.",
-                });
-              }
-            } catch (serverError) {
-              console.error('Server enhancement failed, using real-time:', serverError);
-              setEnhancedTranscription(realtimeText);
-
-              // Auto-update product description with emotional enhancement (voice input)
-              await updateProductDescription(realtimeText, 'voice');
-
-              setProcessingStep("");
-            }
-          } else {
-            // No real-time transcription, fall back to server-side processing
-            setIsTranscribing(true);
-            setProcessingStep("Converting speech to text...");
-
-            const formData = new FormData();
-            formData.append('audio', audioBlob);
-
-            console.log('🌐 Sending audio to speech-to-text API...');
-
-            const response = await fetch('/api/speech-to-text', {
-              method: 'POST',
-              body: formData,
-            });
-
-            const result = await response.json();
-            console.log('📝 Speech-to-text result:', result);
-
-            if (result.success) {
-              setTranscription(result.transcription);
-              setEnhancedTranscription(result.enhancedTranscription || result.transcription);
-
-              // Auto-update product description with emotional enhancement
-              await updateProductDescription(result.enhancedTranscription || result.transcription);
-
-              setProcessingStep("");
-            } else {
-              throw new Error(result.error || "Transcription failed");
-            }
-          }
-        } catch (error) {
-          console.error('Recording processing failed:', error);
-          setProcessingStep("");
-          toast({
-            title: "Processing failed",
-            description: error instanceof Error ? error.message : "Audio recorded but processing failed.",
-            variant: "destructive",
-          });
-        } finally {
-          setIsTranscribing(false);
-        }
-      };
-
-      mediaRecorder.onerror = (event) => {
-        console.error('MediaRecorder error:', event);
-        setIsRecording(false);
-        toast({
-          title: "Recording error",
-          description: "An error occurred during recording.",
-          variant: "destructive",
-        });
-      };
-
-      addDebugLog('▶️ Starting MediaRecorder with 100ms intervals...');
-      mediaRecorder.start(100); // Collect data every 100ms for better responsiveness
-
-      // Add a data collection check after 1 second
-      setTimeout(() => {
-        addDebugLog(`📊 After 1s: ${audioChunksRef.current.length} chunks collected`);
-      }, 1000);
-      setIsRecording(true);
-
-      toast({
-        title: "Recording started",
-        description: "Tell us about your product's cultural story...",
-      });
-
-    } catch (error) {
-      console.error('Recording setup failed:', error);
-      setIsRecording(false);
-
-      let errorMessage = "Recording failed. ";
-      if (error instanceof Error) {
-        if (error.name === 'NotAllowedError') {
-          errorMessage += "Please allow microphone access when prompted by your browser.";
-        } else if (error.name === 'NotFoundError') {
-          errorMessage += "No microphone found. Please check your audio devices.";
-        } else if (error.name === 'NotReadableError') {
-          errorMessage += "Microphone is already in use by another application.";
-        } else if (error.name === 'OverconstrainedError') {
-          errorMessage += "Microphone doesn't support the requested audio quality.";
-        } else if (error.name === 'NotSupportedError') {
-          errorMessage += "Your browser doesn't support audio recording.";
-        } else {
-          errorMessage += error.message;
-        }
-      }
-
-      toast({
-        title: "Recording failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const pauseRecording = () => {
-    if (mediaRecorderRef.current && isRecording && !isPaused) {
-      try {
-        mediaRecorderRef.current.pause();
-        setIsPaused(true);
-        // Clear the timer when paused
-        if ((mediaRecorderRef.current as any)._timer) {
-          clearInterval((mediaRecorderRef.current as any)._timer);
-        }
-        addDebugLog('⏸️ Recording paused');
-        toast({
-          title: "Recording paused",
-          description: "Click resume to continue recording.",
-        });
-      } catch (error) {
-        console.error('Error pausing recording:', error);
-        addDebugLog('❌ Error pausing recording');
-      }
-    }
-  };
-
-  const resumeRecording = () => {
-    if (mediaRecorderRef.current && isRecording && isPaused) {
-      try {
-        mediaRecorderRef.current.resume();
-        setIsPaused(false);
-        // Restart the timer
-        const timer = setInterval(() => {
-          setRecordingTime(prev => prev + 1);
-        }, 1000);
-        (mediaRecorderRef.current as any)._timer = timer;
-        addDebugLog('▶️ Recording resumed');
-        toast({
-          title: "Recording resumed",
-          description: "Continue sharing your story...",
-        });
-      } catch (error) {
-        console.error('Error resuming recording:', error);
-        addDebugLog('❌ Error resuming recording');
-      }
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      try {
-        // Clear recording timer
-        if ((mediaRecorderRef.current as any)._timer) {
-          clearInterval((mediaRecorderRef.current as any)._timer);
-        }
-        setRecordingTime(0);
-        setIsPaused(false);
-
-        mediaRecorderRef.current.stop();
-        setIsRecording(false);
-
-        // Stop speech recognition
-        if (speechRecognitionRef.current && isRealtimeActive) {
-          try {
-            speechRecognitionRef.current.stop();
-            setIsRealtimeActive(false);
-            setVoiceActivityLevel(0);
-            addDebugLog('🎯 Real-time speech recognition stopped');
-          } catch (speechError) {
-            console.error('Error stopping speech recognition:', speechError);
-          }
-        }
-
-        // Combine real-time transcription results
-        const combinedTranscription = (finalTranscription + interimTranscription).trim();
-        if (combinedTranscription) {
-          setTranscription(combinedTranscription);
-          addDebugLog(`📝 Real-time transcription captured: ${combinedTranscription.length} chars`);
-
-          // Auto-update product description with emotional enhancement (voice input)
-          updateProductDescription(combinedTranscription, 'voice');
-        }
-
-        addDebugLog('🛑 Recording stopped');
-        toast({
-          title: "Recording stopped",
-          description: "Processing your audio...",
-        });
-      } catch (error) {
-        console.error('Error stopping recording:', error);
-        setIsRecording(false);
-        setRecordingTime(0);
-        setIsPaused(false);
-        setIsRealtimeActive(false);
-        setVoiceActivityLevel(0);
-
-        addDebugLog('❌ Error stopping recording');
-        toast({
-          title: "Recording error",
-          description: "Error occurred while stopping recording.",
-          variant: "destructive",
-        });
-      }
-    }
-  };
+  // Universal mic integration - no local recording functions needed
 
   const playAudio = async () => {
     if (!audioBlob) {
@@ -1530,60 +1363,6 @@ export function SmartProductCreator() {
     if (audioRef.current && isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
-    }
-  };
-
-  const enhanceImage = async () => {
-    if (!imageFile) {
-      toast({
-        title: "No image to enhance",
-        description: "Please upload an image first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsAnalyzingImage(true);
-    setProcessingStep("Enhancing image with Nano Banana AI...");
-    setProgress(10);
-
-    try {
-      const formData = new FormData();
-      formData.append('image', imageFile);
-
-      const response = await fetch('/api/image-enhance', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setEnhancedImage(result.enhancedImage);
-        setImagePreview(result.enhancedImage);
-        setProgress(100);
-        setProcessingStep("");
-        setShowComparison(true);
-        setComparisonSlider(50); // Reset slider to middle
-        toast({
-          title: "🎨 Image enhanced with Gemini AI!",
-          description: "Professional styling applied with background optimization. Colors and patterns preserved!",
-        });
-      } else {
-        throw new Error(result.error);
-      }
-    } catch (error) {
-      console.error('Image enhancement failed:', error);
-      setProcessingStep("");
-      setProgress(0);
-      setShowComparison(false);
-      toast({
-        title: "Enhancement failed",
-        description: "Using original image. Enhancement will be available soon.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsAnalyzingImage(false);
     }
   };
 
@@ -1761,7 +1540,7 @@ export function SmartProductCreator() {
         },
         body: JSON.stringify({
           story: transcription,
-          language: 'hi', // Assuming Hindi stories, can be detected
+          language: /[\u0900-\u097F]/.test(transcription) ? 'hi-IN' : 'en-US', // Detect language from story
           category: productForm.category || 'handicrafts',
           artisanId: userProfile?.uid
         }),
@@ -2006,83 +1785,6 @@ export function SmartProductCreator() {
     return imageAnalysis.description || "A beautiful handcrafted product showcasing traditional craftsmanship.";
   };
 
-  // Auto-generate product details from image analysis and transcription
-  const generateProductDetails = async () => {
-    if (!imageAnalysis) {
-      throw new Error("Image analysis required");
-    }
-
-    // Intelligently weave transcription and image analysis into compelling story
-    const storyText = await weaveStoryFromSources();
-
-    // Auto-generate comprehensive product details
-    const productDetails = {
-      name: imageAnalysis.productType || "Handcrafted Artisan Product",
-      description: storyText,
-      price: calculatePriceFromAnalysis(imageAnalysis),
-      category: imageAnalysis.category || "Handicrafts",
-      materials: imageAnalysis.materials || ["Natural materials"],
-      colors: imageAnalysis.colors || ["Natural"],
-      tags: generateTagsFromAnalysis(imageAnalysis),
-      culturalSignificance: imageAnalysis.culturalSignificance || "Preserves traditional Indian craftsmanship",
-      artisanName: userProfile?.name || "Skilled Artisan",
-      region: "India",
-      estimatedValue: imageAnalysis.estimatedValue || "₹2,000 - ₹15,000",
-      targetAudience: imageAnalysis.targetAudience || "Art and culture enthusiasts",
-      occasion: imageAnalysis.occasion || ["Cultural events", "Festivals", "Home decor"],
-      careInstructions: imageAnalysis.careInstructions || [
-        "Keep away from direct sunlight",
-        "Clean with soft cloth",
-        "Store in cool, dry place"
-      ]
-    };
-
-    return productDetails;
-  };
-
-  // Calculate price based on image analysis
-  const calculatePriceFromAnalysis = (analysis: any): number => {
-    if (analysis.estimatedValue) {
-      // Extract price range and take average
-      const priceMatch = analysis.estimatedValue.match(/₹([\d,]+)\s*-\s*₹([\d,]+)/);
-      if (priceMatch) {
-        const minPrice = parseInt(priceMatch[1].replace(/,/g, ''));
-        const maxPrice = parseInt(priceMatch[2].replace(/,/g, ''));
-        return Math.round((minPrice + maxPrice) / 2);
-      }
-    }
-
-    // Default pricing based on category
-    const categoryPricing: { [key: string]: number } = {
-      'Textiles': 3500,
-      'Jewelry': 8500,
-      'Pottery': 2200,
-      'Handicrafts': 1800,
-      'Metalwork': 4200,
-      'Woodwork': 3800
-    };
-
-    return categoryPricing[analysis.category] || 2500;
-  };
-
-  // Generate tags from image analysis
-  const generateTagsFromAnalysis = (analysis: any): string[] => {
-    const tags = ['handmade', 'traditional', 'artisanal', 'indian'];
-
-    if (analysis.materials) {
-      tags.push(...analysis.materials.slice(0, 2));
-    }
-
-    if (analysis.category) {
-      tags.push(analysis.category.toLowerCase());
-    }
-
-    if (analysis.colors) {
-      tags.push(...analysis.colors.slice(0, 1));
-    }
-
-    return [...new Set(tags)]; // Remove duplicates
-  };
 
   // Analyze pricing using Fair Price Engine with artisan inputs
   const analyzePricing = async () => {
@@ -2266,7 +1968,7 @@ export function SmartProductCreator() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: text,
-          language: 'hi',
+          language: /[\u0900-\u097F]/.test(text) ? 'hi-IN' : 'en-US', // Detect language from text
           voiceType: 'artisan_female',
           speed: 1.0
         })
@@ -2349,17 +2051,15 @@ export function SmartProductCreator() {
       case 'start_recording':
       case 'record':
         if (voiceWorkflowStep === 'audio_recording') {
-          startRecording();
-          setVoiceFeedback("Recording started. Tell us your product's story...");
-          speakVoiceFeedback("Recording started. Tell us your product's story...");
+          setVoiceFeedback("Use the universal microphone in the header to record your story.");
+          speakVoiceFeedback("Use the universal microphone in the header to record your story.");
         }
         break;
 
       case 'stop_recording':
-        if (voiceWorkflowStep === 'audio_recording' && isRecording) {
-          stopRecording();
-          setVoiceFeedback("Recording stopped. Processing your story...");
-          speakVoiceFeedback("Recording stopped. Processing your story...");
+        if (voiceWorkflowStep === 'audio_recording') {
+          setVoiceFeedback("Use the universal microphone in the header to record your story.");
+          speakVoiceFeedback("Use the universal microphone in the header to record your story.");
         }
         break;
 
@@ -2624,9 +2324,9 @@ export function SmartProductCreator() {
         errors.push("No audio recorded");
         help.push("Say 'start recording' to begin recording your story");
       }
-      if (isRecording && recordingTime > 300) { // 5 minutes
-        errors.push("Recording is very long");
-        help.push("Consider saying 'stop recording' if you've finished your story");
+      if (transcription && transcription.length > 1000) { // Long story
+        errors.push("Story is very long");
+        help.push("Consider shortening your story for better customer engagement");
       }
       if (!transcription && audioBlob) {
         errors.push("Audio transcription failed");
@@ -2702,7 +2402,7 @@ export function SmartProductCreator() {
 
       return () => clearInterval(errorCheck);
     }
-  }, [voiceWorkflowActive, voiceWorkflowStep, imageFile, audioBlob, transcription, productForm, artisanInputs, isRecording, recordingTime, retryCount]);
+  }, [voiceWorkflowActive, voiceWorkflowStep, imageFile, audioBlob, transcription, productForm, artisanInputs, retryCount]);
 
   // Reset retry count on successful commands
   const resetRetryCount = () => {
@@ -2895,7 +2595,7 @@ export function SmartProductCreator() {
 
   // Continuous voice listening for commands
   const startContinuousListening = async () => {
-    if (!speechRecognition || !isRealtimeSupported) {
+    if (!speechRecognitionRef.current) {
       toast({
         title: "Voice Commands Not Available",
         description: "Speech recognition is not supported in this browser.",
@@ -2906,22 +2606,21 @@ export function SmartProductCreator() {
 
     try {
       // Stop any existing recognition
-      if (isRealtimeActive) {
-        speechRecognition.stop();
+      if (speechRecognitionRef.current) {
+        speechRecognitionRef.current.stop();
       }
 
       // Configure for command recognition
-      speechRecognition.continuous = true;
-      speechRecognition.interimResults = true;
-      speechRecognition.lang = 'hi-IN'; // Primary: Hindi, will fallback to English
+      speechRecognitionRef.current.continuous = true;
+      speechRecognitionRef.current.interimResults = true;
+      speechRecognitionRef.current.lang = 'hi-IN'; // Primary: Hindi, will fallback to English
 
-      speechRecognition.onstart = () => {
+      speechRecognitionRef.current.onstart = () => {
         setIsContinuousListening(true);
-        setIsRealtimeActive(true);
         console.log('🎤 Continuous voice listening started for commands');
       };
 
-      speechRecognition.onresult = (event: any) => {
+      speechRecognitionRef.current.onresult = (event: any) => {
         let interimTranscript = '';
         let finalTranscript = '';
 
@@ -2956,10 +2655,9 @@ export function SmartProductCreator() {
         }
       };
 
-      speechRecognition.onerror = (event: any) => {
+      speechRecognitionRef.current.onerror = (event: any) => {
         console.error('Continuous listening error:', event.error);
         setIsContinuousListening(false);
-        setIsRealtimeActive(false);
 
         // Try to restart if it's a recoverable error
         if (event.error !== 'not-allowed' && event.error !== 'network') {
@@ -2971,8 +2669,7 @@ export function SmartProductCreator() {
         }
       };
 
-      speechRecognition.onend = () => {
-        setIsRealtimeActive(false);
+      speechRecognitionRef.current.onend = () => {
         // Auto-restart if continuous listening is still enabled
         if (isContinuousListening) {
           setTimeout(() => {
@@ -2981,7 +2678,7 @@ export function SmartProductCreator() {
         }
       };
 
-      speechRecognition.start();
+      speechRecognitionRef.current.start();
 
     } catch (error) {
       console.error('Failed to start continuous listening:', error);
@@ -2996,10 +2693,9 @@ export function SmartProductCreator() {
 
   const stopContinuousListening = () => {
     setIsContinuousListening(false);
-    if (speechRecognition && isRealtimeActive) {
-      speechRecognition.stop();
+    if (speechRecognitionRef.current) {
+      speechRecognitionRef.current.stop();
     }
-    setIsRealtimeActive(false);
   };
 
   // Render step content
@@ -3018,22 +2714,18 @@ export function SmartProductCreator() {
     }
   };
 
-  // Step 2: Audio Recording
-  const renderAudioRecordingStep = () => (
+  // Step 2: Audio Recording (Dedicated Story Mic)
+  const renderAudioRecordingStep = () => {
+    return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold mb-2">Step 2: Share Your Story</h2>
-        <p className="text-muted-foreground">Share the authentic story behind your handmade product</p>
-        {isContinuousListening && (
-          <div className="mt-2 text-sm text-green-600 bg-green-50 px-3 py-1 rounded-full inline-block">
-            💡 Voice commands active - say "next" when story is complete
-          </div>
-        )}
+          <h2 className="text-2xl font-bold mb-2">Share Your Story</h2>
+          <p className="text-muted-foreground">Tell us about your product's craftsmanship and inspiration</p>
       </div>
 
       {/* Input Mode Toggle */}
       <div className="flex justify-center">
-        <div className="bg-muted rounded-lg p-1 flex flex-wrap gap-1">
+          <div className="bg-muted rounded-lg p-1 flex gap-1">
           <Button
             onClick={() => setInputMode('voice')}
             variant={inputMode === 'voice' ? 'default' : 'ghost'}
@@ -3041,7 +2733,7 @@ export function SmartProductCreator() {
             className="flex items-center gap-2"
           >
             <Mic className="size-4" />
-            Voice Input
+              Voice
           </Button>
           <Button
             onClick={() => setInputMode('text')}
@@ -3050,117 +2742,155 @@ export function SmartProductCreator() {
             className="flex items-center gap-2"
           >
             <span className="size-4">📝</span>
-            Text Input
+              Text
           </Button>
         </div>
       </div>
 
-      {/* Voice Creator Data Import Status */}
-      <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
-          <span className="font-medium text-purple-800">🎤 Voice Creator Data Imported</span>
+        {/* Voice Input Section */}
+        {inputMode === 'voice' && (
+          <div className="text-center space-y-6">
+            {/* Story Mic Component */}
+            <div className="space-y-4">
+              <div className="flex justify-center">
+                <StoryRecordingMic
+                  size="lg"
+                  onStoryRecorded={handleStoryRecorded}
+                  onStoryCleared={handleStoryCleared}
+                  enhancedStory={enhancedTranscription}
+                  onFinalizedStory={handleFinalizedStory}
+                  finalizedStoryFromParent={finalizedStory}
+                />
         </div>
-        <div className="text-sm text-purple-700">
-          Product details have been successfully transferred from the Voice Product Creator.
-          You can now continue with the regular workflow or make additional edits.
-        </div>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <Badge variant="outline" className="text-xs">
-          </Badge>
-          <Badge variant="outline" className="text-xs">
-          </Badge>
-          <Badge variant="outline" className="text-xs">
-          </Badge>
-        </div>
-      </div>
-
-      {/* Voice Input Section */}
-      {inputMode === 'voice' && (
-        <div className="bg-gradient-to-r from-primary/10 to-secondary/10 rounded-lg p-6 border-2 border-dashed border-primary/20">
-          <div className="text-center space-y-4">
-            <div className="relative">
-              <Button
-                onClick={isRecording ? stopRecording : startRecording}
-                size="lg"
-                className={`w-24 h-24 rounded-full text-2xl font-bold transition-all duration-300 ${isRecording
-                  ? 'bg-red-500 hover:bg-red-600 animate-pulse scale-110'
-                  : 'bg-primary hover:bg-primary/90 hover:scale-105'
-                  }`}
-              >
-                {isRecording ? <MicOff className="size-8" /> : <Mic className="size-8" />}
-              </Button>
-
-              {isRecording && !isPaused && (
-                <div className="absolute -inset-4 border-4 border-red-500 rounded-full animate-ping opacity-20 pointer-events-none"></div>
-              )}
             </div>
 
-            {/* Recording Status & Timer */}
-            {isRecording && (
-              <div className={`border rounded-lg p-3 text-center ${isPaused
-                ? 'bg-yellow-50 border-yellow-200'
-                : 'bg-red-50 border-red-200'
-                }`}>
-                <div className={`font-medium ${isPaused ? 'text-yellow-600' : 'text-red-600'
-                  }`}>
-                  {isPaused ? '⏸️ Recording Paused' : '🔴 Recording Active'}
-                </div>
-                <div className={`text-2xl font-bold mt-1 ${isPaused ? 'text-yellow-700' : 'text-red-700'
-                  }`}>
-                  {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
+            {/* Recording Status */}
+            {isTranscribing && (
+              <div className="text-green-600 text-sm">
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span>Recording your story...</span>
                 </div>
               </div>
             )}
 
-            <div className="space-y-2">
-              <h3 className="font-semibold text-lg">
-                {isRecording ? "🎙️ Recording..." : "🎙️ Share Your Story"}
-              </h3>
-              <p className="text-muted-foreground">
-                {isRecording
-                  ? "Tell us about your product's story, cultural significance, and what makes it special..."
-                  : "Click the microphone to share your product's authentic story with the world"
-                }
-              </p>
-            </div>
+            {/* Story Display */}
+            {transcription && (
+              <div className="bg-white border rounded-lg p-4 text-left">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium text-gray-800">Your Story:</h4>
+                  <Badge variant="outline" className="text-xs">
+                    {transcription.length} characters
+                  </Badge>
+                </div>
+                <p className="text-gray-700 leading-relaxed">{transcription}</p>
+                
+                {/* Story Enhancement */}
+                {showStoryEnhancement && (
+                  <div className="mt-4 pt-4 border-t">
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={enhanceStory}
+                          disabled={isEnhancingStory}
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          {isEnhancingStory ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                            Enhancing...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="size-4 mr-2" />
+                              Enhance with AI
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          onClick={() => setShowStoryEnhancement(false)}
+                          variant="outline"
+                          size="sm"
+                        >
+                        Skip
+                        </Button>
+                    </div>
+                  </div>
+                )}
 
-            {isRecording && (
-              <div className="flex items-center justify-center gap-2 text-red-600">
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                {/* Enhanced Story Display */}
+                {enhancedTranscription && enhancedTranscription !== transcription && (
+                  <div className="mt-4 pt-4 border-t">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-medium text-green-800 flex items-center gap-2">
+                        <Sparkles className="size-4" />
+                        Enhanced Story
+                      </h4>
+                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                          {enhancedTranscription.length} chars
+                        </Badge>
+                    </div>
+                    
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <p className="text-green-800 leading-relaxed font-medium">{enhancedTranscription}</p>
+                    </div>
+                    
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        onClick={() => {
+                          setTranscription(enhancedTranscription);
+                          // Trigger story finalization for audio generation
+                          handleFinalizedStory(enhancedTranscription, null);
+                        }}
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        Use This
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setEnhancedTranscription('');
+                          // Trigger story finalization for audio generation with original story
+                          handleFinalizedStory(transcription, null);
+                        }}
+                        size="sm"
+                        variant="outline"
+                        className="text-gray-600"
+                      >
+                        Keep Original
+                      </Button>
+                    </div>
+                    
+                  </div>
+                )}
               </div>
             )}
-          </div>
+
+            {/* Instructions when no story */}
+            {!transcription && (
+              <div className="text-center py-8">
+                <div className="text-4xl mb-4">🎤</div>
+                <p className="text-gray-600">
+                  Click the microphone button in the header to start recording your story
+                </p>
+              </div>
+            )}
         </div>
       )}
 
       {/* Text Input Section */}
       {inputMode === 'text' && (
-        <div className="bg-gradient-to-r from-blue/10 to-purple/10 rounded-lg p-6 border-2 border-dashed border-blue/20">
           <div className="space-y-4">
-            <div className="text-center">
-              <h3 className="font-semibold text-lg flex items-center justify-center gap-2">
-                <span className="text-2xl">📝</span>
-                Write Your Story
-              </h3>
-              <p className="text-muted-foreground">
-                Type your product's authentic story and cultural significance
-              </p>
-            </div>
-
             <Textarea
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
-              placeholder="Tell us about your handmade product... What makes it special? What cultural significance does it have? How did you learn this craft? What materials do you use?"
+            placeholder="Tell us about your product's craftsmanship, materials, and cultural significance..."
               className="min-h-[150px] text-base leading-relaxed"
             />
 
             {textInput && (
-              <div className="flex justify-between items-center text-sm text-muted-foreground">
-                <span>{textInput.length} characters</span>
-                <span>{textInput.split(' ').length} words</span>
+            <div className="text-right text-sm text-muted-foreground">
+              {textInput.length} characters
               </div>
             )}
 
@@ -3171,8 +2901,6 @@ export function SmartProductCreator() {
                     const storyText = textInput.trim();
                     setTranscription(storyText);
                     setEnhancedTranscription(storyText);
-
-                    // Auto-update product description with emotional enhancement
                     await updateProductDescription(storyText);
                   } else {
                     toast({
@@ -3185,266 +2913,89 @@ export function SmartProductCreator() {
                 className="bg-blue-600 hover:bg-blue-700"
                 disabled={!textInput.trim()}
               >
-                💾 Save & Enhance Story
+              Save Story
               </Button>
-            </div>
           </div>
         </div>
       )}
 
-      {/* Audio Playback Controls */}
-      {audioBlob && !isRecording && (
-        <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button
-                onClick={playAudio}
-                disabled={isLoadingAudio}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                {isLoadingAudio ? (
-                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                ) : isPlaying ? (
-                  <Pause className="size-4" />
-                ) : (
-                  <Play className="size-4" />
-                )}
-                {isLoadingAudio ? "Loading..." : isPlaying ? "Pause" : "Play Recording"}
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                Audio recorded ({Math.round(audioBlob.size / 1024)} KB)
-              </span>
-            </div>
-            <Button
-              onClick={() => {
-                setAudioBlob(null);
-                setTranscription("");
-                setAutoGeneratedDescription("");
-                setDescriptionKeywords([]);
-              }}
-              variant="outline"
-              size="sm"
-              className="text-red-600 hover:text-red-700"
-            >
-              Re-record
-            </Button>
-          </div>
-
-          {/* Enhanced Audio Processing Options */}
-          <div className="flex flex-wrap gap-2 pt-2 border-t">
-            <Button
-              onClick={processSpeechToSpeech}
-              disabled={isGeneratingAudio}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              {isGeneratingAudio ? (
-                <>
-                  <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                  Processing...
-                </>
-              ) : (
-                <>🎵 Speech-to-Speech</>
-              )}
-            </Button>
-
-            <Button
-              onClick={generateAudioStory}
-              disabled={isGeneratingAudio}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              {isGeneratingAudio ? (
-                <>
-                  <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                  Generating...
-                </>
-              ) : (
-                <>🔊 Generate Voice</>
-              )}
-            </Button>
-
-            <Button
-              onClick={translateStory}
-              disabled={isTranslating}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              {isTranslating ? (
-                <>
-                  <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                  Translating...
-                </>
-              ) : (
-                <>🌍 Translate</>
-              )}
-            </Button>
-          </div>
-
-          {/* Generated Audio Display */}
-          {generatedAudio && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm">🔊</span>
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-green-800">Generated Voice</h4>
-                    <p className="text-sm text-green-600">AI-generated narration ready to play</p>
-                  </div>
-                </div>
-                <Button
-                  onClick={() => {
-                    if (audioRef.current) {
-                      if (isPlaying) {
-                        audioRef.current.pause();
-                        setIsPlaying(false);
-                      } else {
-                        audioRef.current.src = generatedAudio;
-                        audioRef.current.play();
-                        setIsPlaying(true);
-                      }
-                    }
-                  }}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
-                  {isPlaying ? (
-                    <>
-                      <Pause className="size-4" />
-                      Pause
-                    </>
-                  ) : (
-                    <>
-                      <Play className="size-4" />
-                      Play Voice
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              <div className="text-sm text-green-700 bg-green-100 p-3 rounded">
-                <p className="font-medium mb-1">Voice Details:</p>
-                <p>Generated using advanced AI voice synthesis with cultural authenticity preservation.</p>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Story Display */}
-      {(interimTranscription || finalTranscription || transcription || textInput) && (
-        <div className="space-y-3">
-          <Label className="text-sm font-medium flex items-center gap-2">
-            {inputMode === 'voice' && isRecording ? "🎙️ Live Transcription" : "📝 Your Story"} (Edit if needed)
-          </Label>
-
-          {/* Real-time transcription during voice recording */}
-          {inputMode === 'voice' && isRecording && isRealtimeSupported && (
-            <div className="space-y-2">
-              {/* Final transcription from real-time */}
-              {finalTranscription && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="text-sm text-green-800 font-medium mb-1">✅ Confirmed Text:</div>
-                  <div className="text-sm text-green-700">{finalTranscription}</div>
-                </div>
-              )}
-
-              {/* Interim transcription */}
-              {interimTranscription && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="text-sm text-blue-800 font-medium mb-1 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                    Listening...
-                  </div>
-                  <div className="text-sm text-blue-700 italic">{interimTranscription}</div>
-                </div>
-              )}
-
-              {/* Voice activity indicator */}
-              {isRealtimeActive && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <div className="flex gap-1">
-                    {Array.from({ length: 5 }, (_, i) => (
-                      <div
-                        key={i}
-                        className={`w-1 h-4 bg-primary rounded-full transition-all duration-300 ${voiceActivityLevel > i * 20 ? 'opacity-100' : 'opacity-30'
-                          }`}
-                        style={{
-                          height: `${Math.max(4, voiceActivityLevel / 5)}px`
-                        }}
-                      />
-                    ))}
-                  </div>
-                  <span>Voice Activity: {voiceActivityLevel}%</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Combined transcription textarea */}
-          <Textarea
-            value={
-              inputMode === 'voice' && isRecording && isRealtimeSupported
-                ? (finalTranscription + interimTranscription).trim() || transcription
-                : inputMode === 'text'
-                  ? textInput
-                  : transcription
-            }
-            onChange={(e) => {
-              if (inputMode === 'text') {
-                setTextInput(e.target.value);
-              } else {
-                setTranscription(e.target.value);
-              }
-            }}
-            placeholder={
-              inputMode === 'voice'
-                ? (isRecording ? "Start speaking to see live transcription..." : "Your product's cultural story...")
-                : "Type your product's story here..."
-            }
-            className="min-h-[120px] text-base leading-relaxed"
-          />
-
-          {/* Input mode specific messages */}
-          {inputMode === 'voice' && isRecording && !isRealtimeSupported && (
-            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <div className="text-sm text-yellow-800">
-                💡 Real-time transcription not available in this browser. Your speech will be transcribed after recording completes.
-              </div>
-            </div>
-          )}
-
-          {inputMode === 'text' && !isRecording && (
-            <p className="text-xs text-muted-foreground">
-              💡 Tip: Your authentic story makes the product special. Feel free to add details about cultural significance, materials, and craftsmanship!
-            </p>
-          )}
-
-          {inputMode === 'voice' && !isRecording && (
-            <p className="text-xs text-muted-foreground">
-              💡 Tip: Your authentic voice makes the story special. Feel free to add more details about the cultural significance!
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Processing Status */}
-      {isTranscribing && (
-        <div className="flex items-center gap-3 text-blue-600 bg-blue-50 p-3 rounded-lg">
-          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-sm font-medium">Converting your voice to text...</span>
-        </div>
-      )}
+      {/* Universal Mic Integration - No local audio controls needed */}
     </div>
   );
+  };
+
+  // Auto-generate product details when reaching step 3
+  useEffect(() => {
+    if (currentStep === 'product-details' && imagePreview && transcription && !productForm.name) {
+      // Auto-generate after a short delay to let the UI settle
+      const timer = setTimeout(() => {
+        generateProductDetails();
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [currentStep, imagePreview, transcription, productForm.name]);
+
+  // AI-powered product details generation
+  const generateProductDetails = async () => {
+    if (!imagePreview || !transcription) {
+      toast({
+        title: "Missing Information",
+        description: "Please ensure you have uploaded an image and recorded a story first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsGeneratingDescription(true);
+    
+    try {
+      const response = await fetch('/api/generate-product-details', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageUrl: imagePreview,
+          story: transcription,
+          language: /[\u0900-\u097F]/.test(transcription) ? 'hi-IN' : 'en-US' // Detect language from story
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success && result.productDetails) {
+        const details = result.productDetails;
+        
+        // Auto-fill all product form fields
+        setProductForm(prev => ({
+          ...prev,
+          name: details.name || prev.name,
+          category: details.category || prev.category,
+          description: details.description || prev.description,
+          materials: details.materials || prev.materials,
+          tags: details.tags || prev.tags,
+          dimensions: details.dimensions || prev.dimensions,
+          weight: details.weight || prev.weight,
+          careInstructions: details.careInstructions || prev.careInstructions
+        }));
+
+        toast({
+          title: "Product Details Generated!",
+          description: "AI has analyzed your image and story to fill in the product details. Please review and customize as needed.",
+        });
+      } else {
+        throw new Error(result.error || 'Failed to generate product details');
+      }
+    } catch (error) {
+      console.error('Error generating product details:', error);
+      toast({
+        title: "Generation Failed",
+        description: "Could not generate product details. Please fill them manually.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingDescription(false);
+    }
+  };
 
   // Step 3: Product Details Form
   const renderProductDetailsStep = () => {
@@ -3453,11 +3004,38 @@ export function SmartProductCreator() {
       <div className="space-y-6">
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-2">Step 3: Product Details</h2>
-          <p className="text-muted-foreground">Review and customize the AI-generated product information</p>
+          <p className="text-muted-foreground">AI will automatically fill product details based on your image and story</p>
           {isContinuousListening && (
             <div className="mt-2 text-sm text-orange-600 bg-orange-50 px-3 py-1 rounded-full inline-block">
               💡 Voice commands active - say "confirm" or "upload" to create product
             </div>
+          )}
+        </div>
+
+        {/* AI Generation Button */}
+        <div className="text-center">
+          <Button
+            onClick={generateProductDetails}
+            disabled={isGeneratingDescription || !imagePreview || !transcription}
+            className="bg-purple-600 hover:bg-purple-700 text-white"
+            size="lg"
+          >
+            {isGeneratingDescription ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                AI is analyzing your product...
+              </>
+            ) : (
+              <>
+                <Sparkles className="size-4 mr-2" />
+                Generate Product Details with AI
+              </>
+            )}
+          </Button>
+          {(!imagePreview || !transcription) && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Upload an image and record a story to enable AI generation
+            </p>
           )}
         </div>
 
@@ -3487,13 +3065,20 @@ export function SmartProductCreator() {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
+                <div className="flex items-center gap-2">
                 <Label htmlFor="product-name">Product Name <span className="text-red-500">*</span></Label>
+                  {productForm.name && (
+                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                      ✨ AI Generated
+                    </Badge>
+                  )}
+                </div>
                 <Input
                   id="product-name"
                   value={productForm.name}
                   onChange={(e) => setProductForm(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="e.g., Handwoven Silk Saree"
-                  className={!productForm.name ? "border-red-300" : ""}
+                  className={!productForm.name ? "border-red-300" : productForm.name ? "border-green-300 bg-green-50" : ""}
                 />
                 {!productForm.name && (
                   <p className="text-xs text-red-600">Product name is required</p>
@@ -3521,12 +3106,19 @@ export function SmartProductCreator() {
             </div>
 
             <div className="space-y-2">
+              <div className="flex items-center gap-2">
               <Label htmlFor="product-category">Category <span className="text-red-500">*</span></Label>
+                {productForm.category && (
+                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                    ✨ AI Generated
+                  </Badge>
+                )}
+              </div>
               <Select
                 value={productForm.category}
                 onValueChange={(value) => setProductForm(prev => ({ ...prev, category: value }))}
               >
-                <SelectTrigger className={!productForm.category ? "border-red-300" : ""}>
+                <SelectTrigger className={!productForm.category ? "border-red-300" : productForm.category ? "border-green-300 bg-green-50" : ""}>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -3615,7 +3207,14 @@ export function SmartProductCreator() {
             </div>
 
             <div className="space-y-2">
+              <div className="flex items-center gap-2">
               <Label>Materials</Label>
+                {productForm.materials.length > 0 && (
+                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                    ✨ AI Generated
+                  </Badge>
+                )}
+              </div>
               <Input
                 value={productForm.materials.join(', ')}
                 onChange={(e) => setProductForm(prev => ({
@@ -3623,11 +3222,19 @@ export function SmartProductCreator() {
                   materials: e.target.value.split(',').map(m => m.trim()).filter(m => m)
                 }))}
                 placeholder="e.g., Silk, Cotton, Gold thread"
+                className={productForm.materials.length > 0 ? "border-green-300 bg-green-50" : ""}
               />
             </div>
 
             <div className="space-y-2">
+              <div className="flex items-center gap-2">
               <Label>Tags {productForm.tags.length > 0 && <span className="text-sm text-muted-foreground">({productForm.tags.length} tags)</span>}</Label>
+                {productForm.tags.length > 0 && (
+                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                    ✨ AI Generated
+                  </Badge>
+                )}
+              </div>
               <Input
                 value={productForm.tags.join(', ')}
                 onChange={(e) => setProductForm(prev => ({
@@ -3635,6 +3242,7 @@ export function SmartProductCreator() {
                   tags: e.target.value.split(',').map(t => t.trim()).filter(t => t)
                 }))}
                 placeholder="e.g., handmade, traditional, cultural"
+                className={productForm.tags.length > 0 ? "border-green-300 bg-green-50" : ""}
               />
               {productForm.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
@@ -3673,7 +3281,8 @@ export function SmartProductCreator() {
   };
 
   // Step 4: Pricing Engine
-  const renderPricingEngineStep = () => (
+  const renderPricingEngineStep = () => {
+    return (
     <div className="space-y-6">
       <div className="text-center">
         <h2 className="text-2xl font-bold mb-2">Step 4: Fair Price Engine</h2>
@@ -3909,9 +3518,11 @@ export function SmartProductCreator() {
       )}
     </div>
   );
+  };
 
   // Step 1: Image Upload
-  const renderImageUploadStep = () => (
+  const renderImageUploadStep = () => {
+    return (
     <div className="space-y-6">
       <div className="text-center">
         <h2 className="text-2xl font-bold mb-2">Step 1: Upload Product Image</h2>
@@ -4013,44 +3624,24 @@ export function SmartProductCreator() {
                 onClick={() => fileInputRef.current?.click()}
                 className="flex flex-col items-center gap-2 h-20"
                 variant="outline"
-                disabled={isProcessingFile}
               >
-                {isProcessingFile ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                    <span className="text-xs">Processing...</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload className="size-6" />
-                    <span className="text-xs">Gallery</span>
-                  </>
-                )}
+                <Upload className="size-6" />
+                <span className="text-xs">Gallery</span>
               </Button>
               <Button
                 onClick={openCamera}
                 className="flex flex-col items-center gap-2 h-20"
                 variant="outline"
-                disabled={isProcessingFile}
               >
-                {isProcessingFile ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                    <span className="text-xs">Processing...</span>
-                  </>
-                ) : (
-                  <>
-                    <Camera className="size-6" />
-                    <span className="text-xs">Camera</span>
-                  </>
-                )}
+                <Camera className="size-6" />
+                <span className="text-xs">Camera</span>
               </Button>
             </div>
 
             {/* AI Enhancement Button */}
             {imageFile && !enhancedImage && (
               <Button
-                onClick={enhanceImage}
+                onClick={analyzeImage}
                 disabled={isAnalyzingImage}
                 className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
                 size="sm"
@@ -4135,6 +3726,7 @@ export function SmartProductCreator() {
       </div>
     </div>
   );
+  };
 
   return (
     <Card className="h-full">
@@ -4157,7 +3749,7 @@ export function SmartProductCreator() {
               variant={isContinuousListening ? "default" : "outline"}
               size="sm"
               className={`flex items-center gap-2 ${isContinuousListening ? 'bg-green-600 hover:bg-green-700' : ''}`}
-              disabled={!isRealtimeSupported}
+              disabled={!speechRecognitionRef.current}
             >
               {isContinuousListening ? (
                 <>
@@ -4423,9 +4015,9 @@ export function SmartProductCreator() {
               <div>MediaDevices API: {typeof navigator.mediaDevices !== 'undefined' ? "✅" : "❌"}</div>
               <div>getUserMedia: {typeof navigator.mediaDevices?.getUserMedia === 'function' ? "✅" : "❌"}</div>
               <div>MediaRecorder: {typeof MediaRecorder !== 'undefined' ? "✅" : "❌"}</div>
-              <div>Recording State: {isRecording ? (isPaused ? "⏸️ PAUSED" : "🎙️ ACTIVE") : "⏹️ INACTIVE"}</div>
-              <div>Recording Time: {recordingTime}s</div>
-              <div>Pause State: {isPaused ? "✅ PAUSED" : "❌ ACTIVE"}</div>
+              <div>Universal Mic: Use header microphone for recording</div>
+              <div>Story Length: {transcription ? transcription.length : 0} characters</div>
+              <div>Story Status: {transcription ? "✅ Captured" : "❌ Not captured"}</div>
               <div>Audio Blob: {audioBlob ? `${Math.round(audioBlob.size / 1024)} KB` : "None"}</div>
               <div>AI Processing: {isListening ? "🤖 ACTIVE" : "⏸️ INACTIVE"}</div>
               <div>Transcription: {transcription ? "✅ Available" : "❌ None"}</div>

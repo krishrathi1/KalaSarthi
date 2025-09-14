@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 import { uploadToCloudinary, getCloudinaryConfig } from '@/lib/cloudinary';
 
 // Note: Using Gemini Vision API for image enhancement since Nano Banana
@@ -32,15 +32,19 @@ const ImageEnhanceOutputSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🖼️ Image enhancement request received');
     const formData = await request.formData();
     const imageFile = formData.get('image') as File;
 
     if (!imageFile) {
+      console.log('❌ No image file provided');
       return NextResponse.json(
         { error: 'No image file provided' },
         { status: 400 }
       );
     }
+
+    console.log('📁 Image file received:', imageFile.name, imageFile.size, 'bytes');
 
     // Validate file type
     if (!imageFile.type.startsWith('image/')) {

@@ -1,26 +1,28 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Development optimizations
-  compress: process.env.NODE_ENV === 'production',
+  // Development-specific optimizations
+  compress: false,
   poweredByHeader: false,
   
-  // TypeScript and ESLint optimizations for dev
+  // Skip type checking and linting in development for speed
   typescript: {
-    ignoreBuildErrors: process.env.NODE_ENV === 'development',
+    ignoreBuildErrors: true,
   },
   eslint: {
-    ignoreDuringBuilds: process.env.NODE_ENV === 'development',
+    ignoreDuringBuilds: true,
   },
   
-  // Experimental features for performance
+  // Experimental features for faster development
   experimental: {
-    optimizeCss: process.env.NODE_ENV === 'production',
+    optimizeCss: false,
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
-    // Reduce memory usage
+    fastRefresh: true,
     memoryBasedWorkersCount: true,
+    // Enable faster builds
+    webpackBuildWorker: true,
   },
   
-  // Turbopack configuration for faster dev builds
+  // Turbopack for faster development
   turbopack: {
     rules: {
       '*.svg': {
@@ -29,35 +31,32 @@ const nextConfig = {
       },
     },
   },
+  
   webpack: (config, { isServer, dev }) => {
     // Development optimizations
     if (dev) {
-      // Simplified development config to avoid chunk errors
+      // Disable source maps for faster builds
+      config.devtool = false;
+      
+      // Faster builds in development
       config.optimization = {
         ...config.optimization,
+        removeAvailableModules: false,
+        removeEmptyChunks: false,
         splitChunks: false,
+        minimize: false,
+        concatenateModules: false,
       };
-    } else {
-      // Production optimizations
-      config.optimization = {
-        ...config.optimization,
-        splitChunks: {
-          chunks: 'all',
-          cacheGroups: {
-            vendor: {
-              test: /[\\/]node_modules[\\/]/,
-              name: 'vendors',
-              chunks: 'all',
-            },
-            common: {
-              name: 'common',
-              minChunks: 2,
-              chunks: 'all',
-              enforce: true,
-            },
-          },
-        },
+      
+      // Reduce memory usage
+      config.cache = {
+        type: 'memory',
+        maxGenerations: 1,
       };
+      
+      // Faster module resolution
+      config.resolve.symlinks = false;
+      config.resolve.cacheWithContext = false;
     }
 
     // Suppress handlebars require.extensions warning
@@ -133,6 +132,7 @@ const nextConfig = {
 
     return config;
   },
+  
   images: {
     remotePatterns: [
       {
@@ -253,95 +253,6 @@ const nextConfig = {
     '@google-cloud/text-to-speech',
     '@google-cloud/speech'
   ],
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'placehold.co',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'res.cloudinary.com',
-        port: '',
-        pathname: '/**',
-      },
-      // E-commerce platform image hostnames
-      {
-        protocol: 'https',
-        hostname: 'images-na.ssl-images-amazon.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'm.media-amazon.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'rukminim1.flixcart.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'rukminim2.flixcart.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'i.etsystatic.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'images.pexels.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: '5.imimg.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'i.ebayimg.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'images-static.nykaa.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'ui-avatars.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'via.placeholder.com',
-        port: '',
-        pathname: '/**',
-      },
-    ],
-  },
 };
 
 module.exports = nextConfig;

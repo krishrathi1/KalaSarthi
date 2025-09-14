@@ -66,12 +66,15 @@ export class RegionalCommunicationService {
   private createFallbackGeminiService(): GeminiSpeechService {
     // Return a mock service that provides basic functionality
     return {
-      speechToText: async (audioBuffer: ArrayBuffer, options: any) => ({
-        text: 'Speech recognition not available. Please configure GOOGLE_AI_API_KEY.',
-        confidence: 0.1,
-        language: options?.language || 'en-US',
-        duration: audioBuffer.byteLength / 16000
-      }),
+      speechToText: async (audioBuffer: ArrayBuffer, options: any) => {
+        console.warn('Speech recognition not available. Please configure GOOGLE_AI_API_KEY.');
+        return {
+          text: '',
+          confidence: 0.1,
+          language: options?.language || 'en-US',
+          duration: audioBuffer.byteLength / 16000
+        };
+      },
       textToSpeech: async (text: string, options: any) => {
         // Return empty audio buffer
         return new ArrayBuffer(0);

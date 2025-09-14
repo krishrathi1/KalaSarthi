@@ -20,7 +20,7 @@ function initializeSTTClient() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { audioData, language = 'en-US' } = await request.json();
+    const { audioData, language = 'en-US', sampleRate = 48000, enableMultilingual = true } = await request.json();
 
     if (!audioData) {
       return NextResponse.json({ error: 'Audio data is required' }, { status: 400 });
@@ -34,18 +34,32 @@ export async function POST(request: NextRequest) {
     // Convert base64 audio data to Buffer
     const audioBytes = Buffer.from(audioData, 'base64');
 
+    // Determine encoding based on sample rate
+    const encoding = sampleRate === 48000 ? 'WEBM_OPUS' : 'LINEAR16';
+    const sampleRateHertz = sampleRate;
+
+    // Configure for multilingual support
+    // Note: latest_long model doesn't support auto language detection
+    // We'll use alternativeLanguageCodes for multilingual support
     const sttRequest = {
       audio: {
         content: audioBytes
       },
       config: {
-        encoding: 'LINEAR16' as const,
-        sampleRateHertz: 16000,
-        languageCode: mapLanguageToGoogleCloud(language),
+        encoding: encoding as any,
+        sampleRateHertz: sampleRateHertz,
+        languageCode: mapLanguageToGoogleCloud(language), // Use specific language instead of 'auto'
+        alternativeLanguageCodes: enableMultilingual ? [
+          'en-US', 'hi-IN', 'es-ES', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR', 'ru-RU', 
+          'ja-JP', 'ko-KR', 'zh-CN', 'ar-SA', 'th-TH', 'vi-VN', 'id-ID', 'ms-MY',
+          'ta-IN', 'te-IN', 'bn-IN', 'gu-IN', 'kn-IN', 'ml-IN', 'mr-IN', 'pa-IN'
+        ] : undefined,
         enableAutomaticPunctuation: true,
         enableWordTimeOffsets: false,
         model: 'latest_long',
-        useEnhanced: true
+        useEnhanced: true,
+        enableSpeakerDiarization: false,
+        diarizationSpeakerCount: 0
       }
     };
 
@@ -55,10 +69,16 @@ export async function POST(request: NextRequest) {
       const result = response.results[0];
       if (result.alternatives && result.alternatives.length > 0) {
         const alternative = result.alternatives[0];
+        
+        // Get detected language from the result
+        const detectedLanguage = result.languageCode || language;
+        
         return NextResponse.json({
           text: alternative.transcript || '',
           confidence: alternative.confidence || 0.9,
-          language
+          language: detectedLanguage,
+          detectedLanguage: detectedLanguage,
+          isMultilingual: enableMultilingual
         });
       }
     }

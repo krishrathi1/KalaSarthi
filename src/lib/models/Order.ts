@@ -201,7 +201,7 @@ const orderSchema = new Schema<IOrderDocument>(
 );
 
 // Create indexes
-orderSchema.index({ orderId: 1 });
+// orderId index is automatically created by unique: true constraint
 orderSchema.index({ userId: 1 });
 orderSchema.index({ status: 1 });
 orderSchema.index({ paymentStatus: 1 });
