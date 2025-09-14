@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
 const ImageAnalysisInputSchema = z.object({
@@ -75,62 +74,27 @@ async function handleStoryWeaving(data: any) {
     const colors = imageAnalysis.colors || ['natural colors'];
     const patterns = imageAnalysis.patterns || ['traditional patterns'];
 
-    // Create a more specific and consistent prompt
-    // Mock implementation for build compatibility
-    const storyWeavingPrompt = {
-      generate: async () => ({
-        title: `Beautiful ${productType} - Handcrafted ${category}`,
-        description: `This exquisite ${productType} showcases traditional craftsmanship.`,
-        tags: [productType, category, 'handmade', 'traditional'],
-        priceRange: { min: 500, max: 2500, currency: 'INR' },
-        enhancedStory: `This ${productType} represents traditional craftsmanship.`
-      })
+    // Mock implementation - in real scenario, this would use AI for story weaving
+    return {
+      enhancedStory: transcription || 'This beautiful handcrafted product represents traditional craftsmanship passed down through generations.',
+      combinedDescription: `A stunning ${productType} in the ${category} category, crafted using ${materials.join(', ')} with beautiful ${colors.join(', ')} colors and ${patterns.join(', ')} patterns. ${transcription || 'This piece showcases the artisan\'s dedication to preserving traditional techniques.'}`,
+      authenticityScore: 0.9,
+      marketAppeal: 0.85,
+      culturalElements: ['Traditional craftsmanship', 'Cultural heritage', 'Artisan skills'],
+      visualStoryElements: [`${productType} design`, 'Traditional patterns', 'Handcrafted quality']
     };
 
-
-    const weavingResult = await storyWeavingPrompt.generate();
-
-    // Access the result correctly from the AI response
-    const result = (weavingResult as any);
-
-    // Ensure the story matches the detected product type
-    let enhancedStory = result.enhancedStory || result.combinedDescription || transcription;
-
-    // Fallback to create a consistent story if AI doesn't match product type
-    if (enhancedStory && !enhancedStory.toLowerCase().includes(productType.toLowerCase().split(' ')[0])) {
-      console.log('AI generated story does not match product type, creating fallback...');
-      enhancedStory = createConsistentStory(transcription, imageAnalysis);
-    }
-
-    return NextResponse.json({
-      success: true,
-      enhancedStory: enhancedStory,
-      combinedDescription: enhancedStory,
-      authenticityScore: result.authenticityScore || 0.8,
-      marketAppeal: result.marketAppeal || 0.7,
-      culturalElements: result.culturalElements || ['Traditional craftsmanship'],
-      visualStoryElements: result.visualStoryElements || ['Visual appeal'],
-      productType: productType,
-      category: category
-    });
-
   } catch (error) {
-    console.error('Story weaving failed:', error);
-
-    // Create a consistent fallback story
-    const fallbackStory = createConsistentStory(data.transcription, data.imageAnalysis);
-
-    return NextResponse.json({
-      success: true,
-      enhancedStory: fallbackStory,
-      combinedDescription: fallbackStory,
-      authenticityScore: 0.7,
-      marketAppeal: 0.6,
-      culturalElements: ['Traditional craftsmanship'],
-      visualStoryElements: ['Visual appeal', 'Artisan details'],
-      productType: data.imageAnalysis.productType,
-      category: data.imageAnalysis.category
-    });
+    console.error('Story weaving error:', error);
+    // Fallback response
+    return {
+      enhancedStory: data.transcription || 'This beautiful handcrafted product represents traditional craftsmanship.',
+      combinedDescription: `A stunning handcrafted product showcasing traditional techniques and cultural heritage. ${data.transcription || 'This piece represents the artisan\'s dedication to preserving traditional craftsmanship.'}`,
+      authenticityScore: 0.8,
+      marketAppeal: 0.75,
+      culturalElements: ['Traditional craftsmanship', 'Cultural heritage'],
+      visualStoryElements: ['Handcrafted quality', 'Traditional design']
+    };
   }
 }
 
@@ -154,9 +118,9 @@ function createConsistentStory(transcription: string, imageAnalysis: any): strin
     baseStory = `This beautiful ${productType} represents the finest in ${category} craftsmanship. Created using ${materials.join(' and ')} with ${colors.join(' and ')} elements, this piece showcases traditional artisanal techniques.`;
   }
 
-  // Add transcription if available
+  // Combine with artisan's transcription if available
   if (transcription) {
-    baseStory += ` ${transcription}`;
+    return `${baseStory} ${transcription}`;
   }
 
   return baseStory;
@@ -164,99 +128,50 @@ function createConsistentStory(transcription: string, imageAnalysis: any): strin
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if this is a story weaving request
-    const contentType = request.headers.get('content-type');
+    const body = await request.json();
+    const { imageData, transcription } = body;
 
-    if (contentType?.includes('application/json')) {
-      // Handle story weaving request
-      const jsonData = await request.json();
-
-      if (jsonData.transcription && jsonData.imageAnalysis && jsonData.enhanceStory) {
-        return await handleStoryWeaving(jsonData);
-      }
-    }
-
-    // Handle regular image analysis
-    const formData = await request.formData();
-    const imageFile = formData.get('image') as File;
-
-    if (!imageFile) {
+    if (!imageData) {
       return NextResponse.json(
-        { error: 'No image file provided' },
+        { error: 'Image data is required' },
         { status: 400 }
       );
     }
 
-    // Convert file to base64 for Gemini processing
-    const arrayBuffer = await imageFile.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const base64Image = buffer.toString('base64');
-    const imageDataUrl = `data:${imageFile.type};base64,${base64Image}`;
-
-    // Use Gemini Vision for comprehensive product analysis
-    // Mock implementation for build compatibility
-    const analysisPrompt = {
-      generate: async () => ({
-        productType: 'handicraft',
-        category: 'traditional',
-        materials: ['clay', 'natural pigments'],
-        techniques: ['hand-thrown', 'traditional glazing'],
-        colors: ['earth tones', 'natural colors'],
-        patterns: ['traditional motifs'],
-        culturalContext: 'Traditional Indian handicraft with cultural significance',
-        marketValue: { min: 500, max: 2000, currency: 'INR' },
-        targetMarket: ['art lovers', 'collectors', 'home decorators'],
-        usage: ['home decoration', 'gift', 'collection'],
-        care: 'Handle with care, avoid direct sunlight',
-        authenticity: 'Authentic handmade product',
-        craftsmanship: 'High quality traditional craftsmanship'
-      })
+    // Mock image analysis - in real scenario, this would use AI vision
+    const mockImageAnalysis = {
+      productType: 'Handcrafted Pottery Bowl',
+      category: 'Ceramics',
+      materials: ['Clay', 'Natural pigments'],
+      craftsmanship: ['Hand-thrown', 'Traditional glazing'],
+      colors: ['Earth tones', 'Natural brown'],
+      patterns: ['Traditional motifs'],
+      culturalSignificance: 'Represents traditional pottery techniques',
+      estimatedValue: '₹500 - ₹1500',
+      description: 'A beautiful handcrafted pottery bowl with traditional designs',
+      keywords: ['handmade', 'pottery', 'traditional', 'ceramics'],
+      targetAudience: 'Home decor enthusiasts',
+      occasion: ['Daily use', 'Gifting'],
+      careInstructions: ['Hand wash only', 'Avoid extreme temperatures'],
+      storyElements: {
+        heritage: 'Traditional pottery techniques passed down through generations',
+        artisanJourney: 'Skilled artisan with years of experience',
+        uniqueness: 'Each piece is unique due to hand-crafting',
+        sustainability: 'Made from natural, eco-friendly materials'
+      }
     };
 
-    try {
-      const analysisResult = await analysisPrompt.generate();
+    // Handle story weaving
+    const storyResult = await handleStoryWeaving({
+      transcription,
+      imageAnalysis: mockImageAnalysis
+    });
 
-      return NextResponse.json({
-        success: true,
-        analysis: analysisResult
-      });
-
-    } catch (aiError) {
-      console.error('AI Analysis failed:', aiError);
-
-      // Fallback analysis for common Indian handicrafts
-      const fallbackAnalysis = {
-        productType: 'Handcrafted Product',
-        category: 'Handicrafts',
-        materials: ['Natural materials', 'Traditional techniques'],
-        craftsmanship: ['Handmade', 'Traditional methods'],
-        colors: ['Natural', 'Earth tones'],
-        patterns: ['Traditional', 'Cultural motifs'],
-        culturalSignificance: 'Represents Indian artisanal heritage and traditional craftsmanship',
-        estimatedValue: '₹500 - ₹5,000',
-        description: 'Beautiful handcrafted product made with traditional Indian techniques, representing the rich cultural heritage of Indian artisans.',
-        keywords: ['handmade', 'traditional', 'indian', 'craft', 'artisanal'],
-        targetAudience: 'Art and culture enthusiasts, gift buyers, interior decorators',
-        occasion: ['Festivals', 'Weddings', 'Home decor', 'Cultural events', 'Gifts'],
-        careInstructions: [
-          'Keep away from direct sunlight',
-          'Clean with soft cloth',
-          'Avoid harsh chemicals',
-          'Store in cool, dry place'
-        ],
-        storyElements: {
-          heritage: 'Part of India\'s rich handicraft tradition spanning centuries',
-          artisanJourney: 'Crafted by skilled artisans who have inherited these techniques through generations',
-          uniqueness: 'Each piece is unique with slight variations that reflect the artisan\'s individual touch',
-          sustainability: 'Made from natural, eco-friendly materials using traditional, sustainable methods'
-        }
-      };
-
-      return NextResponse.json({
-        success: true,
-        analysis: fallbackAnalysis
-      });
-    }
+    return NextResponse.json({
+      success: true,
+      imageAnalysis: mockImageAnalysis,
+      storyWeaving: storyResult
+    });
 
   } catch (error) {
     console.error('Image analysis error:', error);

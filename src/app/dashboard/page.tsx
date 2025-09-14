@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { Loader2 } from 'lucide-react';
+import { Dashboard } from '@/components/dashboard';
 
 export default function DashboardPage() {
   const { userProfile, loading } = useAuth();
@@ -12,11 +13,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!loading && userProfile) {
-      // Redirect based on user role
+      console.log('DashboardPage: User profile:', userProfile.role);
+      // Redirect buyers to marketplace, but show main dashboard for artisans and others
       if (userProfile.role === 'buyer') {
+        console.log('DashboardPage: Redirecting buyer to marketplace');
         router.push('/marketplace');
-      } else if (userProfile.role === 'artisan') {
-        router.push('/dashboard/inventory');
+      } else {
+        console.log('DashboardPage: Showing main dashboard for role:', userProfile.role);
       }
     }
   }, [userProfile, loading, router]);
@@ -33,12 +36,6 @@ export default function DashboardPage() {
     );
   }
 
-  // This should not be reached due to the redirect, but just in case
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <p className="text-muted-foreground">Redirecting...</p>
-      </div>
-    </div>
-  );
+  // Show the main dashboard for artisans and other roles
+  return <Dashboard />;
 }

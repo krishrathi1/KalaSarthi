@@ -41,38 +41,35 @@ const ConsultFinanceAdvisorOutputSchema = z.object({
 export type ConsultFinanceAdvisorOutput = z.infer<typeof ConsultFinanceAdvisorOutputSchema>;
 
 export async function consultFinanceAdvisor(input: ConsultFinanceAdvisorInput): Promise<ConsultFinanceAdvisorOutput> {
-  return consultFinanceAdvisorFlow(input);
-}
-
-// Mock implementation for build compatibility
-const consultFinanceAdvisorFlow = async (input: ConsultFinanceAdvisorInput): Promise<ConsultFinanceAdvisorOutput> => {
-  // Mock response for build compatibility
+  // Mock implementation - in real scenario, this would use AI for financial advice
+  const { query, userId, context } = input;
+  
   return {
-    response: `Financial analysis for query: ${input.query}`,
+    response: `Based on your query "${query}", here's my financial analysis and recommendations.`,
     insights: [
-      'Current market trends show growth potential',
-      'Seasonal variations affect sales patterns',
-      'Diversification opportunities exist'
+      'Revenue has been steady this month',
+      'Top-performing products show 15% growth',
+      'Market trends indicate seasonal demand increase'
     ],
     recommendations: [
-      'Review your current financial situation',
-      'Consider diversifying your income sources',
-      'Monitor market trends regularly'
+      'Consider increasing inventory for top products',
+      'Optimize pricing for underperforming items',
+      'Focus marketing on trending categories'
     ],
-    nextSteps: [
-      'Schedule a detailed financial review',
-      'Implement recommended strategies',
-      'Monitor progress monthly'
-    ],
-    confidence: 0.8,
     dataPoints: {
-      revenue: 10000,
-      units: 50,
-      growth: 15,
-      margin: 25
-    }
+      revenue: 45000,
+      units: 120,
+      growth: 12.5,
+      margin: 25.8
+    },
+    nextSteps: [
+      'Review detailed sales analytics',
+      'Update product pricing strategy',
+      'Plan inventory for next quarter'
+    ],
+    confidence: 0.85
   };
-};
+}
 
 // Tool definitions for the Finance Advisor Agent
 export const financeAdvisorTools = {

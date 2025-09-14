@@ -1,26 +1,26 @@
-import { MatchedScheme } from './profile-matching-agent';
-
-export interface TranslatedScheme extends MatchedScheme {
-  translatedTitle: string;
-  translatedDescription: string;
-  translatedEligibility: string;
-  language: string;
+export interface TranslationConfig {
+  matchedSchemes: any[];
+  targetLanguage: string;
 }
 
-export async function translateSchemes({
-  matchedSchemes,
-  targetLanguage
-}: {
-  matchedSchemes: MatchedScheme[];
-  targetLanguage: string;
-}) {
-  const translatedSchemes: TranslatedScheme[] = matchedSchemes.map(scheme => ({
+export interface TranslationResult {
+  translatedSchemes: any[];
+}
+
+export async function translateSchemes(config: TranslationConfig): Promise<TranslationResult> {
+  console.log('Translating schemes...', config);
+  
+  // Mock implementation - in real scenario, this would use AI translation
+  const { matchedSchemes, targetLanguage } = config;
+  
+  const translatedSchemes = matchedSchemes.map(scheme => ({
     ...scheme,
-    translatedTitle: scheme.title, // Mock - add actual translation
-    translatedDescription: scheme.description,
-    translatedEligibility: scheme.eligibility,
+    title: `${scheme.title} (${targetLanguage})`,
+    description: `${scheme.description} [Translated to ${targetLanguage}]`,
     language: targetLanguage
   }));
 
-  return { translatedSchemes };
+  return {
+    translatedSchemes
+  };
 }

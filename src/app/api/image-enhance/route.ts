@@ -92,20 +92,14 @@ export async function POST(request: NextRequest) {
 
       console.log('🎨 Applying AI enhancements:', enhancedUrl);
 
-      // Use Gemini Vision for analysis and description generation
-      // Mock implementation for build compatibility
-      const analysisPrompt = {
-        generate: async () => ({
-          productCategory: 'handicrafts',
-          productDescription: 'Beautiful handcrafted product with traditional techniques',
-          materials: ['clay', 'natural pigments'],
-          colors: ['earth tones', 'natural colors'],
-          culturalSignificance: 'Traditional Indian handicraft with cultural heritage'
-        })
+      // Mock AI analysis - in real scenario, this would use Gemini Vision
+      const analysis = {
+        productCategory: 'Handicraft',
+        productDescription: 'Beautiful handcrafted artisan product showcasing traditional techniques and cultural heritage',
+        materials: ['Traditional materials', 'Natural fibers'],
+        colors: ['Natural colors', 'Earth tones'],
+        culturalSignificance: 'Represents traditional craftsmanship passed down through generations'
       };
-
-      const analysisResult = await analysisPrompt.generate();
-      const analysis = analysisResult as any;
 
       const processingTime = Date.now() - startTime;
 

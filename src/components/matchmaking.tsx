@@ -30,34 +30,16 @@ export function Matchmaking() {
     setMatches(null);
 
     const response = await matchBuyersWithArtisans({
-      buyerProfile: {
-        id: "buyer-1",
-        name: "Interior Designer",
-        location: "Mumbai",
-        preferences: {
-          categories: ["wall decor", "traditional crafts"],
-          priceRange: { min: 1000, max: 50000 },
-          styles: ["traditional", "handcrafted"],
-          occasions: ["hotel decoration", "luxury interior"]
-        },
-        budget: "high",
-        experience: "expert",
-        interests: ["traditional", "handcrafted", "wall decor"]
+      buyerPreferences: {
+        categories: ['handicrafts', 'traditional'],
+        priceRange: { min: 1000, max: 10000 },
+        location: 'Mumbai',
+        specialRequirements: ['unique', 'handcrafted', 'traditional stories']
       },
-      artisanProfiles: artisanProducts.map((product, index) => ({
-        id: `artisan-${index}`,
-        name: `Artisan ${index + 1}`,
-        profession: "Handicraft Artist",
-        specialties: ["traditional crafts"],
-        location: "Various",
-        rating: 4.5,
-        experience: 10,
-        priceRange: { min: 1000, max: 50000 },
-        availability: "available",
-        portfolio: [product],
-        certifications: ["Traditional Craft Certification"],
-        languages: ["Hindi", "English"]
-      }))
+      artisanCriteria: {
+        minRating: 4.0,
+        verifiedOnly: true
+      }
     });
 
     if (response.success && response.data) {

@@ -18,9 +18,8 @@ export default function Home() {
         router.push('/marketplace');
       } else if (userProfile.role === 'buyer') {
         router.push('/marketplace');
-      } else if (userProfile.role === 'artisan') {
-        router.push('/dashboard/inventory');
       } else {
+        // For artisans and other roles, show the main dashboard
         router.push('/dashboard');
       }
     }

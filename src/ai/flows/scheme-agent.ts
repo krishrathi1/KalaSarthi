@@ -1,18 +1,26 @@
-import { GovtScheme } from './govt-api-monitoring';
-
-export interface ProcessedScheme extends GovtScheme {
-  processedAt: string;
-  priority: 'high' | 'medium' | 'low';
-  tags: string[];
+export interface SchemeProcessingConfig {
+  newSchemes: any[];
 }
 
-export async function processSchemes({ newSchemes }: { newSchemes: GovtScheme[] }) {
-  const processedSchemes: ProcessedScheme[] = newSchemes.map(scheme => ({
+export interface SchemeProcessingResult {
+  processedSchemes: any[];
+}
+
+export async function processSchemes(config: SchemeProcessingConfig): Promise<SchemeProcessingResult> {
+  console.log('Processing schemes...', config);
+  
+  // Mock implementation - in real scenario, this would process and enrich scheme data
+  const processedSchemes = config.newSchemes.map(scheme => ({
     ...scheme,
-    processedAt: new Date().toISOString(),
-    priority: 'medium' as const,
-    tags: [scheme.category]
+    processed: true,
+    enrichedData: {
+      estimatedBenefit: '₹50,000 - ₹2,00,000',
+      processingTime: '30-45 days',
+      documentsRequired: ['Aadhaar', 'Business License', 'Bank Details']
+    }
   }));
 
-  return { processedSchemes };
+  return {
+    processedSchemes
+  };
 }

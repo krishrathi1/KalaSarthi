@@ -179,12 +179,12 @@ export function IntelligentVoiceButton({
         // On artisan buddy page, emit voice input event for chat to handle
         try {
           // Get transcription for display
-          const transcription = await speechServiceRef.current?.speechToText(arrayBuffer, { language: 'en-US' });
-          if (transcription?.text) {
+          const voiceAction = await voiceAssistantRef.current?.processVoiceCommand(arrayBuffer, 'artisan-buddy');
+          if (voiceAction?.message) {
             // Emit voice input event for the chat
             const voiceInputEvent = new CustomEvent('voiceInput', {
               detail: {
-                transcript: transcription.text,
+                transcript: voiceAction.message,
                 isVoice: true,
                 timestamp: new Date()
               }
@@ -192,13 +192,13 @@ export function IntelligentVoiceButton({
             window.dispatchEvent(voiceInputEvent);
             
             // Update UI
-            setLastTranscript(transcription.text);
+            setLastTranscript(voiceAction.message);
             setIsProcessing(false);
             
             // Show feedback that voice was captured
             toast({
               title: "Voice Captured",
-              description: `"${transcription.text}" - Processing in chat...`,
+              description: `"${voiceAction.message}" - Processing in chat...`,
             });
           }
         } catch (error) {

@@ -1,59 +1,25 @@
-export interface ApplicationStatus {
-  applicationId: string;
-  status: 'pending' | 'approved' | 'rejected' | 'under_review';
-  lastUpdated: string;
-  notes?: string;
+export interface StatusTrackingConfig {
+  applicationIds: string[];
 }
 
-export interface StatusUpdate {
-  applicationId: string;
-  oldStatus: string;
-  newStatus: string;
-  timestamp: string;
+export interface StatusTrackingResult {
+  statusUpdates: any[];
 }
 
-export interface Notification {
-  artisanId: string;
-  message: string;
-  type: 'status_change' | 'reminder' | 'deadline';
-  timestamp: string;
-}
+export async function trackApplicationStatus(config: StatusTrackingConfig): Promise<StatusTrackingResult> {
+  console.log('Tracking application status...', config);
+  
+  // Mock implementation - in real scenario, this would track actual application status
+  const { applicationIds } = config;
+  
+  const statusUpdates = applicationIds.map(appId => ({
+    applicationId: appId,
+    status: 'under_review',
+    lastUpdated: new Date().toISOString(),
+    estimatedCompletion: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+  }));
 
-export async function trackApplicationStatus({
-  applications,
-  artisanId,
-}: {
-  applications: any[];
-  artisanId: string;
-}): Promise<{
-  statusUpdates: StatusUpdate[];
-  notifications: Notification[];
-}> {
-  // Mock implementation - replace with actual status tracking logic
-  const statusUpdates: StatusUpdate[] = [];
-  const notifications: Notification[] = [];
-
-  for (const app of applications) {
-    // Simulate status checking logic
-    const currentStatus = app.status || 'pending';
-    const newStatus = currentStatus; // Replace with actual status checking
-    
-    if (currentStatus !== newStatus) {
-      statusUpdates.push({
-        applicationId: app.id || app.applicationId,
-        oldStatus: currentStatus,
-        newStatus,
-        timestamp: new Date().toISOString(),
-      });
-
-      notifications.push({
-        artisanId,
-        message: `Application ${app.id || app.applicationId} status updated to ${newStatus}`,
-        type: 'status_change',
-        timestamp: new Date().toISOString(),
-      });
-    }
-  }
-
-  return { statusUpdates, notifications };
+  return {
+    statusUpdates
+  };
 }

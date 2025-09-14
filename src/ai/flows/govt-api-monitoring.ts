@@ -1,26 +1,26 @@
-export interface GovtScheme {
-  id: string;
-  title: string;
-  description: string;
-  eligibility: string;
-  link: string;
-  category: string;
-  lastUpdated: string;
+export interface MonitoringConfig {
+  lastChecked?: string;
 }
 
-export async function monitorGovtAPIs({ lastChecked }: { lastChecked?: string }) {
-  // Mock implementation - replace with actual API monitoring
-  const newSchemes: GovtScheme[] = [
+export interface MonitoringResult {
+  newSchemes: any[];
+}
+
+export async function monitorGovtAPIs(config: MonitoringConfig): Promise<MonitoringResult> {
+  console.log('Monitoring government APIs...', config);
+  
+  // Mock implementation - in real scenario, this would monitor actual govt APIs
+  const mockNewSchemes = [
     {
-      id: "mudra",
-      title: "Pradhan Mantri MUDRA Yojana (PMMY)",
-      description: "Provides loans up to ₹10 lakh to non-corporate, non-farm small/micro enterprises.",
-      eligibility: "Any Indian Citizen with a business plan for non-farm sector.",
-      link: "https://www.mudra.org.in/",
-      category: "mudra",
-      lastUpdated: new Date().toISOString()
+      id: 'mock-scheme-1',
+      title: 'Mock Government Scheme',
+      description: 'A mock scheme for testing',
+      eligibility: 'General eligibility criteria',
+      category: 'general'
     }
   ];
 
-  return { newSchemes };
+  return {
+    newSchemes: mockNewSchemes
+  };
 }

@@ -1,33 +1,31 @@
-export interface DocumentRequirement {
-  documentType: string;
-  isRequired: boolean;
-  format: string;
-  description: string;
+export interface OCRConfig {
+  document: any;
 }
 
-export interface ExtractRequirementsFromDocumentOutput {
-  requirements: DocumentRequirement[];
-  eligibilityCriteria?: string[];
-  documentsNeeded?: string[];
-  applicationSteps?: string[];
-  extractedText?: string;
+export interface OCRResult {
+  extractedRequirements: any[];
 }
 
-export interface ExtractRequirementsFromDocumentInput {
-  documentUrl: string;
-  schemeId?: string;
-}
-
-export async function extractRequirementsFromDocument(documentUrl: string) {
-  // Mock implementation - replace with actual OCR processing
-  const requirements: DocumentRequirement[] = [
+export async function extractRequirementsFromDocument(config: OCRConfig): Promise<OCRResult> {
+  console.log('Extracting requirements from document...', config);
+  
+  // Mock implementation - in real scenario, this would use OCR to extract requirements
+  const mockRequirements = [
     {
-      documentType: 'Aadhaar Card',
-      isRequired: true,
-      format: 'PDF/Image',
-      description: 'Government issued identity proof'
+      id: 'req-1',
+      type: 'document',
+      description: 'Aadhaar Card',
+      required: true
+    },
+    {
+      id: 'req-2',
+      type: 'document',
+      description: 'Bank Statement',
+      required: true
     }
   ];
 
-  return { requirements };
+  return {
+    extractedRequirements: mockRequirements
+  };
 }

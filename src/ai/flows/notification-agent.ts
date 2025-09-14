@@ -1,33 +1,30 @@
-import { TranslatedScheme } from './translation-agent';
-
-export interface Notification {
-  id: string;
-  artisanId: string;
-  message: string;
-  type: 'scheme_match' | 'reminder' | 'deadline';
-  timestamp: string;
-  method: string;
-}
-
-export async function sendNotifications({
-  translatedSchemes,
-  artisanId,
-  notificationMethods,
-  contactInfo
-}: {
-  translatedSchemes: TranslatedScheme[];
+export interface NotificationConfig {
+  translatedSchemes: any[];
   artisanId: string;
   notificationMethods: string[];
   contactInfo: any;
-}) {
-  const notifications: Notification[] = translatedSchemes.map(scheme => ({
-    id: `notif-${Date.now()}-${Math.random()}`,
+}
+
+export interface NotificationResult {
+  notifications: any[];
+}
+
+export async function sendNotifications(config: NotificationConfig): Promise<NotificationResult> {
+  console.log('Sending notifications...', config);
+  
+  // Mock implementation - in real scenario, this would send actual notifications
+  const { translatedSchemes, artisanId, notificationMethods, contactInfo } = config;
+  
+  const notifications = translatedSchemes.map(scheme => ({
+    id: `notif-${scheme.id}`,
+    schemeId: scheme.id,
     artisanId,
-    message: `New scheme available: ${scheme.title}`,
-    type: 'scheme_match',
-    timestamp: new Date().toISOString(),
-    method: notificationMethods[0] || 'push'
+    method: notificationMethods[0] || 'push',
+    status: 'sent',
+    timestamp: new Date().toISOString()
   }));
 
-  return { notifications };
+  return {
+    notifications
+  };
 }

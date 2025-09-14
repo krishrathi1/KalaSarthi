@@ -68,7 +68,7 @@ class MultilingualTTS {
           
           languages[langCode].push({
             name: voice.name || '',
-            gender: String(voice.ssmlGender || 'NEUTRAL'),
+            gender: String(voice.ssmlGender) || 'NEUTRAL',
             sampleRate: voice.naturalSampleRateHertz || 0
           });
         });

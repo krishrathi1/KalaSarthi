@@ -44,6 +44,7 @@ export default function CartPage() {
     const [showCheckout, setShowCheckout] = useState(false);
     const [orderPlaced, setOrderPlaced] = useState(false);
     const [placedOrder, setPlacedOrder] = useState<any>(null);
+    const [placedOrder, setPlacedOrder] = useState<any>(null);
 
     // Shipping address state
     const [shippingAddress, setShippingAddress] = useState<Record<string, string>>({
@@ -57,6 +58,7 @@ export default function CartPage() {
     });
 
     const [orderNotes, setOrderNotes] = useState('');
+    const [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
     const [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
 
     const handleQuantityChange = async (productId: string, newQuantity: number) => {
@@ -101,10 +103,11 @@ export default function CartPage() {
 
     const validateAddress = () => {
         const errors: Record<string, string> = {};
+        const errors: Record<string, string> = {};
         const required = ['fullName', 'street', 'city', 'state', 'zipCode', 'phone'];
 
         required.forEach(field => {
-            if (!shippingAddress[field].trim()) {
+            if (!(shippingAddress as any)[field].trim()) {
                 errors[field] = `${field.charAt(0).toUpperCase() + field.slice(1).replace(/([A-Z])/g, ' $1')} is required`;
             }
         });
