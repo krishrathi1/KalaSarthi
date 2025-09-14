@@ -7,7 +7,7 @@
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 8080",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
   },
@@ -18,12 +18,9 @@
     "@genkit-ai/next": "^1.18.0",
     "@google-cloud/bigquery": "^8.1.1",
     "@google-cloud/firestore": "^7.11.3",
-<<<<<<< HEAD
     "@google-cloud/storage": "^7.17.1",
-=======
     "@google-cloud/speech": "^7.2.0",
     "@google-cloud/text-to-speech": "^6.3.0",
->>>>>>> e470685ffd88ba1a556de91be4d4ceac762cfd0d
     "@google-cloud/translate": "^9.2.0",
     "@google-cloud/vertexai": "^1.10.0",
     "@google-cloud/vision": "^5.3.3",

@@ -6,7 +6,6 @@ import { translateSchemes } from '@/ai/flows/translation-agent';
 import { sendNotifications } from '@/ai/flows/notification-agent';
 import { autoRegisterForSchemes } from '@/ai/flows/auto-registration-agent';
 import { extractRequirementsFromDocument } from '@/ai/flows/ocr-agent';
-import { prepareDocuments } from '@/ai/flows/document-prep-agent';
 import { trackApplicationStatus } from '@/ai/flows/status-tracking-agent';
 
 export async function POST(request: NextRequest) {
@@ -75,7 +74,7 @@ export async function POST(request: NextRequest) {
       console.log('Selected schemes for registration:', body.selectedSchemes);
       const { registrations: regResults } = await autoRegisterForSchemes({
         artisanProfile,
-        selectedSchemes: translatedSchemes.filter(scheme =>
+        selectedSchemes: translatedSchemes.filter((scheme: any) =>
           body.selectedSchemes.includes(scheme.id)
         ),
       });
