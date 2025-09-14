@@ -16,7 +16,7 @@ export default function DashboardPage() {
       if (userProfile.role === 'buyer') {
         router.push('/marketplace');
       } else if (userProfile.role === 'artisan') {
-        router.push('/dashboard/inventory');
+        router.push('/');
       }
     }
   }, [userProfile, loading, router]);

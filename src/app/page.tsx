@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { Loader2 } from 'lucide-react';
+import { Dashboard } from '@/components/dashboard';
 
 export default function Home() {
   const { userProfile, loading } = useAuth();
@@ -19,7 +20,7 @@ export default function Home() {
       } else if (userProfile.role === 'buyer') {
         router.push('/marketplace');
       } else if (userProfile.role === 'artisan') {
-        router.push('/dashboard/inventory');
+        router.push('/');
       } else {
         router.push('/dashboard');
       }
@@ -42,7 +43,7 @@ export default function Home() {
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
-        <p className="text-muted-foreground">Redirecting...</p>
+        <Dashboard />
       </div>
     </div>
   );

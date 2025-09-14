@@ -32,7 +32,7 @@ const AuthPage: React.FC = () => {
       if (userProfile.role === 'buyer') {
         router.push('/marketplace');
       } else if (userProfile.role === 'artisan') {
-        router.push('/dashboard/inventory');
+        router.push('/dashboard');
       } else {
         router.push('/dashboard');
       }
@@ -55,7 +55,7 @@ const AuthPage: React.FC = () => {
           if (result.data.role === 'buyer') {
             router.push('/marketplace');
           } else if (result.data.role === 'artisan') {
-            router.push('/dashboard/inventory');
+            router.push('/dashboard');
           } else {
             router.push('/dashboard');
           }
@@ -82,7 +82,7 @@ const AuthPage: React.FC = () => {
     if (userData.role === 'buyer') {
       router.push('/marketplace');
     } else if (userData.role === 'artisan') {
-      router.push('/dashboard/inventory');
+      router.push('/dashboard');
     } else {
       router.push('/dashboard');
     }
