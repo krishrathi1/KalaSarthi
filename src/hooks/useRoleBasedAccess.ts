@@ -53,14 +53,9 @@ export function useRoleBasedAccess() {
 
   // Get the appropriate redirect path based on user role
   const getDefaultPath = () => {
-    console.log('getDefaultPath called - userProfile:', userProfile?.role, 'isArtisan:', isArtisan, 'isBuyer:', isBuyer);
     if (!userProfile) return '/marketplace'; // Unauthenticated users go to marketplace
     if (isBuyer) return '/marketplace';
-    if (isArtisan) {
-      console.log('getDefaultPath: Returning /dashboard for artisan');
-      return '/dashboard'; // Artisans go to main dashboard
-    }
-    console.log('getDefaultPath: Returning /dashboard for other role');
+    if (isArtisan) return '/dashboard/inventory';
     return '/dashboard';
   };
 

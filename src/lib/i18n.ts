@@ -76,22 +76,6 @@ type Translations = {
   [key: string]: { [K in LanguageCode]?: string };
 };
 
-export interface MenuItem {
-  label: { [K in LanguageCode]?: string };
-  icon: any;
-  path: string;
-  hidden?: boolean;
-}
-
-export interface Feature {
-  title: { [K in LanguageCode]?: string };
-  description: { [K in LanguageCode]?: string };
-  icon: any;
-  path: string;
-  color: string;
-  hidden?: boolean;
-}
-
 const translations: Translations = {
   // Dashboard
   greeting: {
@@ -198,38 +182,38 @@ const translations: Translations = {
   },
   // App Name
   appName: {
-    en: 'KalaSarthi',
-    hi: 'कलासार्थी',
-    ta: 'கலாசார்தி',
-    bn: 'কলাসার্থী',
-    te: 'కళాసార్థి',
-    gu: 'કલાસાર્થી',
-    mr: 'कलासार्थी',
-    kn: 'ಕಲಾಸಾರ್ಥಿ',
-    ml: 'കലാസാര്ഥി',
-    pa: 'ਕਲਾਸਾਰਥੀ',
-    as: 'কলাসাৰ্থী',
-    or: 'କଲାସାର୍ଥି',
-    ur: 'کالا سارتھی',
-    es: 'KalaSarthi',
-    fr: 'KalaSarthi',
-    de: 'KalaSarthi',
-    zh: '卡拉萨蒂',
-    ja: 'カラサルティ',
-    ar: 'كالاسارثي',
-    pt: 'KalaSarthi',
-    ru: 'КалаСартхи',
-    it: 'KalaSarthi',
-    ko: '칼라사르티',
-    nl: 'KalaSarthi',
-    sv: 'KalaSarthi',
-    da: 'KalaSarthi',
-    no: 'KalaSarthi',
-    fi: 'KalaSarthi',
-    pl: 'KalaSarthi',
-    tr: 'KalaSarthi',
-    th: 'คาลาสาร์ธี',
-    vi: 'KalaSarthi',
+    en: 'KalaMitra',
+    hi: 'कलामित्र',
+    ta: 'கலாமித்ரா',
+    bn: 'কলামিত্র',
+    te: 'కళామిత్ర',
+    gu: 'કલામિત્ર',
+    mr: 'कलामित्र',
+    kn: 'ಕಲಾಮಿತ್ರ',
+    ml: 'കലാമിത്ര',
+    pa: 'ਕਲਾਮਿਤਰ',
+    as: 'কলামিত্ৰ',
+    or: 'କଲାମିତ୍ର',
+    ur: 'کالا میتر',
+    es: 'KalaMitra',
+    fr: 'KalaMitra',
+    de: 'KalaMitra',
+    zh: '卡拉米特拉',
+    ja: 'カラミトラ',
+    ar: 'كالاميترا',
+    pt: 'KalaMitra',
+    ru: 'КалаМитра',
+    it: 'KalaMitra',
+    ko: '칼라미트라',
+    nl: 'KalaMitra',
+    sv: 'KalaMitra',
+    da: 'KalaMitra',
+    no: 'KalaMitra',
+    fi: 'KalaMitra',
+    pl: 'KalaMitra',
+    tr: 'KalaMitra',
+    th: 'คาลามิตรา',
+    vi: 'KalaMitra',
   },
   // Chat Interface
   chatTitle: {
@@ -891,7 +875,7 @@ export async function fillMissingTranslations(language: LanguageCode): Promise<v
   console.log(`Finished auto-filling translations for ${language}`);
 }
 
-export const menuItems: MenuItem[] = [
+export const menuItems = [
     {
       label: {
         en: 'Dashboard',
@@ -910,7 +894,7 @@ export const menuItems: MenuItem[] = [
         // Add more as needed, fallback to en
       },
       icon: LayoutDashboard,
-      path: "/dashboard",
+      path: "/",
     },
     {
       label: {
@@ -968,25 +952,6 @@ export const menuItems: MenuItem[] = [
       },
       icon: Palette,
       path: "/trend-spotter",
-    },
-    {
-      label: {
-        en: 'AI Image Generator',
-        hi: 'AI छवि जेनरेटर',
-        ta: 'AI பட உருவாக்கி',
-        bn: 'AI ইমেজ জেনারেটর',
-        te: 'AI ఇమేజ్ జనరేటర్',
-        gu: 'AI ઇમેજ જનરેટર',
-        mr: 'AI इमेज जनरेटर',
-        kn: 'AI ಚಿತ್ರ ಜನರೇಟರ್',
-        ml: 'AI ഇമേജ് ജനറേറ്റർ',
-        pa: 'AI ਇਮੇਜ ਜਨਰੇਟਰ',
-        as: 'AI ছবি জেনাৰেটৰ',
-        or: 'AI ପ୍ରତିଛବି ଜନରେଟର',
-        ur: 'AI امیج جنریٹر',
-      },
-      icon: Sparkles,
-      path: "/ai-image-generator",
     },
     {
       label: {
@@ -1082,7 +1047,6 @@ export const menuItems: MenuItem[] = [
       },
       icon: ShoppingCart,
       path: "/marketplace",
-      hidden: true,
     },
     {
       label: {
@@ -1121,7 +1085,6 @@ export const menuItems: MenuItem[] = [
       },
       icon: Archive,
       path: "/archived",
-      hidden: true,
     },
     {
       label: {
@@ -1141,7 +1104,6 @@ export const menuItems: MenuItem[] = [
       },
       icon: FileText,
       path: "/drafts",
-      hidden: true,
     },
     {
       label: {
@@ -1161,7 +1123,6 @@ export const menuItems: MenuItem[] = [
       },
       icon: User,
       path: "/profile",
-      hidden: true,
     },
     {
       label: {
@@ -1181,7 +1142,6 @@ export const menuItems: MenuItem[] = [
       },
       icon: Globe,
       path: "/multi-marketplace",
-      hidden: true,
     },
     {
       label: {
@@ -1201,7 +1161,6 @@ export const menuItems: MenuItem[] = [
       },
       icon: Mic,
       path: "/voice-demo",
-      hidden: true,
     },
     {
       label: {
@@ -1221,7 +1180,6 @@ export const menuItems: MenuItem[] = [
       },
       icon: UserPlus,
       path: "/voice-enrollment",
-      hidden: true,
     },
     {
       label: {
@@ -1241,11 +1199,10 @@ export const menuItems: MenuItem[] = [
       },
       icon: DollarSign,
       path: "/fair-price-engine",
-      hidden: true,
     },
 ];
 
-export const features: Feature[] = [
+export const features = [
   {
     title: {en: 'Artisan Buddy', hi: 'कारीगर बडी', ta: 'கைவினைஞர் நண்பன்', bn: 'শিল্পী বন্ধু', te: 'ఆర్టిసాన్ బడ్డీ'},
     description: {en: "A virtual agent copy of you that answers buyer queries 24/7 when you are offline.", hi: "आपकी एक वर्चुअल एजेंट कॉपी जो आपके ऑफ़लाइन होने पर 24/7 खरीदारों के सवालों का जवाब देती है।", ta: "நீங்கள் ஆஃப்லைனில் இருக்கும்போது 24/7 வாங்குபவர் கேள்விகளுக்கு பதிலளிக்கும் உங்களின் ஒரு மெய்நிகர் முகவர் நகல்.", bn: "আপনার একটি ভার্চুয়াল এজেন্ট অনুলিপি যা আপনি অফলাইনে থাকলে ক্রেতার প্রশ্নের 24/7 উত্তর দেয়।", te: "మీరు ఆఫ్‌లైన్‌లో ఉన్నప్పుడు 24/7 కొనుగోలుదారు ప్రశ్నలకు సమాధానమిచ్చే మీ వర్చువల్ ఏజెంట్ కాపీ."},
@@ -1296,18 +1253,10 @@ export const features: Feature[] = [
     color: "text-emerald-500",
   },
   {
-    title: {en: 'AI Image Generator', hi: 'AI छवि जेनरेटर', ta: 'AI பட உருவாக்கி', bn: 'AI ইমেজ জেনারেটর', te: 'AI ఇమేజ్ జనరేటర్'},
-    description: {en: "Generate stunning product images using AI with custom styles, colors, and artistic effects.", hi: "कस्टम स्टाइल, रंग और कलात्मक प्रभावों के साथ AI का उपयोग करके शानदार उत्पाद छवियां उत्पन्न करें।", ta: "தனிப்பயன் பாணிகள், நிறங்கள் மற்றும் கலை விளைவுகளுடன் AI ஐப் பயன்படுத்தி அற்புதமான தயாரிப்பு படங்களை உருவாக்கவும்।", bn: "কাস্টম স্টাইল, রঙ এবং শৈল্পিক প্রভাব সহ AI ব্যবহার করে চমৎকার পণ্যের ছবি তৈরি করুন।", te: "కస్టమ్ స్టైల్‌లు, రంగులు మరియు కళాత్మక ప్రభావాలతో AI ని ఉపయోగించి అద్భుతమైన ఉత్పత్తి చిత్రాలను రూపొందించండి."},
-    icon: Sparkles,
-    path: "/ai-image-generator",
-    color: "text-purple-500",
-  },
-  {
     title: {en: 'Voice Demo', hi: 'वॉयस डेमो', ta: 'குரல் டெமோ', bn: 'ভয়েস ডেমো', te: 'వాయిస్ డెమో'},
     description: {en: "Experience high-quality multilingual text-to-speech with intelligent voice selection.", hi: "बुद्धिमान आवाज़ चयन के साथ उच्च-गुणवत्ता वाली बहुभाषी टेक्स्ट-टू-स्पीच का अनुभव करें।", ta: "புத்திசாலி குரல் தேர்வுடன் உயர்-தர பலமொழி உரை-க்குரல் அனுபவிக்கவும்।", bn: "বুদ্ধিমান কণ্ঠ নির্বাচনের সাথে উচ্চ-মানের বহুভাষিক টেক্সট-টু-স্পিচের অভিজ্ঞতা নিন।", te: "తెలివైన వాయిస్ ఎంపికతో అధిక-నాణ్యత బహుభాషా టెక్స్ట్-టు-స్పీచ్ అనుభవించండి."},
     icon: Volume2,
     path: "/voice-demo",
     color: "text-purple-500",
-    hidden: true,
   },
 ];

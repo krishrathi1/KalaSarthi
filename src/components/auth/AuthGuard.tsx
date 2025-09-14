@@ -42,10 +42,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
         // If on auth page but already authenticated with profile, redirect based on role
         if (pathname === '/auth' && user && userProfile) {
-            console.log('AuthGuard: Redirecting from auth page, user role:', userProfile.role);
-            const redirectPath = getDefaultPath();
-            console.log('AuthGuard: Redirecting to:', redirectPath);
-            router.push(redirectPath);
+            router.push(getDefaultPath());
             return;
         }
 
@@ -58,11 +55,8 @@ export default function AuthGuard({ children }: AuthGuardProps) {
             }
 
             // Handle root path redirection based on role
-            if (pathname === '/') {
-                console.log('AuthGuard: Redirecting from root path, user role:', userProfile.role);
-                const redirectPath = getDefaultPath();
-                console.log('AuthGuard: Redirecting to:', redirectPath);
-                router.push(redirectPath);
+            if (pathname === '/dashboard') {
+                router.push(getDefaultPath());
                 return;
             }
         }
