@@ -20,7 +20,7 @@ import { uploadToCloudinary } from "@/lib/cloudinary";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConversationalVoiceProcessor } from "@/lib/service/ConversationalVoiceProcessor";
 import { StoryRecordingMic } from "@/components/ui/StoryRecordingMic";
-import { redirect } from "next/navigation";
+import { redirect, useRouter } from "next/navigation";
 
 interface ProductFormData {
   name: string;
@@ -47,6 +47,7 @@ export function SmartProductCreator() {
   // Wizard state
   const [currentStep, setCurrentStep] = useState<WizardStep>('image-upload');
   const [completedSteps, setCompletedSteps] = useState<Set<WizardStep>>(new Set());
+  const router = useRouter();
 
   // Pricing approval state
   const [pricingApproved, setPricingApproved] = useState(false);
@@ -697,7 +698,7 @@ Return only the enhanced story, no additional commentary.`;
           description: "Your product has been created successfully!",
         });
         resetForm();
-        redirect("/dashboard/inventory");
+        router.push("/dashboard/inventory");
 
 
       } else {
