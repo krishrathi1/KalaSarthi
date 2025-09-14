@@ -15,10 +15,10 @@ interface UpdateLoanApplicationRequest {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { applicationId: string } }
+  { params }: { params: Promise<{ applicationId: string }> }
 ) {
   try {
-    const applicationId = params.applicationId;
+    const { applicationId } = await params;
 
     const result = await LoanApplicationService.getLoanApplicationById(applicationId);
 
@@ -42,10 +42,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { applicationId: string } }
+  { params }: { params: Promise<{ applicationId: string }> }
 ) {
   try {
-    const applicationId = params.applicationId;
+    const { applicationId } = await params;
     const body: UpdateLoanApplicationRequest = await request.json();
 
     const result = await LoanApplicationService.updateLoanApplication(applicationId, body);
@@ -70,10 +70,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { applicationId: string } }
+  { params }: { params: Promise<{ applicationId: string }> }
 ) {
   try {
-    const applicationId = params.applicationId;
+    const { applicationId } = await params;
 
     // Note: In a real application, you might want to soft delete
     // For now, we'll return a not implemented response

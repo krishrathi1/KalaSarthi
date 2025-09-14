@@ -22,7 +22,7 @@ export function Matchmaking() {
     "I'm an interior designer from Mumbai looking for unique, handcrafted wall decor with traditional Indian stories for a luxury hotel project."
   );
   const [loading, setLoading] = useState(false);
-  const [matches, setMatches] = useState<string[] | null>(null);
+  const [matches, setMatches] = useState<any[] | null>(null);
   const { toast } = useToast();
 
   const handleSubmit = async () => {
@@ -30,8 +30,34 @@ export function Matchmaking() {
     setMatches(null);
 
     const response = await matchBuyersWithArtisans({
-      buyerPreferences,
-      artisanProductDescriptions: artisanProducts,
+      buyerProfile: {
+        id: "buyer-1",
+        name: "Interior Designer",
+        location: "Mumbai",
+        preferences: {
+          categories: ["wall decor", "traditional crafts"],
+          priceRange: { min: 1000, max: 50000 },
+          styles: ["traditional", "handcrafted"],
+          occasions: ["hotel decoration", "luxury interior"]
+        },
+        budget: "high",
+        experience: "expert",
+        interests: ["traditional", "handcrafted", "wall decor"]
+      },
+      artisanProfiles: artisanProducts.map((product, index) => ({
+        id: `artisan-${index}`,
+        name: `Artisan ${index + 1}`,
+        profession: "Handicraft Artist",
+        specialties: ["traditional crafts"],
+        location: "Various",
+        rating: 4.5,
+        experience: 10,
+        priceRange: { min: 1000, max: 50000 },
+        availability: "available",
+        portfolio: [product],
+        certifications: ["Traditional Craft Certification"],
+        languages: ["Hindi", "English"]
+      }))
     });
 
     if (response.success && response.data) {

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getArtisanProfile, ProfileFetcherInput } from '@/ai/flows/trend-spotter-profile-agent';
-import { analyzeArtisanTrends, TrendAnalysisInput } from '@/ai/flows/trend-spotter-analysis-agent';
-import { scrapeTrendProducts, ScraperAgentInput } from '@/ai/flows/trend-spotter-scraper-agent';
-import { filterTrendProducts, FilterAgentInput } from '@/ai/flows/trend-spotter-filter-agent';
-import { generateTrendRecommendations, RecommendationAgentInput } from '@/ai/flows/trend-spotter-recommendation-agent';
 import { classifyProductsForProfession, ProductClassifierInput } from '@/ai/flows/trend-spotter-classifier-agent';
+import { analyzeArtisanTrends, TrendAnalysisInput } from '@/ai/flows/trend-spotter-analysis-agent';
+import { ScraperAgentInput, scrapeTrendProducts } from '@/ai/flows/trend-spotter-scraper-agent';
+import { FilterAgentInput, filterTrendProducts } from '@/ai/flows/trend-spotter-filter-agent';
+import { generateTrendRecommendations, RecommendationAgentInput } from '@/ai/flows/trend-spotter-recommendation-agent';
+
 
 interface TrendSpotterRequest {
   userId: string;
@@ -124,7 +125,7 @@ export async function POST(request: NextRequest) {
         experience: profileResult.profile!.experience,
         location: profileResult.profile!.location
       },
-      existingProducts: profileResult.products
+      existingProducts: profileResult.products || []
     };
 
     const classifierResult = await classifyProductsForProfession(classifierInput);
@@ -145,13 +146,13 @@ export async function POST(request: NextRequest) {
     // Step 3: Web Scraping Agent (Enhanced with classifier queries)
     console.log('🕷️ Step 3: Scraping ecommerce platforms...');
     const scraperInput: ScraperAgentInput = {
-      searchQueries: classifierResult.searchQueries.map(q => ({
+      searchQueries: classifierResult.searchQueries.map((q: any) => ({
         category: q.category,
         query: q.query,
         priority: q.priority === 1 ? 'high' : q.priority === 2 ? 'medium' : 'low',
         rationale: q.rationale
       })), // Transform classifier queries to scraper format
-      targetPlatforms: classifierResult.marketInsights.targetPlatforms.map(platform => ({
+      targetPlatforms: classifierResult.marketInsights.targetPlatforms.map((platform: any) => ({
         platform,
         relevance: 0.8, // Default high relevance
         searchStrategy: 'comprehensive'
@@ -187,7 +188,7 @@ export async function POST(request: NextRequest) {
     // Step 5: Recommendation Agent
     console.log('💡 Step 5: Generating recommendations...');
     const recommendationInput: RecommendationAgentInput = {
-      filteredProducts: filterResult.globalRankedList.map(item => ({
+      filteredProducts: filterResult.globalRankedList.map((item: any) => ({
         ...item,
         popularityScore: item.overallScore * 0.4, // Distribute overall score
         trendScore: item.overallScore * 0.3,
@@ -220,7 +221,7 @@ export async function POST(request: NextRequest) {
         nextSteps: recommendationResult.nextSteps
       },
       profileCompletenessSummary: profileResult.completenessSummary,
-      querySet: classifierResult.searchQueries.map(q => ({
+      querySet: classifierResult.searchQueries.map((q: any) => ({
         query: q.query,
         rationale: q.rationale,
         category: q.category,

@@ -293,21 +293,25 @@ export class FinanceAdvisorService {
       // Calculate rolling mean and standard deviation
       for (let i = 7; i < values.length; i++) {
         const window = values.slice(i - 7, i);
-        const mean = window.reduce((sum, val) => sum + val, 0) / window.length;
-        const variance = window.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / window.length;
+        const validWindow = window.filter((val): val is number => typeof val === 'number');
+        const mean = validWindow.reduce((sum, val) => (sum ?? 0) + (val ?? 0), 0) / (validWindow.length || 1);
+        const validWindowForVariance = window.filter((val): val is number => typeof val === 'number');
+        const variance = validWindowForVariance.reduce((sum, val) => (sum ?? 0) + Math.pow((val ?? 0) - mean, 2), 0) / (validWindowForVariance.length || 1);
         const stdDev = Math.sqrt(variance);
 
         const currentValue = values[i];
-        const zScore = Math.abs(currentValue - mean) / stdDev;
+        if (typeof currentValue === 'number') {
+          const zScore = Math.abs(currentValue - mean) / stdDev;
 
-        if (zScore > threshold) {
-          anomalies.push({
-            date: data[i].date,
-            value: currentValue,
-            expectedValue: mean,
-            deviation: ((currentValue - mean) / mean) * 100,
-            severity: zScore > 3 ? 'high' : zScore > 2.5 ? 'medium' : 'low'
-          });
+          if (zScore > threshold) {
+            anomalies.push({
+              date: data[i].date,
+              value: currentValue,
+              expectedValue: mean,
+              deviation: ((currentValue - mean) / mean) * 100,
+              severity: zScore > 3 ? 'high' : zScore > 2.5 ? 'medium' : 'low'
+            });
+          }
         }
       }
 
@@ -347,9 +351,11 @@ export class FinanceAdvisorService {
         };
       }
 
-      const originalRevenue = currentData.totalRevenue;
-      const originalUnits = currentData.totalQuantity;
-      const originalMargin = currentData.averageMargin || 0.2; // Default 20% margin
+      // Handle case where currentData might be an array
+      const data = Array.isArray(currentData) ? currentData[0] : currentData;
+      const originalRevenue = data?.totalRevenue ?? 0;
+      const originalUnits = data?.totalQuantity ?? 0;
+      const originalMargin = data?.averageMargin ?? 0.2; // Default 20% margin
 
       // Calculate discounted price impact
       const discountFactor = 1 - (discountPercent / 100);

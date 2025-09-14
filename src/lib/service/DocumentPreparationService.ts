@@ -52,12 +52,8 @@ export class DocumentPreparationService {
       if (request.sourceDocuments && request.sourceDocuments.length > 0) {
         for (const doc of request.sourceDocuments) {
           try {
-            const ocrInput: ExtractRequirementsFromDocumentInput = {
-              documentUrl: doc.url,
-              schemeId: request.requirements?.schemeId || 'loan_scheme'
-            };
-
-            extractedRequirements = await extractRequirementsFromDocument(ocrInput);
+            // Pass only the document URL as required by the function signature
+            extractedRequirements = await extractRequirementsFromDocument(doc.url);
             break; // Use first successful extraction
           } catch (error) {
             console.error(`Failed to extract from ${doc.url}:`, error);
@@ -94,10 +90,14 @@ export class DocumentPreparationService {
         schemeId: request.requirements?.schemeId || 'loan_application',
         documentsNeeded,
         ocrRequirements: extractedRequirements ? {
-          requirements: extractedRequirements.requirements,
-          eligibilityCriteria: extractedRequirements.eligibilityCriteria,
-          documentsNeeded: extractedRequirements.documentsNeeded,
-          applicationSteps: extractedRequirements.applicationSteps
+          requirements: extractedRequirements.requirements
+            ? extractedRequirements.requirements.map((req: any) =>
+                typeof req === 'string' ? req : req.name ?? JSON.stringify(req)
+              )
+            : [],
+          eligibilityCriteria: extractedRequirements.eligibilityCriteria ?? [],
+          documentsNeeded: extractedRequirements.documentsNeeded ?? [],
+          applicationSteps: extractedRequirements.applicationSteps ?? []
         } : {
           requirements: request.requirements?.customRequirements || [],
           eligibilityCriteria: [],
@@ -108,8 +108,8 @@ export class DocumentPreparationService {
 
       const prepResult: PrepareDocumentsOutput = await prepareDocuments(prepInput);
 
-      if (prepResult.preparedDocuments.length > 0) {
-        const preparedDoc = prepResult.preparedDocuments[0];
+      if (prepResult.documents.length > 0) {
+        const preparedDoc = prepResult.documents[0];
 
         return {
           success: true,
@@ -120,7 +120,7 @@ export class DocumentPreparationService {
             generatedAt: new Date()
           },
           extractedData: extractedRequirements,
-          errors: prepResult.missingDocuments.length > 0 ? [`Missing documents: ${prepResult.missingDocuments.join(', ')}`] : undefined
+          errors: undefined
         };
       } else {
         return {
@@ -143,12 +143,8 @@ export class DocumentPreparationService {
    */
   static async extractDocumentData(documentUrl: string, documentType: string): Promise<any> {
     try {
-      const ocrInput: ExtractRequirementsFromDocumentInput = {
-        documentUrl,
-        schemeId: 'document_extraction'
-      };
-
-      const extractedData = await extractRequirementsFromDocument(ocrInput);
+      // Pass only the documentUrl string as required by the function signature
+      const extractedData = await extractRequirementsFromDocument(documentUrl);
 
       // Process extracted data based on document type
       return this.processExtractedData(extractedData, documentType);
@@ -265,15 +261,15 @@ export class DocumentPreparationService {
     // Extract structured data based on document type
     switch (documentType) {
       case 'aadhaar':
-        processed.structuredData = this.extractAadhaarData(extractedData.extractedText);
+        processed.structuredData = this.extractAadhaarData(extractedData.extractedText!);
         break;
 
       case 'pan':
-        processed.structuredData = this.extractPANData(extractedData.extractedText);
+        processed.structuredData = this.extractPANData(extractedData.extractedText!);
         break;
 
       case 'bank_statement':
-        processed.structuredData = this.extractBankData(extractedData.extractedText);
+        processed.structuredData = this.extractBankData(extractedData.extractedText!);
         break;
 
       default:

@@ -77,7 +77,7 @@ export class CartService {
             }
 
             // Convert cart to plain object to avoid Mongoose issues
-            const plainCart = cart.toObject();
+            const plainCart = cart?.toObject();
 
             // Populate products data and calculate subtotals
             const itemsWithData = await Promise.all(
@@ -90,7 +90,7 @@ export class CartService {
                             quantity: item.quantity,
                             addedAt: item.addedAt,
                             updatedAt: item.updatedAt,
-                            _id: item._id?.toString(),
+                            _id: (item as any)._id?.toString(),
                             product: product ? product.toObject() : undefined,
                             subtotal
                         };
@@ -101,7 +101,7 @@ export class CartService {
                             quantity: item.quantity,
                             addedAt: item.addedAt,
                             updatedAt: item.updatedAt,
-                            _id: item._id?.toString(),
+                            _id: (item as any)._id?.toString(),
                             product: undefined,
                             subtotal: 0
                         };
@@ -119,7 +119,7 @@ export class CartService {
                     {
                         $set: {
                             totalAmount,
-                            totalItems: plainCart.items.reduce((total, item) => total + item.quantity, 0)
+                            totalItems: plainCart?.items.reduce((total, item) => total + item.quantity, 0)
                         }
                     }
                 ).exec();
@@ -127,8 +127,13 @@ export class CartService {
 
             const cartWithProducts: CartWithProducts = {
                 ...plainCart,
-                items: itemsWithData,
-                totalAmount
+                cartId: plainCart?.cartId || '',
+                userId: plainCart?.userId || '',
+                items: itemsWithData || [],
+                totalAmount: plainCart?.totalAmount || 0,
+                totalItems: plainCart?.totalItems || 0,
+                createdAt: plainCart?.createdAt || new Date(),
+                updatedAt: plainCart?.updatedAt || new Date()
             };
 
             return {

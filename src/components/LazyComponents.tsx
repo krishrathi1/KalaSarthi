@@ -5,7 +5,7 @@ import { Loader2 } from 'lucide-react';
 
 // Lazy load heavy components
 export const LazyStoryRecordingMic = lazy(() => import('./ui/StoryRecordingMic').then(m => ({ default: m.StoryRecordingMic })));
-export const LazySmartProductCreator = lazy(() => import('./smart-product-creator'));
+export const LazySmartProductCreator = lazy(() => import('./smart-product-creator').then(m => ({ default: m.SmartProductCreator })));
 export const LazyVoiceDemo = lazy(() => import('./voice/VoiceDemo').then(m => ({ default: m.VoiceDemo })));
 export const LazyVoiceIntegration = lazy(() => import('./voice/VoiceIntegration').then(m => ({ default: m.VoiceIntegration })));
 export const LazyPerformanceMonitor = lazy(() => import('./PerformanceMonitor').then(m => ({ default: m.PerformanceMonitor })));

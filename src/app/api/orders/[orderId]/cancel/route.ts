@@ -4,10 +4,10 @@ import { OrderService } from '@/lib/service/OrderService';
 // POST - Cancel an order
 export async function POST(
     request: NextRequest,
-    { params }: { params: { orderId: string } }
+    { params }: { params: Promise<{ orderId: string }> }
 ) {
     try {
-        const { orderId } = params;
+        const { orderId } = await params;
         const { userId, reason } = await request.json();
 
         if (!orderId) {

@@ -70,6 +70,33 @@ export function VoiceIntegration({
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Move loadVoices above this useMemo
+    const loadVoices = useCallback(async (languageCode: string) => {
+    try {
+      setIsLoading(true);
+      const data = await withCache(
+        `voices-${languageCode}`,
+        async () => {
+          const response = await fetch(`/api/voices/${languageCode}`);
+          const result = await response.json();
+          if (!result.success) throw new Error(result.error);
+          return result.voices;
+        },
+        { ttl: CACHE_TTL.MEDIUM }
+      );
+      setVoices(data);
+    } catch (error) {
+      console.error('Error loading voices:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const debouncedLoadVoices = useMemo(
+    () => debounce(loadVoices, 200),
+    [loadVoices]
+  );
+
   useEffect(() => {
     loadLanguages();
   }, []);
@@ -117,26 +144,7 @@ export function VoiceIntegration({
     }
   }, []);
 
-  const loadVoices = useCallback(async (languageCode: string) => {
-    try {
-      setIsLoading(true);
-      const data = await withCache(
-        `voices-${languageCode}`,
-        async () => {
-          const response = await fetch(`/api/voices/${languageCode}`);
-          const result = await response.json();
-          if (!result.success) throw new Error(result.error);
-          return result.voices;
-        },
-        { ttl: CACHE_TTL.MEDIUM }
-      );
-      setVoices(data);
-    } catch (error) {
-      console.error('Error loading voices:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+
 
   const playText = useCallback(async () => {
     if (!selectedVoice || !text.trim()) return;
@@ -213,11 +221,6 @@ export function VoiceIntegration({
   const debouncedPlayText = useMemo(
     () => debounce(playText, 300),
     [playText]
-  );
-
-  const debouncedLoadVoices = useMemo(
-    () => debounce(loadVoices, 200),
-    [loadVoices]
   );
 
   const getQualityColor = (quality: string) => {

@@ -1,5 +1,7 @@
 // Performance optimization utilities
 
+import React from "react";
+
 // In-memory cache for API responses
 const apiCache = new Map<string, { data: any; timestamp: number; ttl: number }>();
 

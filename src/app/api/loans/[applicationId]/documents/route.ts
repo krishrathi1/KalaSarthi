@@ -10,10 +10,10 @@ interface AddDocumentRequest {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { applicationId: string } }
+  { params }: { params: Promise<{ applicationId: string }> }
 ) {
   try {
-    const applicationId = params.applicationId;
+    const { applicationId } = await params;
     const body: AddDocumentRequest = await request.json();
 
     const { type, fileName, fileUrl, addedBy } = body;
@@ -51,10 +51,10 @@ export async function POST(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { applicationId: string } }
+  { params }: { params: Promise<{ applicationId: string }> }
 ) {
   try {
-    const applicationId = params.applicationId;
+    const { applicationId } = await params;
 
     const result = await LoanApplicationService.getLoanApplicationById(applicationId);
 

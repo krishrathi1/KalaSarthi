@@ -1,21 +1,20 @@
-// This file contains no code and is not used.
 "use server";
 
 import {
   interactWithArtisanDigitalTwin as interactWithArtisanDigitalTwinFlow,
-  type InteractWithArtisanDigitalTwinInput,
+  type DigitalTwinChatInput,
 } from "@/ai/flows/ai-digital-twin-chatbot";
 import {
   getCulturalTrendSuggestions as getCulturalTrendSuggestionsFlow,
-  type CulturalTrendSuggestionsInput,
+  type CulturalTrendInput,
 } from "@/ai/flows/cultural-trend-suggestions";
 import {
   matchBuyersWithArtisans as matchBuyersWithArtisansFlow,
-  type MatchBuyersWithArtisansInput,
+  type MatchmakingInput,
 } from "@/ai/flows/buyer-artisan-matchmaking";
 import {
   generateProductStory as generateProductStoryFlow,
-  type GenerateProductStoryInput,
+  type ProductStoryInput,
 } from "@/ai/flows/generate-product-story";
 
 
@@ -48,7 +47,7 @@ export async function analyzeTrends(artisanProfession: string, limit: number = 2
 }
 
 export async function interactWithArtisanDigitalTwin(
-  input: InteractWithArtisanDigitalTwinInput
+  input: DigitalTwinChatInput
 ) {
   try {
     const result = await interactWithArtisanDigitalTwinFlow(input);
@@ -60,7 +59,7 @@ export async function interactWithArtisanDigitalTwin(
 }
 
 export async function getCulturalTrendSuggestions(
-  input: CulturalTrendSuggestionsInput
+  input: CulturalTrendInput
 ) {
   try {
     const result = await getCulturalTrendSuggestionsFlow(input);
@@ -72,7 +71,7 @@ export async function getCulturalTrendSuggestions(
 }
 
 export async function matchBuyersWithArtisans(
-  input: MatchBuyersWithArtisansInput
+  input: MatchmakingInput
 ) {
   try {
     const result = await matchBuyersWithArtisansFlow(input);
@@ -84,7 +83,7 @@ export async function matchBuyersWithArtisans(
 }
 
 export async function generateProductStory(
-  input: GenerateProductStoryInput
+  input: ProductStoryInput
 ) {
   try {
     const result = await generateProductStoryFlow(input);

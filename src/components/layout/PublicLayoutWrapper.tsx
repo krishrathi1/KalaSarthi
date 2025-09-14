@@ -15,7 +15,7 @@ export default function PublicLayoutWrapper({ children }: PublicLayoutWrapperPro
   const { user, userProfile, loading } = useAuth();
   
   // Routes that should not show the sidebar and header (like auth pages)
-  const authRoutes = ['/auth', '/login', '/register', '/signup'];
+  const authRoutes = ['/auth'];
   const isAuthRoute = authRoutes.some(route => pathname === route || pathname.startsWith(route + '/'));
 
   if (isAuthRoute) {

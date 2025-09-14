@@ -8,10 +8,10 @@ import {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { language: string } }
+  { params }: { params: Promise<{ language: string }> }
 ) {
   try {
-    const { language } = params;
+    const { language } = await params;
 
     if (!isLanguageSupported(language)) {
       return NextResponse.json({

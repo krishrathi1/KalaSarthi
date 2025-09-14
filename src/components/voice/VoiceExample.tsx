@@ -9,7 +9,7 @@ import { Volume2, Mic } from 'lucide-react';
 
 export function VoiceExample() {
   const [text, setText] = useState('Hello! This is a demonstration of Google Cloud Text-to-Speech with multiple voices and languages.');
-  const [selectedVoice, setSelectedVoice] = useState(null);
+  const [selectedVoice, setSelectedVoice] = useState<any>(null);
   const [selectedLanguage, setSelectedLanguage] = useState('en-US');
 
   const sampleTexts = [

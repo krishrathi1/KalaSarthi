@@ -2,7 +2,7 @@ import { EnhancedTextToSpeechService } from './EnhancedTextToSpeechService';
 import { NavigationService } from './NavigationService';
 
 interface ActionAwareTTSOptions {
-  language: string;
+  language?: string;
   gender?: 'MALE' | 'FEMALE';
   quality?: 'Standard' | 'Wavenet' | 'Neural2' | 'Chirp3-HD';
   speed?: number;
@@ -61,7 +61,7 @@ export class ActionAwareTTSService {
     const ttsResult = await this.enhancedTtsService.synthesizeSpeech(text, {
       language,
       gender,
-      quality,
+      quality: quality as any, // Cast to any to match expected type
       speed,
       pitch,
       volume,
@@ -72,7 +72,7 @@ export class ActionAwareTTSService {
     const actionInfo = enableActions ? this.extractActionInfo(text) : null;
 
     return {
-      audioBuffer: ttsResult.audioBuffer,
+      audioBuffer: Buffer.from(ttsResult.audioBuffer),
       text,
       action: actionInfo?.action,
       shouldNavigate: actionInfo?.shouldNavigate,

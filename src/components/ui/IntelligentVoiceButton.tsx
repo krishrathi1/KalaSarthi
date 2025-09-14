@@ -179,7 +179,7 @@ export function IntelligentVoiceButton({
         // On artisan buddy page, emit voice input event for chat to handle
         try {
           // Get transcription for display
-          const transcription = await voiceAssistantRef.current?.speechService?.speechToText(arrayBuffer, { language: 'en-US' });
+          const transcription = await speechServiceRef.current?.speechToText(arrayBuffer, { language: 'en-US' });
           if (transcription?.text) {
             // Emit voice input event for the chat
             const voiceInputEvent = new CustomEvent('voiceInput', {

@@ -180,17 +180,14 @@ Return only the enhanced story in ${detectedLanguage}, nothing else.`;
   } catch (error) {
     console.error('Story enhancement error:', error);
     
-    // Detect language for error fallback
-    const isHindi = /[\u0900-\u097F]/.test(story);
-    const fallbackStory = isHindi 
-      ? `यह एक पारंपरिक लकड़ी का खिलौना है जो आम के पेड़ की लकड़ी से बनाया जाता है। यह खिलौना हमारे परिवार में 200 सालों से बनाया जा रहा है। हम इस परंपरा को 200 सालों से चलाते आ रहे हैं और यह हमारी पाँचवीं पीढ़ी है। यह केवल एक खिलौना नहीं, बल्कि हमारी कला और समर्पण का प्रतीक है।`
-      : `This is a traditional wooden toy made from mango wood. This toy has been made in our family for 200 years. We have been carrying on this tradition for 200 years and this is our fifth generation. This is not just a toy, but a symbol of our art and dedication.`;
+    // Use a default fallback story
+    const fallbackStory = `This is a traditional handcrafted product made with care and dedication. Each piece represents the artisan's skill and cultural heritage, passed down through generations.`;
     
     return NextResponse.json({
       success: true,
       enhancedStory: fallbackStory,
-      originalStory: story,
-      language: isHindi ? 'hi-IN' : 'en-US',
+      originalStory: 'Original story not available due to error',
+      language: 'en-US',
       isFallback: true,
       error: error instanceof Error ? error.message : 'Unknown error'
     });

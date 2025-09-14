@@ -68,7 +68,7 @@ class MultilingualTTS {
           
           languages[langCode].push({
             name: voice.name || '',
-            gender: voice.ssmlGender || 'NEUTRAL',
+            gender: String(voice.ssmlGender || 'NEUTRAL'),
             sampleRate: voice.naturalSampleRateHertz || 0
           });
         });
@@ -394,7 +394,8 @@ async function main(): Promise<void> {
 }
 
 // Export for use in other modules
-export { MultilingualTTS, TTSOptions, Voice, LanguageVoices };
+export { MultilingualTTS };
+export type { TTSOptions, Voice, LanguageVoices };
 
 // Run if this file is executed directly
 if (require.main === module) {

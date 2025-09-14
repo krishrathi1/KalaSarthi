@@ -3,10 +3,10 @@ import { LoanApplicationService } from '@/lib/service/LoanApplicationService';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { applicationId: string } }
+  { params }: { params: Promise<{ applicationId: string }> }
 ) {
   try {
-    const applicationId = params.applicationId;
+    const { applicationId: applicationId } = await params;
     const body = await request.json();
     const { submittedBy } = body;
 
