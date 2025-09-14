@@ -1,4 +1,4 @@
-# AI Image Generator Workflow
+# Design Generator Workflow
 
 ## Overview
 AI-powered image generation for product photos and marketing materials.

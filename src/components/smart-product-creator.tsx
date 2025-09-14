@@ -216,18 +216,29 @@ Requirements:
 
 Return only the enhanced story, no additional commentary.`;
 
+      const requestData = {
+        story: transcription,
+        imageUrl: imagePreview, // Pass the actual image URL
+        language: /[\u0900-\u097F]/.test(transcription) ? 'hi-IN' : 'en-US', // Detect language from transcription
+        voiceStyle: 'default' // Default voice style, can be enhanced later
+      };
+      
+      console.log('Sending story enhancement request:', {
+        storyLength: transcription.length,
+        hasImageUrl: !!imagePreview,
+        language: requestData.language,
+        imageUrlType: typeof imagePreview
+      });
+
       const response = await fetch('/api/story-enhancement', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          story: transcription,
-          imageUrl: imagePreview, // Pass the actual image URL
-          language: /[\u0900-\u097F]/.test(transcription) ? 'hi-IN' : 'en-US', // Detect language from transcription
-          voiceStyle: 'default' // Default voice style, can be enhanced later
-        })
+        body: JSON.stringify(requestData)
       });
 
       const result = await response.json();
+      console.log('Story enhancement response:', result);
+      
       if (result.success && result.enhancedStory) {
         setEnhancedTranscription(result.enhancedStory);
         setShowStoryEnhancement(false);
@@ -237,6 +248,7 @@ Return only the enhanced story, no additional commentary.`;
           description: "Your story has been transformed into a compelling customer-attracting narrative.",
         });
       } else {
+        console.error('Story enhancement failed:', result.error);
         throw new Error(result.error || 'Failed to enhance story');
       }
     } catch (error) {

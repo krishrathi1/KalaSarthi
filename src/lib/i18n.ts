@@ -76,6 +76,22 @@ type Translations = {
   [key: string]: { [K in LanguageCode]?: string };
 };
 
+export interface MenuItem {
+  label: { [K in LanguageCode]?: string };
+  icon: any;
+  path: string;
+  hidden?: boolean;
+}
+
+export interface Feature {
+  title: { [K in LanguageCode]?: string };
+  description: { [K in LanguageCode]?: string };
+  icon: any;
+  path: string;
+  color: string;
+  hidden?: boolean;
+}
+
 const translations: Translations = {
   // Dashboard
   greeting: {
@@ -182,38 +198,38 @@ const translations: Translations = {
   },
   // App Name
   appName: {
-    en: 'KalaMitra',
-    hi: 'कलामित्र',
-    ta: 'கலாமித்ரா',
-    bn: 'কলামিত্র',
-    te: 'కళామిత్ర',
-    gu: 'કલામિત્ર',
-    mr: 'कलामित्र',
-    kn: 'ಕಲಾಮಿತ್ರ',
-    ml: 'കലാമിത്ര',
-    pa: 'ਕਲਾਮਿਤਰ',
-    as: 'কলামিত্ৰ',
-    or: 'କଲାମିତ୍ର',
-    ur: 'کالا میتر',
-    es: 'KalaMitra',
-    fr: 'KalaMitra',
-    de: 'KalaMitra',
-    zh: '卡拉米特拉',
-    ja: 'カラミトラ',
-    ar: 'كالاميترا',
-    pt: 'KalaMitra',
-    ru: 'КалаМитра',
-    it: 'KalaMitra',
-    ko: '칼라미트라',
-    nl: 'KalaMitra',
-    sv: 'KalaMitra',
-    da: 'KalaMitra',
-    no: 'KalaMitra',
-    fi: 'KalaMitra',
-    pl: 'KalaMitra',
-    tr: 'KalaMitra',
-    th: 'คาลามิตรา',
-    vi: 'KalaMitra',
+    en: 'KalaSarthi',
+    hi: 'कलासार्थी',
+    ta: 'கலாசார்தி',
+    bn: 'কলাসার্থী',
+    te: 'కళాసార్థి',
+    gu: 'કલાસાર્થી',
+    mr: 'कलासार्थी',
+    kn: 'ಕಲಾಸಾರ್ಥಿ',
+    ml: 'കലാസാര്ഥി',
+    pa: 'ਕਲਾਸਾਰਥੀ',
+    as: 'কলাসাৰ্থী',
+    or: 'କଲାସାର୍ଥି',
+    ur: 'کالا سارتھی',
+    es: 'KalaSarthi',
+    fr: 'KalaSarthi',
+    de: 'KalaSarthi',
+    zh: '卡拉萨蒂',
+    ja: 'カラサルティ',
+    ar: 'كالاسارثي',
+    pt: 'KalaSarthi',
+    ru: 'КалаСартхи',
+    it: 'KalaSarthi',
+    ko: '칼라사르티',
+    nl: 'KalaSarthi',
+    sv: 'KalaSarthi',
+    da: 'KalaSarthi',
+    no: 'KalaSarthi',
+    fi: 'KalaSarthi',
+    pl: 'KalaSarthi',
+    tr: 'KalaSarthi',
+    th: 'คาลาสาร์ธี',
+    vi: 'KalaSarthi',
   },
   // Chat Interface
   chatTitle: {
@@ -568,11 +584,11 @@ const translations: Translations = {
     te: "మీ ఫోటో + వాయిస్ నోట్‌ను ప్రొఫెషనల్, బహుభాషా జాబితాలు మరియు ఆకర్షణీయమైన కథలుగా మారుస్తుంది.",
   },
   trendSpotter: {
-    en: 'TrendSpotter',
-    hi: 'ट्रेंडस्पॉटर',
-    ta: 'ட்ரெண்ட்ஸ்பாட்டர்',
-    bn: 'ট্রেন্ডস্পটার',
-    te: 'ట్రెండ్‌స్పాటర్',
+    en: 'Trend Spotter',
+    hi: 'ट्रेंड स्पॉटर',
+    ta: 'ட்ரெண்ட் ஸ்பாட்டர்',
+    bn: 'ট্রেন্ড স্পটার',
+    te: 'ట్రెండ్ స్పాటర్',
   },
   trendSpotterDesc: {
     en: "Get AI-powered ideas to adapt traditional crafts to modern tastes and market trends.",
@@ -596,11 +612,11 @@ const translations: Translations = {
     te: "చాట్ మరియు వాయిస్‌కు మద్దతు ఇస్తూ భాషల అంతటా ప్రత్యక్ష కొనుగోలుదారు-చేతివృత్తులవారి కమ్యూనికేషన్‌ను ప్రారంభిస్తుంది.",
   },
   marketBridge: {
-    en: 'Market Bridge',
-    hi: 'मार्केट ब्रिज',
-    ta: 'சந்தை பாலம்',
-    bn: 'মার্কেট ব্রিজ',
-    te: 'మార్కెట్ వంతెన',
+    en: 'Global Bazaar',
+    hi: 'ग्लोबल बाजार',
+    ta: 'உலக பஜார்',
+    bn: 'গ্লোবাল বাজার',
+    te: 'గ్లోబల్ బజార్',
   },
   marketBridgeDesc: {
     en: "Sync your products across multiple online marketplaces with a single click.",
@@ -628,7 +644,7 @@ const translations: Translations = {
     hi: 'सरकारी योजना अलर्ट',
     ta: 'அரசு திட்டம் எச்சரிக்கைகள்',
     bn: 'সরকারি স্কিম সতর্কতা',
-    te: 'ప్రభుత్వ పథకం హెచ్చరికలు',
+        te: 'స్కీమ్ సహాయక్',
   },
   govtSchemeAlertsDesc: {
     en: "Keeps you informed of subsidies, training, and schemes you are eligible for.",
@@ -875,7 +891,7 @@ export async function fillMissingTranslations(language: LanguageCode): Promise<v
   console.log(`Finished auto-filling translations for ${language}`);
 }
 
-export const menuItems = [
+export const menuItems: MenuItem[] = [
     {
       label: {
         en: 'Dashboard',
@@ -894,7 +910,7 @@ export const menuItems = [
         // Add more as needed, fallback to en
       },
       icon: LayoutDashboard,
-      path: "/",
+      path: "/dashboard",
     },
     {
       label: {
@@ -917,41 +933,60 @@ export const menuItems = [
     },
     {
       label: {
-        en: 'Smart Product Creator',
-        hi: 'स्मार्ट उत्पाद निर्माता',
-        ta: 'ஸ்மார்ட் தயாரிப்பு உருவாக்கி',
-        bn: 'স্মার্ট প্রোডাক্ট ক্রিয়েটর',
-        te: 'స్మార్ట్ ప్రాడక్ట్ క్రియేటర్',
-        gu: 'સ્માર્ટ પ્રોડક્ટ ક્રિએટર',
-        mr: 'स्मार्ट प्रोडक्ट क्रिएटर',
-        kn: 'ಸ್ಮಾರ್ಟ್ ಪ್ರಾಡಕ್ಟ್ ಕ್ರಿಯೇಟರ್',
-        ml: 'സ്മാർട്ട് പ്രാഡക്ട് ക്രിയേറ്റർ',
-        pa: 'ਸਮਾਰਟ ਪ੍ਰਾਡਕਟ ਕ੍ਰਿਏਟਰ',
-        as: 'স্মার্ট প্রোডাক্ট ক্রিয়েটর',
-        or: 'ସ୍ମାର୍ଟ ଉତ୍ପାଦ ସୃଷ୍ଟିକର୍ତ୍ତା',
-        ur: 'سمارٹ پروڈکٹ کریٹر',
+        en: 'Product Creator',
+        hi: 'उत्पाद निर्माता',
+        ta: 'தயாரிப்பு உருவாக்கி',
+        bn: 'প্রোডাক্ট ক্রিয়েটর',
+        te: 'ప్రాడక్ట్ క్రియేటర్',
+        gu: 'પ્રોડક્ટ ક્રિએટર',
+        mr: 'प्रोडक्ट क्रिएटर',
+        kn: 'ಪ್ರಾಡಕ್ಟ್ ಕ್ರಿಯೇಟರ್',
+        ml: 'പ്രാഡക്ട് ക്രിയേറ്റർ',
+        pa: 'ਪ੍ਰਾਡਕਟ ਕ੍ਰਿਏਟਰ',
+        as: 'প্রোডাক্ট ক্রিয়েটর',
+        or: 'ଉତ୍ପାଦ ସୃଷ୍ଟିକର୍ତ୍ତା',
+        ur: 'پروڈکٹ کریٹر',
       },
       icon: Sparkles,
       path: "/smart-product-creator",
     },
     {
       label: {
-        en: 'TrendSpotter',
-        hi: 'ट्रेंडस्पॉटर',
-        ta: 'ட்ரெண்ட்ஸ்பாட்டர்',
-        bn: 'ট্রেন্ডস্পটার',
-        te: 'ట్రెండ్‌స్పాటర్',
-        gu: 'ટ્રેન્ડસ્પોટર',
-        mr: 'ट्रेंडस्पॉटर',
-        kn: 'ಟ್ರೆಂಡ್‌ಸ್ಪಾಟರ್',
-        ml: 'ട്രെൻഡ്‌സ്പോട്ടർ',
-        pa: 'ਟ੍ਰੈਂਡਸਪੌਟਰ',
-        as: 'ট্রেন্ডস্পটার',
-        or: 'ଟ୍ରେଣ୍ଡସ୍ପଟର',
-        ur: 'ٹرینڈ سپاٹٹر',
+        en: 'Trend Spotter',
+        hi: 'ट्रेंड स्पॉटर',
+        ta: 'ட்ரெண்ட் ஸ்பாட்டர்',
+        bn: 'ট্রেন্ড স্পটার',
+        te: 'ట్రెండ్ స్పాటర్',
+        gu: 'ટ્રેન્ડ સ્પોટર',
+        mr: 'ट्रेंड स्पॉटर',
+        kn: 'ಟ್ರೆಂಡ್ ಸ್ಪಾಟರ್',
+        ml: 'ട്രെൻഡ് സ്പോട്ടർ',
+        pa: 'ਟ੍ਰੈਂਡ ਸਪੌਟਰ',
+        as: 'ট্রেন্ড স্পটার',
+        or: 'ଟ୍ରେଣ୍ଡ ସ୍ପଟର',
+        ur: 'ٹرینڈ سپاٹر',
       },
       icon: Palette,
       path: "/trend-spotter",
+    },
+    {
+      label: {
+        en: 'Design Generator',
+        hi: 'डिज़ाइन जेनरेटर',
+        ta: 'வடிவமைப்பு உருவாக்கி',
+        bn: 'ডিজাইন জেনারেটর',
+        te: 'డిజైన్ జనరేటర్',
+        gu: 'ડિઝાઇન જનરેટર',
+        mr: 'डिझाइन जनरेटर',
+        kn: 'ಡಿಜೈನ್ ಜನರೇಟರ್',
+        ml: 'ഡിസൈൻ ജനറേറ്റർ',
+        pa: 'ਡਿਜ਼ਾਇਨ ਜਨਰੇਟਰ',
+        as: 'ডিজাইন জেনাৰেটৰ',
+        or: 'ଡିଜାଇନ୍ ଜନରେଟର',
+        ur: 'ڈیزائن جنریٹر',
+      },
+      icon: Sparkles,
+      path: "/ai-image-generator",
     },
     {
       label: {
@@ -1012,19 +1047,19 @@ export const menuItems = [
     },
     {
       label: {
-        en: 'Govt. Scheme Alerts',
-        hi: 'सरकारी योजना अलर्ट',
-        ta: 'அரசு திட்டம் எச்சரிக்கைகள்',
-        bn: 'সরকারি স্কিম সতর্কতা',
+        en: 'Scheme Sahayak',
+        hi: 'स्कीम सहायक',
+        ta: 'திட்டம் சஹாயக்',
+        bn: 'স্কিম সহায়ক',
         te: 'ప్రభుత్వ పథకం హెచ్చরికలు',
-        gu: 'સરકારી યોજના ચેતવણીઓ',
-        mr: 'सरकारी योजना अलर्ट',
-        kn: 'ಸರ್ಕಾರಿ ಯೋಜನೆಗಳ ಎಚ್ಚರಿಕೆಗಳು',
-        ml: 'ഗവൺമെന്റ് സ്കീം അലർട്ടുകൾ',
-        pa: 'ਸਰਕਾਰੀ ਸਕੀਮ ਚੇਤਾਵਨੀਆਂ',
-        as: 'চৰকাৰী আঁচনি সতৰ্কতা',
-        or: 'ସରକାରୀ ଯୋଜନା ସତର୍କତା',
-        ur: 'حکومتی اسکیم الرٹس',
+        gu: 'સ્કીમ સહાયક',
+        mr: 'स्कीम सहायक',
+        kn: 'ಸ್ಕೀಮ್ ಸಹಾಯಕ',
+        ml: 'സ്കീം സഹായക്',
+        pa: 'ਸਕੀਮ ਸਹਾਇਕ',
+        as: 'স্কিম সহায়ক',
+        or: 'ସ୍କିମ୍ ସହାୟକ',
+        ur: 'سکیم سہایک',
       },
       icon: ScrollText,
       path: "/yojana-mitra",
@@ -1047,22 +1082,23 @@ export const menuItems = [
       },
       icon: ShoppingCart,
       path: "/marketplace",
+      hidden: true,
     },
     {
       label: {
-        en: 'Finance Tracker',
-        hi: 'वित्त ट्रैकर',
-        ta: 'நிதி கண்காணிப்பு',
-        bn: 'ফিনান্স ট্র্যাকার',
-        te: 'ఫైనాన్స్ ట్రాకర్',
-        gu: 'ફાઇનાન્સ ટ્રેકર',
-        mr: 'वित्त ट्रॅकर',
-        kn: 'ಫೈನಾನ್ಸ್ ಟ್ರ್ಯಾಕರ್',
-        ml: 'ഫൈനാൻസ് ട്രാക്കർ',
-        pa: 'ਵਿੱਤ ਟ੍ਰੈਕਰ',
-        as: 'অৰ্থনৈতিক ট্র্যাকার',
-        or: 'ଅର୍ଥ ଟ୍ରାକର',
-        ur: 'فنانس ٹریکر',
+        en: 'DigitalKhata',
+        hi: 'डिजिटल खाता',
+        ta: 'டிஜிட்டல் காதா',
+        bn: 'ডিজিটাল খাতা',
+        te: 'డిజిటల్ ఖాతా',
+        gu: 'ડિજિટલ ખાતું',
+        mr: 'डिजिटल खाते',
+        kn: 'ಡಿಜಿಟಲ್ ಖಾತೆ',
+        ml: 'ഡിജിറ്റൽ ഖാത',
+        pa: 'ਡਿਜੀਟਲ ਖਾਤਾ',
+        as: 'ডিজিটেল খাতা',
+        or: 'ଡିଜିଟାଲ୍ ଖାତା',
+        ur: 'ڈیجیٹل کھاتہ',
       },
       icon: Calculator,
       path: "/finance/dashboard",
@@ -1085,6 +1121,7 @@ export const menuItems = [
       },
       icon: Archive,
       path: "/archived",
+      hidden: true,
     },
     {
       label: {
@@ -1104,6 +1141,7 @@ export const menuItems = [
       },
       icon: FileText,
       path: "/drafts",
+      hidden: true,
     },
     {
       label: {
@@ -1123,6 +1161,7 @@ export const menuItems = [
       },
       icon: User,
       path: "/profile",
+      hidden: true,
     },
     {
       label: {
@@ -1142,6 +1181,7 @@ export const menuItems = [
       },
       icon: Globe,
       path: "/multi-marketplace",
+      hidden: true,
     },
     {
       label: {
@@ -1161,6 +1201,7 @@ export const menuItems = [
       },
       icon: Mic,
       path: "/voice-demo",
+      hidden: true,
     },
     {
       label: {
@@ -1180,6 +1221,7 @@ export const menuItems = [
       },
       icon: UserPlus,
       path: "/voice-enrollment",
+      hidden: true,
     },
     {
       label: {
@@ -1199,10 +1241,11 @@ export const menuItems = [
       },
       icon: DollarSign,
       path: "/fair-price-engine",
+      hidden: true,
     },
 ];
 
-export const features = [
+export const features: Feature[] = [
   {
     title: {en: 'Artisan Buddy', hi: 'कारीगर बडी', ta: 'கைவினைஞர் நண்பன்', bn: 'শিল্পী বন্ধু', te: 'ఆర్టిసాన్ బడ్డీ'},
     description: {en: "A virtual agent copy of you that answers buyer queries 24/7 when you are offline.", hi: "आपकी एक वर्चुअल एजेंट कॉपी जो आपके ऑफ़लाइन होने पर 24/7 खरीदारों के सवालों का जवाब देती है।", ta: "நீங்கள் ஆஃப்லைனில் இருக்கும்போது 24/7 வாங்குபவர் கேள்விகளுக்கு பதிலளிக்கும் உங்களின் ஒரு மெய்நிகர் முகவர் நகல்.", bn: "আপনার একটি ভার্চুয়াল এজেন্ট অনুলিপি যা আপনি অফলাইনে থাকলে ক্রেতার প্রশ্নের 24/7 উত্তর দেয়।", te: "మీరు ఆఫ్‌లైన్‌లో ఉన్నప్పుడు 24/7 కొనుగోలుదారు ప్రశ్నలకు సమాధానమిచ్చే మీ వర్చువల్ ఏజెంట్ కాపీ."},
@@ -1211,7 +1254,7 @@ export const features = [
     color: "text-red-500",
   },
   {
-    title: {en: 'Smart Product Creator', hi: 'स्मार्ट उत्पाद निर्माता', ta: 'ஸ்மார்ட் தயாரிப்பு உருவாக்கி', bn: 'স্মার্ট প্রোডাক্ট ক্রিয়েটর', te: 'స్మార్ట్ ప్రాడక్ట్ క్రియేటర్'},
+    title: {en: 'Product Creator', hi: 'उत्पाद निर्माता', ta: 'தயாரிப்பு உருவாக்கி', bn: 'প্রোডাক্ট ক্রিয়েটর', te: 'ప్రాడక్ట్ క్రియేటర్'},
     description: {en: "AI-powered product creation and management system for artisans.", hi: "कारीगरों के लिए AI-संचालित उत्पाद निर्माण और प्रबंधन प्रणाली।", ta: "கைவினைஞர்களுக்கான AI-சக்திமிக்க தயாரிப்பு உருவாக்கம் மற்றும் நிர்வாக அமைப்பு.", bn: "শিল্পীদের জন্য AI-চালিত পণ্য তৈরি এবং ব্যবস্থাপনা সিস্টেম।", te: "కళాకారుల కోసం AI- శక్తితో కూడిన ఉత్పత్తి సృష్టి మరియు నిర్వహణ వ్యవస్థ."},
     icon: Sparkles,
     path: "/smart-product-creator",
@@ -1225,7 +1268,7 @@ export const features = [
     color: "text-green-500",
   },
   {
-    title: {en: 'Market Bridge', hi: 'मार्केट ब्रिज', ta: 'சந்தை பாலம்', bn: 'মার্কেট ব্রিজ', te: 'మార్కెట్ వంతెన'},
+    title: {en: 'Global Bazaar', hi: 'ग्लोबल बाजार', ta: 'உலக பஜார்', bn: 'গ্লোবাল বাজার', te: 'గ్లోబల్ బజార్'},
     description: {en: "Sync your products across multiple online marketplaces with a single click.", hi: "एक ही क्लिक से अपने उत्पादों को कई ऑनलाइन मार्केटप्लेस पर सिंक करें।", ta: "ஒரே கிளிக்கில் பல ஆன்லைன் சந்தைகளில் உங்கள் தயாரிப்புகளை ஒத்திசைக்கவும்.", bn: "একক ক্লিকে একাধিক অনলাইন মার্কেটপ্লেস জুড়ে আপনার পণ্যগুলি সিঙ্ক করুন।", te: "ఒకే క్లిక్‌తో బహుళ ఆన్‌లైన్ మార్కెట్‌ప్లేస్‌లలో మీ ఉత్పత్తులను సమకాలీకరించండి."},
     icon: Package,
     path: "/multi-marketplace",
@@ -1239,18 +1282,25 @@ export const features = [
     color: "text-indigo-500",
   },
   {
-    title: {en: 'Govt. Scheme Alerts', hi: 'सरकारी योजना अलर्ट', ta: 'அரசு திட்டம் எச்சரிக்கைகள்', bn: 'সরকারি স্কিম সতর্কতা', te: 'ప్రభుత్వ పథకం హెచ్చరికలు'},
+    title: {en: 'Scheme Sahayak', hi: 'स्कीम सहायक', ta: 'திட்டம் சஹாயக்', bn: 'স্কিম সহায়ক', te: 'స్కీమ్ సహాయక్'},
     description: {en: "Keeps you informed of subsidies, training, and schemes you are eligible for.", hi: "आपको सब्सिडी, प्रशिक्षण और योजनाओं के बारे में सूचित रखता है जिनके लिए आप पात्र हैं।", ta: " மானியங்கள், பயிற்சி மற்றும் நீங்கள் தகுதியுள்ள திட்டங்கள் குறித்து உங்களுக்குத் தெரிவிக்கிறது.", bn: "আপনাকে ভর্তুকি, প্রশিক্ষণ এবং স্কিম সম্পর্কে অবহিত রাখে যার জন্য আপনি যোগ্য।", te: "మీరు అర్హులైన సబ్సిడీలు, శిక్షణ మరియు పథకాల గురించి మీకు తెలియజేస్తుంది."},
     icon: ScrollText,
     path: "/yojana-mitra",
     color: "text-purple-500",
   },
   {
-    title: {en: 'Finance Tracker', hi: 'वित्त ट्रैकर', ta: 'நிதி கண்காணிப்பு', bn: 'ফিনান্স ট্র্যাকার', te: 'ఫైనాన్స్ ట్రాకర్'},
+    title: {en: 'DigitalKhata', hi: 'डिजिटल खाता', ta: 'டிஜிட்டல் காதா', bn: 'ডিজিটাল খাতা', te: 'డిజిటల్ ఖాతా'},
     description: {en: "Track sales performance, analyze trends, and get AI-powered financial insights for your business.", hi: "अपने व्यवसाय के लिए बिक्री प्रदर्शन को ट्रैक करें, रुझानों का विश्लेषण करें और AI-संचालित वित्तीय अंतर्दृष्टि प्राप्त करें।", ta: "உங்கள் வணிகத்திற்கான விற்பனை செயல்திறனைக் கண்காணிக்கவும், போக்குகளை பகுப்பாய்வு செய்யவும், AI-ஆல் இயக்கப்படும் நிதி நுண்ணறிவுகளைப் பெறவும்.", bn: "আপনার ব্যবসার জন্য বিক্রয় কর্মক্ষমতা ট্র্যাক করুন, প্রবণতা বিশ্লেষণ করুন এবং AI-চালিত আর্থিক অন্তর্দৃষ্টি পান।", te: "మీ వ్యాపారం కోసం అమ్మకాల పనితీరును ట్రాక్ చేయండి, ధోరణులను విశ్లేషించండి మరియు AI-ఆధారిత ఆర్థిక అంతర్దృష్టులను పొందండి."},
     icon: Calculator,
     path: "/finance/dashboard",
     color: "text-emerald-500",
+  },
+  {
+    title: {en: 'Design Generator', hi: 'डिज़ाइन जेनरेटर', ta: 'வடிவமைப்பு உருவாக்கி', bn: 'ডিজাইন জেনারেটর', te: 'డిజైన్ జనరేటర్'},
+    description: {en: "Generate stunning product images using AI with custom styles, colors, and artistic effects.", hi: "कस्टम स्टाइल, रंग और कलात्मक प्रभावों के साथ AI का उपयोग करके शानदार उत्पाद छवियां उत्पन्न करें।", ta: "தனிப்பயன் பாணிகள், நிறங்கள் மற்றும் கலை விளைவுகளுடன் AI ஐப் பயன்படுத்தி அற்புதமான தயாரிப்பு படங்களை உருவாக்கவும்।", bn: "কাস্টম স্টাইল, রঙ এবং শৈল্পিক প্রভাব সহ AI ব্যবহার করে চমৎকার পণ্যের ছবি তৈরি করুন।", te: "కస్టమ్ స్టైల్‌లు, రంగులు మరియు కళాత్మక ప్రభావాలతో AI ని ఉపయోగించి అద్భుతమైన ఉత్పత్తి చిత్రాలను రూపొందించండి."},
+    icon: Sparkles,
+    path: "/ai-image-generator",
+    color: "text-purple-500",
   },
   {
     title: {en: 'Voice Demo', hi: 'वॉयस डेमो', ta: 'குரல் டெமோ', bn: 'ভয়েস ডেমো', te: 'వాయిస్ డెమో'},
@@ -1258,5 +1308,6 @@ export const features = [
     icon: Volume2,
     path: "/voice-demo",
     color: "text-purple-500",
+    hidden: true,
   },
 ];
