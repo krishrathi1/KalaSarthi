@@ -160,7 +160,7 @@ export function ProductStatsModal({ isOpen, onClose, product, similarProducts = 
                   </div>
                   <div className="flex items-center gap-2">
                     <ShoppingCart className="size-4 text-green-600" />
-                    <span className="font-bold text-2xl text-primary">{product.price}</span>
+                    <span className="font-bold text-2xl text-primary rupee-symbol">{product.price}</span>
                   </div>
                 </div>
 

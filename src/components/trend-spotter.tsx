@@ -422,7 +422,7 @@ export function TrendSpotter() {
                         <Badge variant="outline" className="text-xs">{product.platform}</Badge>
                       </div>
                       <div className="text-lg font-bold text-primary mb-2">
-                        {typeof product.price === 'string' ? product.price : `₹${product.price.toLocaleString()}`}
+                        <span className="rupee-symbol">{typeof product.price === 'string' ? product.price : `₹${product.price.toLocaleString()}`}</span>
                       </div>
                       {product.description && (
                         <p className="text-xs text-muted-foreground line-clamp-2 mb-2">

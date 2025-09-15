@@ -79,20 +79,33 @@
   * {
     @apply border-border;
   }
+  
   body {
     @apply bg-background text-foreground;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    /* Updated font stack with better rupee symbol support */
+    font-family: 'PT Sans', 'Segoe UI', 'Roboto', 'Noto Sans', 'Arial Unicode MS', 'DejaVu Sans', system-ui, sans-serif;
   }
+}
 
-  /* Rupee symbol font support */
+@layer base {
+  /* Force fonts that properly support Indian Rupee symbol */
+  * {
+    font-family: 'PT Sans', 'Segoe UI', 'Roboto', 'Arial', 'DejaVu Sans', sans-serif !important;
+  }
+  
+  /* Specific override for currency symbols */
+  body, span, div, p {
+    font-family: 'Segoe UI', 'Roboto', 'Arial', system-ui, sans-serif !important;
+  }
+}
+
+/* Custom utility classes for currency */
+@layer utilities {
   .rupee-symbol {
-    font-family: 'Noto Sans', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    font-weight: 500;
+    font-family: 'Segoe UI', 'Roboto', 'Noto Sans', 'Arial Unicode MS', sans-serif;
   }
-
-  /* Ensure rupee symbol displays properly */
-  .price-text {
-    font-variant-numeric: tabular-nums;
-    font-feature-settings: "tnum";
+  
+  .currency-display {
+    font-feature-settings: 'tnum' 1; /* Tabular numbers for better alignment */
   }
 }

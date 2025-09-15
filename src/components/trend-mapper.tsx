@@ -563,7 +563,7 @@ export function TrendMapper() {
                                     </div>
 
                                     <div className="flex items-center justify-between pt-1">
-                                      <span className="font-bold text-xl text-primary">
+                                      <span className="font-bold text-xl text-primary rupee-symbol">
                                         {(() => {
                                           console.log('Processing price:', product.price);
                                           // Handle different price formats and ensure proper rupee symbol

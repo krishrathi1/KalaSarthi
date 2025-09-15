@@ -534,7 +534,7 @@ export function ViralTrendSpotter() {
                                                             <div className="grid grid-cols-2 gap-4">
                                                                 <div>
                                                                     <div className="text-sm text-muted-foreground">Price</div>
-                                                                    <div className="text-lg font-bold">{product.price}</div>
+                                                                    <div className="text-lg font-bold rupee-symbol">{product.price}</div>
                                                                 </div>
                                                                 <div>
                                                                     <div className="text-sm text-muted-foreground">Rating</div>

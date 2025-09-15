@@ -77,7 +77,7 @@ type Translations = {
 };
 
 export interface MenuItem {
-  label: { [K in LanguageCode]?: string };
+  label: { [K in LanguageCode]: string };
   icon: any;
   path: string;
   hidden?: boolean;
@@ -1025,6 +1025,25 @@ export const menuItems: MenuItem[] = [
       },
       icon: Package,
       path: "/dashboard/inventory",
+    },
+    {
+      label: {
+        en: 'Global Bazaar',
+        hi: 'ग्लोबल बाजार',
+        ta: 'உலக பஜார்',
+        bn: 'গ্লোবাল বাজার',
+        te: 'గ్లోబల్ బజార్',
+        gu: 'ગ્લોબલ બજાર',
+        mr: 'ग्लोबल बाजार',
+        kn: 'ಗ್ಲೋಬಲ್ ಬಜಾರ್',
+        ml: 'ഗ്ലോബൽ ബസാർ',
+        pa: 'ਗਲੋਬਲ ਬਜ਼ਾਰ',
+        as: 'গ্লোবাল বজাৰ',
+        or: 'ଗ୍ଲୋବାଲ୍ ବଜାର୍',
+        ur: 'گلوبل بازار',
+      },
+      icon: ShoppingCart,
+      path: "/marketplace"
     },
     {
       label: {

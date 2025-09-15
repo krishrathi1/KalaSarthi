@@ -51,7 +51,7 @@ export function SidebarNav() {
     if (item.hidden) {
       return false;
     }
-    
+
     // For unauthenticated users, show more public-friendly items
     if (!userProfile) {
       const publicFriendlyRoutes = [
@@ -111,6 +111,7 @@ export function SidebarNav() {
                 <Link href={item.path} prefetch={true}>
                   <item.icon />
                   <span>{t(item.label, language)}</span>
+
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
