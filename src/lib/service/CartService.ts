@@ -1,6 +1,6 @@
-import Cart, { ICart, ICartDocument } from "../models/Cart";
-import Product, { IProductDocument } from "../models/Product";
-import connectDB from "../mongodb";
+import Cart, { ICart, ICartDocument } from "@/lib/models/Cart";
+import Product, { IProductDocument } from "@/lib/models/Product";
+import connectDB from "@/lib/mongodb";
 import { v4 as uuidv4 } from 'uuid';
 
 interface ServiceResponse<T = any> {

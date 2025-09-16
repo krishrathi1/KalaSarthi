@@ -1,46 +1,47 @@
 import mongoose from "mongoose";
 
 declare global {
-  var mongoose: any; // This must be a var and not let/const to avoid TypeScript errors.
+  // Prevents multiple instances in dev
+  var mongooseGlobal: {
+    conn: typeof mongoose | null;
+    promise: Promise<typeof mongoose> | null;
+  };
 }
 
 const MONGODB_URI = process.env.MONGODB_URI!;
-
-if (!MONGODB_URI) {
-  throw new Error(
-    "Please define the MONGODB_URI environment variable inside .env.local"
-  );
+if (!MONGODB_URI && process.env.NODE_ENV !== 'production' && typeof window === 'undefined') {
+  console.warn("MONGODB_URI not defined - this may cause issues if database connection is needed");
 }
 
-let cached = global.mongoose;
 
-if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
+if (!global.mongooseGlobal) {
+  global.mongooseGlobal = { conn: null, promise: null };
 }
 
 async function connectDB() {
-  if (cached.conn) {
-    return cached.conn;
+  if (!MONGODB_URI) {
+    throw new Error("Please define the MONGODB_URI environment variable");
   }
 
-  if (!cached.promise) {
-    const opts = {
-      bufferCommands: false,
-    };
+  if (global.mongooseGlobal.conn && mongoose.connection.readyState === 1) {
+    return global.mongooseGlobal.conn;
+  }
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      return mongoose;
-    });
+  if (!global.mongooseGlobal.promise) {
+    global.mongooseGlobal.promise = mongoose.connect(MONGODB_URI, {
+      bufferCommands: false,
+      serverSelectionTimeoutMS: 5000, // fail fast in Cloud Run
+    }).then((mongoose) => mongoose);
   }
 
   try {
-    cached.conn = await cached.promise;
+    global.mongooseGlobal.conn = await global.mongooseGlobal.promise;
   } catch (e) {
-    cached.promise = null;
+    global.mongooseGlobal.promise = null;
     throw e;
   }
 
-  return cached.conn;
+  return global.mongooseGlobal.conn;
 }
 
 export default connectDB;

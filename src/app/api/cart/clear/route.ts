@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CartService } from '@/lib/service/CartService';
 
 // DELETE /api/cart/clear - Clear entire cart
-export async function DELETE(request: NextRequest) {
+export async function DELETE(request:  NextRequest) {
     try {
         const searchParams = request.nextUrl.searchParams;
         const userId = searchParams.get('userId');

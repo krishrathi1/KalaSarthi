@@ -44,7 +44,7 @@ export class ChatStorageService {
         timestamp: new Date()
       };
 
-      await db.collection('chat_messages').insertOne(chatMessage);
+      await db?.collection('chat_messages').insertOne(chatMessage);
       return chatMessage;
     } catch (error) {
       console.error('Error saving chat message:', error);
@@ -57,13 +57,25 @@ export class ChatStorageService {
       const mongoose = await connectDB();
       const db = mongoose.connection.db;
       
-      const messages = await db.collection('chat_messages')
+      const messages = await db?.collection('chat_messages')
         .find({ userId })
         .sort({ timestamp: -1 })
         .limit(limit)
         .toArray();
 
-      return messages.reverse(); // Return in chronological order
+      // Map MongoDB documents to ChatMessage type
+      const chatMessages: ChatMessage[] = (messages ?? []).map((msg: any) => ({
+        id: msg.id,
+        userId: msg.userId,
+        type: msg.type,
+        text: msg.text,
+        timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp),
+        language: msg.language,
+        isVoice: msg.isVoice,
+        audioUrl: msg.audioUrl
+      }));
+
+      return chatMessages.reverse(); // Return in chronological order
     } catch (error) {
       console.error('Error fetching chat history:', error);
       return [];
@@ -85,7 +97,7 @@ export class ChatStorageService {
         isActive: true
       };
 
-      await db.collection('chat_sessions').insertOne(session);
+      await db?.collection('chat_sessions').insertOne(session);
       return session;
     } catch (error) {
       console.error('Error creating chat session:', error);
@@ -97,10 +109,24 @@ export class ChatStorageService {
     try {
       const mongoose = await connectDB();
       const db = mongoose.connection.db;
-      
-      const session = await db.collection('chat_sessions')
+
+      const sessionDoc = await db?.collection('chat_sessions')
         .findOne({ userId, isActive: true });
-      
+
+      if (!sessionDoc) {
+        return null;
+      }
+
+      const session: ChatSession = {
+        id: sessionDoc.id,
+        userId: sessionDoc.userId,
+        title: sessionDoc.title,
+        messages: sessionDoc.messages ?? [],
+        createdAt: sessionDoc.createdAt instanceof Date ? sessionDoc.createdAt : new Date(sessionDoc.createdAt),
+        updatedAt: sessionDoc.updatedAt instanceof Date ? sessionDoc.updatedAt : new Date(sessionDoc.updatedAt),
+        isActive: sessionDoc.isActive
+      };
+
       return session;
     } catch (error) {
       console.error('Error fetching active chat session:', error);
@@ -113,7 +139,7 @@ export class ChatStorageService {
       const mongoose = await connectDB();
       const db = mongoose.connection.db;
       
-      await db.collection('chat_sessions').updateOne(
+      await db?.collection('chat_sessions').updateOne(
         { id: sessionId },
         { 
           $set: { 
@@ -133,12 +159,13 @@ export class ChatStorageService {
       const mongoose = await connectDB();
       const db = mongoose.connection.db;
       
+      if (!db) throw new Error('Database connection failed');
       await db.collection('chat_sessions').updateOne(
         { id: sessionId },
-        { 
-          $push: { messages: message },
+        ({
+          $push: { messages: { $each: [message] } },
           $set: { updatedAt: new Date() }
-        }
+        } as any)
       );
     } catch (error) {
       console.error('Error adding message to session:', error);
@@ -151,12 +178,24 @@ export class ChatStorageService {
       const mongoose = await connectDB();
       const db = mongoose.connection.db;
       
+      if (!db) throw new Error('Database connection failed');
       const sessions = await db.collection('chat_sessions')
         .find({ userId })
         .sort({ updatedAt: -1 })
         .toArray();
 
-      return sessions;
+      // Map MongoDB documents to ChatSession type
+      const chatSessions: ChatSession[] = (sessions ?? []).map((sessionDoc: any) => ({
+        id: sessionDoc.id,
+        userId: sessionDoc.userId,
+        title: sessionDoc.title,
+        messages: sessionDoc.messages ?? [],
+        createdAt: sessionDoc.createdAt instanceof Date ? sessionDoc.createdAt : new Date(sessionDoc.createdAt),
+        updatedAt: sessionDoc.updatedAt instanceof Date ? sessionDoc.updatedAt : new Date(sessionDoc.updatedAt),
+        isActive: sessionDoc.isActive
+      }));
+
+      return chatSessions;
     } catch (error) {
       console.error('Error fetching chat sessions:', error);
       return [];
@@ -168,7 +207,8 @@ export class ChatStorageService {
       const mongoose = await connectDB();
       const db = mongoose.connection.db;
       
-      await db.collection('chat_sessions').deleteOne({ id: sessionId });
+  if (!db) throw new Error('Database connection failed');
+  await db.collection('chat_sessions').deleteOne({ id: sessionId });
     } catch (error) {
       console.error('Error deleting chat session:', error);
       throw new Error('Failed to delete chat session');

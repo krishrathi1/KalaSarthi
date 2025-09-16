@@ -12,9 +12,7 @@ node_modules
 dist
 build
 
-# Environment files
-.env
-.env.*
+
 
 # OS generated files
 .DS_Store
