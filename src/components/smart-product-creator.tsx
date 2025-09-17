@@ -4020,7 +4020,7 @@ Return only the enhanced story, no additional commentary.`;
             size="sm"
             className="text-xs"
           >
-            {showDebug ? "Hide Debug Info" : "Show Debug Info"}
+            {/* {showDebug ? "Hide Debug Info" : "Show Debug Info"} */}
           </Button>
 
           {showDebug && (

@@ -26,6 +26,9 @@ export function Dashboard() {
   const [translatedGreeting, setTranslatedGreeting] = useState('Namaste');
   const [translatedWelcome, setTranslatedWelcome] = useState('Welcome to KalaSarthi...');
   const { userProfile } = useAuth();
+  
+  // Use mock name "Ramu" for unauthenticated users
+  const displayName = userProfile?.name || 'Ramu';
   useEffect(() => {
     const loadTranslations = async () => {
       try {
@@ -49,7 +52,7 @@ export function Dashboard() {
 
       <div>
         <h1 className="text-4xl font-headline font-bold">
-          {translatedGreeting}, {userProfile?.name}!
+          {translatedGreeting}, {displayName}!
           {isTranslating && (
             <span className="ml-2 inline-flex items-center">
               <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>

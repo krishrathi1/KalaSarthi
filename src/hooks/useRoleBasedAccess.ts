@@ -23,10 +23,10 @@ export function useRoleBasedAccess() {
   ];
 
   // Routes that are public (no authentication required)
-  const publicRoutes = ['/auth', '/', '/marketplace'];
+  const publicRoutes = ['/auth', '/', '/marketplace', '/dashboard'];
 
   // Check if current route is restricted for buyers
-  const isBuyerRestrictedRoute = buyerRestrictedRoutes.some(route => 
+  const isBuyerRestrictedRoute = buyerRestrictedRoutes.some(route =>
     pathname.startsWith(route)
   );
 
@@ -54,7 +54,7 @@ export function useRoleBasedAccess() {
   // Get the appropriate redirect path based on user role
   const getDefaultPath = () => {
     console.log('getDefaultPath called - userProfile:', userProfile?.role, 'isArtisan:', isArtisan, 'isBuyer:', isBuyer);
-    if (!userProfile) return '/marketplace'; // Unauthenticated users go to marketplace
+    if (!userProfile) return '/'; // Unauthenticated users stay on dashboard
     if (isBuyer) return '/marketplace';
     if (isArtisan) {
       console.log('getDefaultPath: Returning /dashboard for artisan');

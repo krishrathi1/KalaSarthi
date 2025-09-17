@@ -28,9 +28,9 @@ export default function AuthGuard({ children }: AuthGuardProps) {
         // If on public route, no need to check auth
         if (isPublicRoute) return;
 
-        // If not authenticated, redirect to marketplace (public access)
+        // If not authenticated, redirect to auth page
         if (!user) {
-            router.push('/marketplace');
+            router.push('/auth');
             return;
         }
 
@@ -54,15 +54,6 @@ export default function AuthGuard({ children }: AuthGuardProps) {
             // Redirect buyer trying to access artisan tools
             if (isBuyerRestrictedRoute && isBuyer) {
                 router.push('/marketplace');
-                return;
-            }
-
-            // Handle root path redirection based on role
-            if (pathname === '/') {
-                console.log('AuthGuard: Redirecting from root path, user role:', userProfile.role);
-                const redirectPath = getDefaultPath();
-                console.log('AuthGuard: Redirecting to:', redirectPath);
-                router.push(redirectPath);
                 return;
             }
         }

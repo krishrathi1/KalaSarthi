@@ -18,8 +18,8 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
   const authRoutes = ['/auth'];
   const isAuthRoute = authRoutes.some(route => pathname === route || pathname.startsWith(route + '/'));
 
-  // Public routes that don't require authentication
-  const publicRoutes = ['/marketplace'];
+  // Public routes that don't require authentication (including root path)
+  const publicRoutes = ['/marketplace', '/'];
   const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/'));
 
   if (isAuthRoute) {

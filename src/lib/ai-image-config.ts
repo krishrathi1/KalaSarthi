@@ -2,7 +2,7 @@
 export const AI_IMAGE_CONFIG = {
     // Google Cloud Configuration
     GOOGLE_APPLICATION_CREDENTIALS: process.env.GOOGLE_APPLICATION_CREDENTIALS || '',
-    GCP_PROJECT_ID: process.env.GCP_PROJECT_ID || '',
+    GCP_PROJECT_ID: process.env.GCP_PROJECT_ID || 'gen-lang-client-0314311341',
     GCP_BUCKET_NAME: process.env.GCP_BUCKET_NAME || 'kala-sarthi-images',
     GCP_REGION: process.env.GCP_REGION || 'us-central1',
 

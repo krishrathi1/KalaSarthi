@@ -47,7 +47,7 @@ export function StoryRecordingMic({
   const [isPlayingGenerated, setIsPlayingGenerated] = useState(false);
   const [showEditStory, setShowEditStory] = useState(false);
   const [editedStory, setEditedStory] = useState('');
-  const [detectedLanguage, setDetectedLanguage] = useState<string>('en-US');
+  const [detectedLanguage, setDetectedLanguage] = useState<string>('hi-IN');
   const [availableVoices, setAvailableVoices] = useState<any[]>([]);
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
@@ -92,7 +92,7 @@ export function StoryRecordingMic({
     }
 
     const languageVoices = getVoicesForLanguage(detectedLanguage);
-    
+
     if (languageVoices.length === 0) {
       // Return fallback voices if no voices for detected language
       return fallbackVoices;
@@ -150,11 +150,11 @@ export function StoryRecordingMic({
       setFinalizedStory(finalizedStoryFromParent);
       setLastTranscript(finalizedStoryFromParent);
       setStoryChoice('original'); // Assume it's the original choice when passed from parent
-      
+
       // Detect language from the finalized story
       const detectedLang = detectLanguage(finalizedStoryFromParent);
       setDetectedLanguage(detectedLang);
-      
+
       console.log('📝 Story finalized from parent:', finalizedStoryFromParent);
       console.log('🌍 Detected language:', detectedLang);
     }
@@ -177,20 +177,26 @@ export function StoryRecordingMic({
     // Enhanced language detection based on character patterns
     const hindiPattern = /[\u0900-\u097F]/;
     const englishPattern = /[a-zA-Z]/;
-    
+
     // Count Hindi vs English characters
     const hindiMatches = (text.match(/[\u0900-\u097F]/g) || []).length;
     const englishMatches = (text.match(/[a-zA-Z]/g) || []).length;
-    
-    console.log('🔍 Language detection:', { text: text.substring(0, 50), hindiMatches, englishMatches });
-    
+
+    console.log('🔍 Language detection:', {
+      text: text.substring(0, 50),
+      hindiMatches,
+      englishMatches,
+      environment: process.env.NODE_ENV,
+      defaulting: hindiMatches === 0 && englishMatches === 0 ? 'to English' : 'based on content'
+    });
+
     // If Hindi characters are present, prioritize Hindi
     if (hindiMatches > 0) {
       return 'hi-IN';
     } else if (englishMatches > 0) {
       return 'en-US';
     }
-    
+
     // Default to Hindi for better story enhancement
     return 'hi-IN';
   };
@@ -228,10 +234,74 @@ export function StoryRecordingMic({
 
   // Get voices for the detected language
   const getVoicesForLanguage = (language: string) => {
-    return availableVoices.filter(voice => 
-      voice.languageCode?.startsWith(language.split('-')[0]) || 
+    return availableVoices.filter(voice =>
+      voice.languageCode?.startsWith(language.split('-')[0]) ||
       voice.languageCode === language
     );
+  };
+
+  // Debug function to check Google Cloud availability
+  const checkGoogleCloudStatus = async () => {
+    if (speechServiceRef.current) {
+      console.log('🔍 Checking Google Cloud STT/TTS availability...');
+      
+      const isAvailable = speechServiceRef.current.isGoogleCloudAvailable();
+      console.log('Current Google Cloud status:', isAvailable);
+      
+      // Test direct API calls
+      console.log('🧪 Testing direct API calls...');
+      
+      try {
+        // Test STT API directly
+        const sttResponse = await fetch('/api/google-cloud-stt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ audioData: 'dGVzdA==', language: 'en-US' })
+        });
+        
+        console.log('Direct STT API test:', {
+          ok: sttResponse.ok,
+          status: sttResponse.status,
+          statusText: sttResponse.statusText
+        });
+        
+        if (!sttResponse.ok) {
+          const errorText = await sttResponse.text();
+          console.error('STT API Error:', errorText);
+        }
+        
+        // Test TTS API directly
+        const ttsResponse = await fetch('/api/google-cloud-tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: 'test', language: 'en-US' })
+        });
+        
+        console.log('Direct TTS API test:', {
+          ok: ttsResponse.ok,
+          status: ttsResponse.status,
+          statusText: ttsResponse.statusText
+        });
+        
+        if (!ttsResponse.ok) {
+          const errorText = await ttsResponse.text();
+          console.error('TTS API Error:', errorText);
+        }
+        
+      } catch (error) {
+        console.error('Direct API test failed:', error);
+      }
+      
+      // Force recheck
+      const newStatus = await speechServiceRef.current.recheckGoogleCloudAvailability();
+      console.log('After recheck Google Cloud status:', newStatus);
+      
+      toast({
+        title: "Google Cloud Status",
+        description: `Google Cloud STT/TTS is ${newStatus ? 'available' : 'not available'}. Check console for details.`,
+        variant: newStatus ? "default" : "destructive"
+      });
+    }
   };
 
   const startListening = async () => {
@@ -352,20 +422,33 @@ export function StoryRecordingMic({
       // Get transcription
       if (speechServiceRef.current) {
         try {
+          console.log('🎤 Calling speechToText with:', {
+            arrayBufferSize: arrayBuffer.byteLength,
+            detectedLanguage,
+            googleCloudAvailable: speechServiceRef.current.isGoogleCloudAvailable()
+          });
+          
           const transcription = await speechServiceRef.current.speechToText(arrayBuffer, { language: detectedLanguage });
           
+          console.log('🎤 STT Response:', {
+            hasText: !!transcription?.text,
+            textLength: transcription?.text?.length || 0,
+            confidence: transcription?.confidence,
+            language: transcription?.language
+          });
+
           if (transcription?.text && !transcription.text.includes('Speech recognition failed')) {
             console.log('✅ Speech recognition successful:', transcription.text);
             console.log('🌍 Detected language:', transcription.language);
-            
+
             // Use detected language from STT or fallback to our detection
             const detectedLang = detectLanguage(transcription.text);
             setDetectedLanguage(detectedLang);
-            
+
             // Store raw transcript without voice styling
             setLastTranscript(transcription.text);
             console.log('✅ lastTranscript set to:', transcription.text);
-            
+
             // Call the callback with the raw transcript and audio
             if (onStoryRecorded) {
               onStoryRecorded(transcription.text, audioBlob);
@@ -373,7 +456,7 @@ export function StoryRecordingMic({
 
             // Get language display name
             const languageName = getLanguageDisplayName(detectedLang);
-            
+
             toast({
               title: "Story Recorded!",
               description: `Captured ${transcription.text.length} characters. Language detected: ${languageName}`,
@@ -381,7 +464,7 @@ export function StoryRecordingMic({
           } else {
             // Handle speech recognition errors - check if it's a real error or just no speech
             const errorMessage = transcription?.text || 'No speech detected';
-            
+
             // Only show error if it's not just "no speech detected"
             if (errorMessage !== 'No speech detected' && !errorMessage.includes('Speech recognition not available')) {
               console.warn('Speech recognition warning:', errorMessage);
@@ -403,7 +486,7 @@ export function StoryRecordingMic({
         } catch (error) {
           // Handle different types of errors more gracefully
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          
+
           if (errorMessage.includes('No speech detected') || errorMessage.includes('Speech recognition not available')) {
             console.log('Speech recognition not available or no speech detected');
             toast({
@@ -474,7 +557,7 @@ export function StoryRecordingMic({
         if (setEnhancedStory) {
           setEnhancedStory(enhancedText);
         }
-        
+
         toast({
           title: "Story Enhanced!",
           description: "Your story has been enhanced with AI. Check the enhanced version below.",
@@ -504,7 +587,7 @@ export function StoryRecordingMic({
       const normalizedLanguage = language.toUpperCase();
       const response = await fetch(`/api/voices/${normalizedLanguage}`);
       const data = await response.json();
-      
+
       if (data.success) {
         setAvailableVoicesForLanguage(data.voices);
         return data.voices;
@@ -526,7 +609,7 @@ export function StoryRecordingMic({
     setStoryChoice(choice);
     const storyToFinalize = choice === 'original' ? lastTranscript : enhancedStory;
     setFinalizedStory(storyToFinalize ?? '');
-    
+
     // Fetch voices for the detected language
     const voices = await fetchGoogleVoices(detectedLanguage);
     if (voices.length > 0) {
@@ -537,7 +620,7 @@ export function StoryRecordingMic({
       setSelectedVoiceForAudio('en-US-Neural2-A');
       setShowVoiceSelection(true);
     }
-    
+
     toast({
       title: "Story Finalized!",
       description: `You chose the ${choice} story. Now select a voice for audio generation.`,
@@ -568,7 +651,7 @@ export function StoryRecordingMic({
         },
         body: JSON.stringify({
           text: finalizedStory,
-          language: detectedLanguage?.toUpperCase() || 'EN-US',
+          language: detectedLanguage || 'en-US',
           voice: selectedVoiceForAudio,
           speed: 1.0,
           pitch: 0.0,
@@ -582,25 +665,25 @@ export function StoryRecordingMic({
       if (data.success && data.audio?.data) {
         console.log('🎵 Audio generation successful');
         console.log('Audio data length:', data.audio.data.length);
-        
+
         // Convert base64 to blob
-        const audioBlob = new Blob([Uint8Array.from(atob(data.audio.data), c => c.charCodeAt(0))], { 
-          type: 'audio/mpeg' 
+        const audioBlob = new Blob([Uint8Array.from(atob(data.audio.data), c => c.charCodeAt(0))], {
+          type: 'audio/mpeg'
         });
         console.log('Audio blob size:', audioBlob.size, 'bytes');
-        
+
         const audioUrl = URL.createObjectURL(audioBlob);
         console.log('Generated audio URL:', audioUrl);
         setGeneratedAudioUrl(audioUrl);
-        
+
         // Create audio element for playback
         const audio = new Audio(audioUrl);
         console.log('Created audio element:', audio);
         setCurrentAudio(audio);
-        
+
         // Generate summary for product description
         const summary = await generateStorySummary(finalizedStory);
-        
+
         toast({
           title: "🎵 Audio Generated!",
           description: "Your story is ready to play!",
@@ -648,7 +731,7 @@ export function StoryRecordingMic({
       setAudioUrl(null);
     }
     setIsPlaying(false);
-    
+
     if (onStoryCleared) {
       onStoryCleared();
     }
@@ -681,11 +764,11 @@ export function StoryRecordingMic({
     }
 
     setIsGeneratingAudio(true);
-    
+
     try {
       const voiceOptions = getVoiceOptions();
       const selectedVoiceOption = voiceOptions.find(v => v.id === selectedVoice);
-      
+
       if (!selectedVoiceOption) {
         throw new Error('Selected voice not found');
       }
@@ -702,7 +785,7 @@ export function StoryRecordingMic({
       const wavBlob = createWavBlob(new Uint8Array(audioBuffer), 24000);
       const audioUrl = URL.createObjectURL(wavBlob);
       setGeneratedAudioUrl(audioUrl);
-      
+
       toast({
         title: "Audio Generated!",
         description: `Preview ready with ${selectedVoiceOption.name}.`,
@@ -759,7 +842,7 @@ export function StoryRecordingMic({
     console.log('🎵 Toggle generated audio clicked');
     console.log('Generated audio URL:', generatedAudioUrl);
     console.log('Current audio:', currentAudio);
-    
+
     if (!generatedAudioUrl) {
       console.log('❌ No generated audio URL');
       toast({
@@ -802,7 +885,7 @@ export function StoryRecordingMic({
     console.log('🆕 Creating new audio instance');
     const audio = new Audio(generatedAudioUrl);
     setCurrentAudio(audio);
-    
+
     // Add error handling for audio loading
     audio.onerror = (e) => {
       console.error('❌ Audio playback error:', e);
@@ -862,7 +945,7 @@ export function StoryRecordingMic({
         // Default to original story
         setLastTranscript(editedStory);
       }
-      
+
       setShowEditStory(false);
       // Clear generated audio since story changed
       if (generatedAudioUrl) {
@@ -900,11 +983,11 @@ export function StoryRecordingMic({
     }
 
     setIsGeneratingAudio(true);
-    
+
     try {
       const voiceOptions = getVoiceOptions();
       const selectedVoiceOption = voiceOptions.find(v => v.id === selectedVoice);
-      
+
       if (!selectedVoiceOption) {
         throw new Error('Selected voice not found');
       }
@@ -921,12 +1004,12 @@ export function StoryRecordingMic({
       const wavBlob = createWavBlob(new Uint8Array(audioBuffer), 24000);
       const audioUrl = URL.createObjectURL(wavBlob);
       setGeneratedAudioUrl(audioUrl);
-      
+
       // Call the finalized story callback
       if (onFinalizedStory) {
         onFinalizedStory(finalizedStory, wavBlob);
       }
-      
+
       toast({
         title: "Final Audio Generated!",
         description: `Your ${storyChoice} story is ready with ${selectedVoiceOption.name}.`,
@@ -967,6 +1050,18 @@ export function StoryRecordingMic({
 
   return (
     <div className="relative">
+      {/* Debug button for Google Cloud status */}
+      {(process.env.NODE_ENV === 'development' || !speechServiceRef.current?.isGoogleCloudAvailable()) && (
+        <Button
+          onClick={checkGoogleCloudStatus}
+          size="sm"
+          variant="outline"
+          className="absolute -top-12 left-0 text-xs"
+        >
+          🔍 Debug STT
+        </Button>
+      )}
+      
       {/* Main recording button */}
       <Button
         onClick={handleClick}
@@ -983,8 +1078,8 @@ export function StoryRecordingMic({
           isProcessing
             ? 'Processing your story...'
             : isListening
-            ? 'Recording... Click to stop'
-            : 'Click to record your product story'
+              ? 'Recording... Click to stop'
+              : 'Click to record your product story'
         }
       >
         {isProcessing ? (
@@ -1019,11 +1114,11 @@ export function StoryRecordingMic({
       )}
 
       {/* Debug info - remove this later */}
-      {process.env.NODE_ENV === 'development' && (
+      {/* {process.env.NODE_ENV === 'development' && (
         <div className="mt-2 text-xs text-gray-500 text-center">
           Debug: lastTranscript={lastTranscript ? 'set' : 'null'}, isListening={isListening.toString()}, isProcessing={isProcessing.toString()}
         </div>
-      )}
+      )} */}
 
       {/* Recording controls */}
       {recordedAudio && audioUrl && (
@@ -1066,7 +1161,7 @@ export function StoryRecordingMic({
                 {showVoiceSelector ? '✓ Done' : '🎤 Choose Voice'}
               </Button>
             </div>
-            
+
             {showVoiceSelector ? (
               <div className="space-y-4">
                 {/* Language Detection Display */}
@@ -1112,7 +1207,7 @@ export function StoryRecordingMic({
                     </div>
                   ))}
                 </div>
-                
+
                 {/* Audio Preview Section - Only show when story is finalized */}
                 {finalizedStory && storyChoice && (
                   <div className="mt-4 p-4 bg-white rounded-xl border border-gray-200">
@@ -1139,7 +1234,7 @@ export function StoryRecordingMic({
                         )}
                       </Button>
                     </div>
-                    
+
                     {generatedAudioUrl && (
                       <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                         <Button
@@ -1187,80 +1282,80 @@ export function StoryRecordingMic({
       {lastTranscript && !isListening && !isProcessing && (
         <div className="mt-6 w-full max-w-4xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
+
             {/* Original Story Box - Hide when story is finalized */}
             {!finalizedStory && (
-            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                  <span className="font-semibold text-gray-800">Your Original Story</span>
-                  <span className="text-xs text-gray-500">({lastTranscript.length} chars)</span>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => {
-                      setEditedStory(lastTranscript);
-                      setShowEditStory(true);
-                    }}
-                    size="sm"
-                    variant="outline"
-                    className="h-7 px-3 text-xs"
-                  >
-                    ✏️ Edit
-                  </Button>
-                  {!enhancedStory && (
-                    <Button
-                      onClick={enhanceStory}
-                      size="sm"
-                      className="h-7 px-3 text-xs bg-purple-600 hover:bg-purple-700 text-white"
-                    >
-                      ✨ Enhance It
-                    </Button>
-                  )}
-                  <Button
-                    onClick={clearRecording}
-                    size="sm"
-                    variant="outline"
-                    className="h-7 px-3 text-xs text-red-600 hover:text-red-700"
-                  >
-                    🗑️ Clear
-                  </Button>
-                </div>
-              </div>
-              
-              {showEditStory ? (
-                <div className="space-y-3">
-                  <Textarea
-                    value={editedStory}
-                    onChange={(e) => setEditedStory(e.target.value)}
-                    className="w-full text-sm resize-none"
-                    rows={6}
-                    placeholder="Edit your story..."
-                  />
+              <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <span className="font-semibold text-gray-800">Your Original Story</span>
+                    <span className="text-xs text-gray-500">({lastTranscript.length} chars)</span>
+                  </div>
                   <div className="flex gap-2">
                     <Button
-                      onClick={saveEditedStory}
-                      size="sm"
-                      className="bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      💾 Save Changes
-                    </Button>
-                    <Button
-                      onClick={() => setShowEditStory(false)}
+                      onClick={() => {
+                        setEditedStory(lastTranscript);
+                        setShowEditStory(true);
+                      }}
                       size="sm"
                       variant="outline"
+                      className="h-7 px-3 text-xs"
                     >
-                      ❌ Cancel
+                      ✏️ Edit
+                    </Button>
+                    {!enhancedStory && (
+                      <Button
+                        onClick={enhanceStory}
+                        size="sm"
+                        className="h-7 px-3 text-xs bg-purple-600 hover:bg-purple-700 text-white"
+                      >
+                        ✨ Enhance It
+                      </Button>
+                    )}
+                    <Button
+                      onClick={clearRecording}
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-3 text-xs text-red-600 hover:text-red-700"
+                    >
+                      🗑️ Clear
                     </Button>
                   </div>
                 </div>
-              ) : (
-                <div className="text-gray-700 text-sm leading-relaxed max-h-32 overflow-y-auto">
-                  {lastTranscript}
-                </div>
-              )}
-            </div>
+
+                {showEditStory ? (
+                  <div className="space-y-3">
+                    <Textarea
+                      value={editedStory}
+                      onChange={(e) => setEditedStory(e.target.value)}
+                      className="w-full text-sm resize-none"
+                      rows={6}
+                      placeholder="Edit your story..."
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={saveEditedStory}
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        💾 Save Changes
+                      </Button>
+                      <Button
+                        onClick={() => setShowEditStory(false)}
+                        size="sm"
+                        variant="outline"
+                      >
+                        ❌ Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-gray-700 text-sm leading-relaxed max-h-32 overflow-y-auto">
+                    {lastTranscript}
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Enhanced Story Box - REMOVED TO AVOID DUPLICATION */}
@@ -1301,7 +1396,7 @@ export function StoryRecordingMic({
                   <div className="text-center">
                     <h3 className="text-lg font-semibold text-orange-800 mb-2">Ready to Finalize Your Story?</h3>
                     <p className="text-sm text-orange-600 mb-4">
-                      {enhancedStory 
+                      {enhancedStory
                         ? "Choose between your original or enhanced story, then select a voice for audio generation"
                         : "Finalize your story and select a voice for audio generation"
                       }
@@ -1346,17 +1441,16 @@ export function StoryRecordingMic({
                       Cancel
                     </Button>
                   </div>
-                  
+
                   <div className="space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {availableVoicesForLanguage.slice(0, 6).map((voice, index) => (
                         <div
                           key={voice.name}
-                          className={`p-3 border rounded-lg cursor-pointer transition-all ${
-                            selectedVoiceForAudio === voice.name
+                          className={`p-3 border rounded-lg cursor-pointer transition-all ${selectedVoiceForAudio === voice.name
                               ? 'border-blue-500 bg-blue-100'
                               : 'border-gray-200 hover:border-blue-300'
-                          }`}
+                            }`}
                           onClick={() => setSelectedVoiceForAudio(voice.name)}
                         >
                           <div className="flex items-center justify-between">
@@ -1375,7 +1469,7 @@ export function StoryRecordingMic({
                         </div>
                       ))}
                     </div>
-                    
+
                     <div className="flex gap-3 pt-2">
                       <Button
                         onClick={generateAudioStory}
@@ -1420,7 +1514,7 @@ export function StoryRecordingMic({
                       Clear
                     </Button>
                   </div>
-                  
+
                   <div className="flex items-center gap-3">
                     <Button
                       onClick={toggleGeneratedAudio}
@@ -1434,7 +1528,7 @@ export function StoryRecordingMic({
                       Voice: {selectedVoiceForAudio}
                     </span>
                   </div>
-                  
+
                   {currentAudio && (
                     <audio
                       ref={generatedAudioRef}

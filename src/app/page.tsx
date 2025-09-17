@@ -12,12 +12,9 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading) {
-      // Redirect based on user authentication status and role
-      if (!userProfile) {
-        // Unauthenticated users go to marketplace
-        router.push('/marketplace');
-      } else if (userProfile.role === 'buyer') {
+    if (!loading && userProfile) {
+      // Redirect authenticated users based on their role
+      if (userProfile.role === 'buyer') {
         router.push('/marketplace');
       } else {
         // For artisans and other roles, show the main dashboard
@@ -38,12 +35,10 @@ export default function Home() {
     );
   }
 
-  // This should not be reached due to the redirect, but just in case
+  // Show dashboard for unauthenticated users (with mock data)
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <Dashboard />
-      </div>
+    <div className="min-h-screen">
+      <Dashboard />
     </div>
   );
 }

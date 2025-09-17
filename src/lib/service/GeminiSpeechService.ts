@@ -28,14 +28,23 @@ export class GeminiSpeechService {
   private genAI: GoogleGenerativeAI;
   private model: any;
   private googleCloudAvailable: boolean = false;
+  private googleCloudChecked: boolean = false;
 
   private constructor() {
     const apiKey = process.env.GOOGLE_AI_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY;
 
+    console.log('🔧 Initializing GeminiSpeechService:', {
+      hasApiKey: !!apiKey,
+      nodeEnv: process.env.NODE_ENV,
+      isClient: typeof window !== 'undefined'
+    });
+
     if (!apiKey) {
-      console.warn('GOOGLE_AI_API_KEY not found. Gemini features will use fallback implementations.');
+      console.warn('❌ GOOGLE_AI_API_KEY not found. Gemini features will use fallback implementations.');
       this.genAI = null as any;
       this.model = null as any;
+      // Still check Google Cloud availability even without Gemini
+      this.checkGoogleCloudAvailability();
       return;
     }
 
@@ -43,44 +52,114 @@ export class GeminiSpeechService {
       this.genAI = new GoogleGenerativeAI(apiKey);
       // Use the correct model name for Gemini 1.5
       this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      console.log('✅ Gemini AI initialized successfully');
 
-      // Check if Google Cloud services are available via API routes
-      this.checkGoogleCloudAvailability();
+      // Don't check Google Cloud availability immediately - do it lazily on first use
+      console.log('✅ Gemini AI initialized successfully - Google Cloud availability will be checked on first use');
     } catch (error) {
-      console.warn('Failed to initialize Gemini AI:', error);
+      console.error('❌ Failed to initialize Gemini AI:', error);
       this.genAI = null as any;
       this.model = null as any;
     }
   }
 
   private async checkGoogleCloudAvailability(): Promise<void> {
-    try {
-      // Test TTS API availability
-      const ttsResponse = await fetch('/api/google-cloud-tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: 'test', language: 'en-US' })
-      });
+    // Delay initial check to allow APIs to be ready
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Test STT API availability
-      const sttResponse = await fetch('/api/google-cloud-stt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audioData: 'dGVzdA==', language: 'en-US' }) // base64 'test'
-      });
+    const maxRetries = 3;
+    const retryDelay = 1000; // 1 second
 
-      this.googleCloudAvailable = ttsResponse.ok && sttResponse.ok;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔍 Checking Google Cloud API availability (attempt ${attempt}/${maxRetries})...`);
 
-      if (this.googleCloudAvailable) {
-        console.log('✅ Google Cloud TTS and STT services available via API routes');
-        console.log('🎵 Natural voice synthesis and advanced speech recognition enabled');
-      } else {
-        console.warn('Google Cloud services not available, using Web Speech API fallback');
+        // Add timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Timeout')), 10000)
+        );
+
+        // Test TTS API availability with timeout
+        console.log('Testing TTS API...');
+        const ttsPromise = fetch('/api/google-cloud-tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: 'test', language: 'en-US' })
+        });
+
+        const ttsResponse = await Promise.race([ttsPromise, timeoutPromise]) as Response;
+
+        console.log('TTS API response:', {
+          ok: ttsResponse.ok,
+          status: ttsResponse.status,
+          statusText: ttsResponse.statusText
+        });
+
+        // Test STT API availability with timeout
+        console.log('Testing STT API...');
+        const sttPromise = fetch('/api/google-cloud-stt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ audioData: 'dGVzdA==', language: 'en-US' }) // base64 'test'
+        });
+
+        const sttResponse = await Promise.race([sttPromise, timeoutPromise]) as Response;
+
+        console.log('STT API response:', {
+          ok: sttResponse.ok,
+          status: sttResponse.status,
+          statusText: sttResponse.statusText
+        });
+
+        this.googleCloudAvailable = ttsResponse.ok && sttResponse.ok;
+
+        if (this.googleCloudAvailable) {
+          console.log('✅ Google Cloud TTS and STT services available via API routes');
+          console.log('🎵 Natural voice synthesis and advanced speech recognition enabled');
+          return; // Success, exit retry loop
+        } else {
+          console.warn(`❌ Google Cloud services not available (attempt ${attempt}/${maxRetries})`);
+          console.warn('TTS available:', ttsResponse.ok, 'STT available:', sttResponse.ok);
+
+          // Try to get error details
+          if (!ttsResponse.ok) {
+            try {
+              const ttsError = await ttsResponse.text();
+              console.error('TTS API error:', ttsError);
+            } catch (e) {
+              console.error('Could not read TTS error response');
+            }
+          }
+
+          if (!sttResponse.ok) {
+            try {
+              const sttError = await sttResponse.text();
+              console.error('STT API error:', sttError);
+            } catch (e) {
+              console.error('Could not read STT error response');
+            }
+          }
+
+          // If not the last attempt, wait before retrying
+          if (attempt < maxRetries) {
+            console.log(`⏳ Retrying in ${retryDelay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Failed to check Google Cloud availability (attempt ${attempt}/${maxRetries}):`, error);
+
+        // If not the last attempt, wait before retrying
+        if (attempt < maxRetries) {
+          console.log(`⏳ Retrying in ${retryDelay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+        }
       }
-    } catch (error) {
-      console.warn('Failed to check Google Cloud availability:', error);
-      this.googleCloudAvailable = false;
     }
+
+    // If we get here, all attempts failed
+    console.error('❌ All attempts to check Google Cloud availability failed');
+    this.googleCloudAvailable = false;
   }
 
   public static getInstance(): GeminiSpeechService {
@@ -91,6 +170,32 @@ export class GeminiSpeechService {
   }
 
   /**
+   * Ensure Google Cloud availability is checked
+   */
+  private async ensureGoogleCloudChecked(): Promise<void> {
+    if (!this.googleCloudChecked) {
+      this.googleCloudChecked = true;
+      await this.checkGoogleCloudAvailability();
+    }
+  }
+
+  /**
+   * Get current Google Cloud availability status
+   */
+  public isGoogleCloudAvailable(): boolean {
+    return this.googleCloudAvailable;
+  }
+
+  /**
+   * Force re-check Google Cloud availability
+   */
+  public async recheckGoogleCloudAvailability(): Promise<boolean> {
+    this.googleCloudChecked = false; // Reset the flag to force recheck
+    await this.ensureGoogleCloudChecked();
+    return this.googleCloudAvailable;
+  }
+
+  /**
    * Convert speech audio to text using Google Cloud Speech-to-Text via API
    */
   public async speechToText(
@@ -98,6 +203,18 @@ export class GeminiSpeechService {
     options: SpeechToTextOptions = {}
   ): Promise<SpeechResult> {
     const { language = 'en-US' } = options;
+
+    // Ensure Google Cloud availability is checked
+    await this.ensureGoogleCloudChecked();
+
+    console.log('🎤 speechToText called:', {
+      audioBufferSize: audioBuffer.byteLength,
+      language,
+      googleCloudAvailable: this.googleCloudAvailable,
+      googleCloudChecked: this.googleCloudChecked,
+      hasGeminiAI: !!this.genAI,
+      hasModel: !!this.model
+    });
 
     // Try Google Cloud STT API first
     if (this.googleCloudAvailable) {
@@ -118,6 +235,12 @@ export class GeminiSpeechService {
           })
         });
 
+        console.log('🎤 Google Cloud STT response:', {
+          ok: response.ok,
+          status: response.status,
+          statusText: response.statusText
+        });
+
         if (response.ok) {
           const result = await response.json();
           console.log('🌍 STT detected language:', result.detectedLanguage || result.language);
@@ -127,13 +250,19 @@ export class GeminiSpeechService {
             language: result.detectedLanguage || result.language || language,
             duration: audioBuffer.byteLength / 32000 // 16kHz * 2 bytes per sample
           };
+        } else {
+          const errorText = await response.text();
+          console.error('❌ Google Cloud STT API error:', errorText);
         }
       } catch (error) {
-        console.warn('Google Cloud STT API failed, falling back to Gemini/Web Speech API:', error);
+        console.error('❌ Google Cloud STT API failed:', error);
       }
+    } else {
+      console.warn('⚠️ Google Cloud STT not available, using fallback. Reason: googleCloudAvailable =', this.googleCloudAvailable);
     }
 
     // Fallback to Gemini/Web Speech API
+    console.log('🔄 Falling back to Gemini/Web Speech API');
     return this.fallbackSpeechToTextGemini(audioBuffer, options);
   }
 
@@ -149,8 +278,12 @@ export class GeminiSpeechService {
 
       // Check if Gemini is available
       if (!this.genAI || !this.model) {
-        console.warn('Gemini STT not available, using basic fallback');
-        
+        console.warn('❌ Gemini STT not available, using basic fallback. Reason:', {
+          hasGenAI: !!this.genAI,
+          hasModel: !!this.model,
+          apiKeyAvailable: !!(process.env.GOOGLE_AI_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY)
+        });
+
         // Basic fallback: Return a placeholder text instead of empty
         return {
           text: 'Audio recorded successfully. Please use text input for now.',
@@ -200,7 +333,7 @@ Audio data: ${audioBase64}
           break; // Success, exit retry loop
         } catch (error: any) {
           console.error(`Gemini STT attempt ${retryCount + 1} failed:`, error);
-          
+
           // Check if it's a quota/overload error
           if (error.message?.includes('429') || error.message?.includes('503') || error.message?.includes('overloaded')) {
             retryCount++;
@@ -212,7 +345,7 @@ Audio data: ${audioBase64}
               continue;
             }
           }
-          
+
           // If not a retryable error or max retries reached, throw
           throw error;
         }
@@ -234,15 +367,15 @@ Audio data: ${audioBase64}
 
     } catch (error) {
       console.error('Gemini STT error after retries:', error);
-      
+
       // Check if it's a network-related error
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const isNetworkError = errorMessage.includes('network') || 
-                            errorMessage.includes('fetch') || 
-                            errorMessage.includes('timeout') ||
-                            errorMessage.includes('ECONNREFUSED') ||
-                            errorMessage.includes('ENOTFOUND');
-      
+      const isNetworkError = errorMessage.includes('network') ||
+        errorMessage.includes('fetch') ||
+        errorMessage.includes('timeout') ||
+        errorMessage.includes('ECONNREFUSED') ||
+        errorMessage.includes('ENOTFOUND');
+
       if (isNetworkError) {
         // Don't use Web Speech API for network errors as it will likely fail too
         return {
@@ -252,7 +385,7 @@ Audio data: ${audioBase64}
           duration: 0
         };
       }
-      
+
       // Skip Web Speech API to avoid network errors
       // Return a helpful message instead
       return {
@@ -328,7 +461,7 @@ Audio data: ${audioBase64}
         hasResult = true;
         clearTimeout(timeoutId);
         console.error('Speech recognition error:', event.error);
-        
+
         // Handle specific error types
         let errorMessage = 'Speech recognition failed. Please try again.';
         switch (event.error) {
@@ -350,7 +483,7 @@ Audio data: ${audioBase64}
           default:
             errorMessage = `Speech recognition failed: ${event.error}. Please try again.`;
         }
-        
+
         resolve({
           text: errorMessage,
           confidence: 0.1,

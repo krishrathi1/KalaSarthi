@@ -51,11 +51,11 @@ export default function TestUploadPage() {
                     </div>
                 )}
 
-                <div className="p-4 border rounded-lg bg-blue-50">
+                {/* <div className="p-4 border rounded-lg bg-blue-50">
                     <h3 className="font-semibold text-blue-800">Debug Info:</h3>
                     <p>File input ref: {fileInputRef.current ? 'Connected' : 'Not connected'}</p>
                     <p>Selected file: {selectedFile ? 'Yes' : 'No'}</p>
-                </div>
+                </div> */}
             </div>
         </div>
     );
