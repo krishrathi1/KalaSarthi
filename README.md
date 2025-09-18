@@ -1,5 +1,4 @@
 KalaSarthi: AI-Powered Marketplace for Indian Artisans
-https://via.placeholder.com/150x150.png?text=KS
 Empowering Tradition with Technology
 
 Overview
