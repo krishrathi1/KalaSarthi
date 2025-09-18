@@ -370,75 +370,86 @@ export default function ProfilePage() {
     return (
         <AuthGuard>
             <div className="min-h-screen bg-background">
-                <div className="container mx-auto px-4 py-8">
-                    <div className="flex items-center justify-between mb-6">
+                <div className="container mx-auto px-2 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
+                    {/* Profile Header Section */}
+                    <div className="mb-6 sm:mb-8">
                         <ProfileHeader userProfile={userProfile} />
-
-                        {/* Voice Control */}
-                        <div className="flex items-center gap-4">
+                        
+                        {/* Voice Control - Mobile responsive */}
+                        <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
                             <VoiceControl
                                 variant="inline"
                                 showSettings={true}
                                 autoStart={false}
                             />
 
-                            {/* Voice Status */}
-                            {isVoiceActive && (
-                                <div className="flex items-center gap-2 text-sm text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
-                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                                    <span>Voice Active</span>
-                                </div>
-                            )}
+                            {/* Voice Status Indicators */}
+                            <div className="flex flex-wrap gap-2">
+                                {isVoiceActive && (
+                                    <div className="flex items-center gap-2 text-xs sm:text-sm text-blue-600 bg-blue-50 px-2 sm:px-3 py-1 rounded-full">
+                                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                        <span>Voice Active</span>
+                                    </div>
+                                )}
 
-                            {isProcessingVoice && (
-                                <div className="flex items-center gap-2 text-orange-600 bg-orange-50 px-3 py-1 rounded-full">
-                                    <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
-                                    <span>Processing: "{voiceCommand}"</span>
-                                </div>
-                            )}
+                                {isProcessingVoice && (
+                                    <div className="flex items-center gap-2 text-xs sm:text-sm text-orange-600 bg-orange-50 px-2 sm:px-3 py-1 rounded-full">
+                                        <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+                                        <span className="hidden sm:inline">Processing: "{voiceCommand}"</span>
+                                        <span className="sm:hidden">Processing...</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
-                    <div className="mt-8 grid grid-cols-1 lg:grid-cols-4 gap-8">
-                        {/* Profile Information */}
-                        <div className="lg:col-span-1">
-                            <ProfileInfo userProfile={userProfile} />
+                    {/* Main Content - Responsive Layout */}
+                    <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 lg:gap-8">
+                        {/* Profile Information Sidebar */}
+                        <div className="xl:col-span-1 order-2 xl:order-1">
+                            <div className="sticky top-4">
+                                <ProfileInfo userProfile={userProfile} />
+                            </div>
                         </div>
 
                         {/* Products Section */}
-                        <div className="lg:col-span-3">
-                            <div className="bg-card rounded-lg border p-6">
-                                <h2 className="text-2xl font-semibold mb-6">
+                        <div className="xl:col-span-3 order-1 xl:order-2">
+                            <div className="bg-card rounded-lg border p-4 sm:p-6">
+                                <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold mb-4 sm:mb-6">
                                     {userProfile.role === 'artisan' ? 'My Products' : 'Favorite Products'}
                                 </h2>
 
                                 {loading ? (
-                                    <div className="flex justify-center py-8">
+                                    <div className="flex flex-col items-center justify-center py-8">
                                         <Loader2 className="h-6 w-6 animate-spin" />
                                         <p className="text-sm text-muted-foreground mt-2">Loading products...</p>
                                     </div>
                                 ) : error ? (
                                     <div className="text-center py-8">
-                                        <p className="text-destructive">{error}</p>
+                                        <p className="text-destructive text-sm sm:text-base">{error}</p>
                                         <p className="text-xs text-muted-foreground mt-2">
                                             Debug: User ID = {userProfile?.uid}
                                         </p>
                                     </div>
                                 ) : userProfile.role === 'artisan' ? (
                                     <Tabs defaultValue="published" className="w-full">
-                                        <TabsList className="grid w-full grid-cols-4">
-                                            <TabsTrigger value="published">
-                                                Published ({publishedProducts.length})
+                                        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto">
+                                            <TabsTrigger value="published" className="text-xs sm:text-sm p-2 sm:p-3">
+                                                <span className="hidden sm:inline">Published ({publishedProducts.length})</span>
+                                                <span className="sm:hidden">Published</span>
                                             </TabsTrigger>
-                                            <TabsTrigger value="drafts">
-                                                Drafts ({draftProducts.length})
+                                            <TabsTrigger value="drafts" className="text-xs sm:text-sm p-2 sm:p-3">
+                                                <span className="hidden sm:inline">Drafts ({draftProducts.length})</span>
+                                                <span className="sm:hidden">Drafts</span>
                                             </TabsTrigger>
-                                            <TabsTrigger value="archived">
-                                                Archived ({archivedProducts.length})
+                                            <TabsTrigger value="archived" className="text-xs sm:text-sm p-2 sm:p-3">
+                                                <span className="hidden sm:inline">Archived ({archivedProducts.length})</span>
+                                                <span className="sm:hidden">Archived</span>
                                             </TabsTrigger>
-                                            <TabsTrigger value="market-research">
-                                                <TrendingUp className="h-4 w-4 mr-1" />
-                                                Market Research
+                                            <TabsTrigger value="market-research" className="text-xs sm:text-sm p-2 sm:p-3">
+                                                <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                                                <span className="hidden lg:inline">Market Research</span>
+                                                <span className="lg:hidden">Research</span>
                                             </TabsTrigger>
                                         </TabsList>
 
@@ -479,26 +490,29 @@ export default function ProfilePage() {
                                             />
                                         </TabsContent>
 
-                                        <TabsContent value="market-research" className="mt-6">
-                                            <div className="space-y-6">
+                                        <TabsContent value="market-research" className="mt-4 sm:mt-6">
+                                            <div className="space-y-4 sm:space-y-6">
                                                 {/* Search Section */}
-                                                <div className="flex gap-4">
+                                                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                                                     <Input
-                                                        placeholder="Search for products (e.g., handicraft, jewelry, textiles)"
+                                                        placeholder="Search products (e.g., handicraft, jewelry)"
                                                         value={searchQuery}
                                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                                        className="flex-1"
+                                                        className="flex-1 text-sm"
                                                     />
                                                     <Button
                                                         onClick={() => fetchScrapedProducts(searchQuery)}
                                                         disabled={scrapingLoading}
+                                                        className="w-full sm:w-auto"
+                                                        size="sm"
                                                     >
                                                         {scrapingLoading ? (
                                                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                                         ) : (
                                                             <Search className="h-4 w-4 mr-2" />
                                                         )}
-                                                        Search Market
+                                                        <span className="hidden sm:inline">Search Market</span>
+                                                        <span className="sm:hidden">Search</span>
                                                     </Button>
                                                 </div>
 

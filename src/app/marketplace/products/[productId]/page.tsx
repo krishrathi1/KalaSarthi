@@ -200,23 +200,24 @@ export default function ProductDetailsPage() {
     }
 
     return (
-        <div className="min-h-screen">
-            <div className="container mx-auto px-4 py-8">
+        <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50">
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
                 {/* Back Button */}
                 <Button
                     variant="ghost"
                     onClick={() => router.back()}
-                    className="mb-6 hover:bg-orange-50"
+                    className="mb-4 sm:mb-6 hover:bg-orange-50 text-sm sm:text-base"
                 >
                     <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to Marketplace
+                    <span className="hidden sm:inline">Back to Marketplace</span>
+                    <span className="sm:hidden">Back</span>
                 </Button>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
                     {/* Product Images */}
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-4">
                         {/* Main Image */}
-                        <div className="relative aspect-square bg-white rounded-lg overflow-hidden shadow-lg">
+                        <div className="relative aspect-square bg-white rounded-xl overflow-hidden shadow-xl border border-gray-100">
                             {product.images && product.images.length > 0 ? (
                                 <Image
                                     src={product.images[selectedImageIndex]}
@@ -226,22 +227,22 @@ export default function ProductDetailsPage() {
                                     sizes="(max-width: 768px) 100vw, 50vw"
                                 />
                             ) : (
-                                <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                                    <Package className="h-16 w-16 text-gray-400" />
+                                <div className="w-full h-full bg-gradient-to-br from-orange-50 to-amber-100 flex items-center justify-center">
+                                    <Package className="h-12 w-12 sm:h-16 sm:w-16 text-orange-300" />
                                 </div>
                             )}
                         </div>
 
                         {/* Thumbnail Images */}
                         {product.images && product.images.length > 1 && (
-                            <div className="grid grid-cols-4 gap-2">
+                            <div className="grid grid-cols-4 gap-2 sm:gap-3">
                                 {product.images.map((image, index) => (
                                     <button
                                         key={index}
                                         onClick={() => setSelectedImageIndex(index)}
-                                        className={`relative aspect-square rounded-md overflow-hidden border-2 transition-all ${selectedImageIndex === index
-                                            ? 'border-orange-500 ring-2 ring-orange-200'
-                                            : 'border-gray-200 hover:border-gray-300'
+                                        className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all duration-200 ${selectedImageIndex === index
+                                            ? 'border-orange-500 ring-2 ring-orange-200 scale-105'
+                                            : 'border-gray-200 hover:border-orange-300 hover:scale-102'
                                             }`}
                                     >
                                         <Image
@@ -258,40 +259,57 @@ export default function ProductDetailsPage() {
                     </div>
 
                     {/* Product Details */}
-                    <div className="space-y-6">
+                    <div className="space-y-4 sm:space-y-6">
                         {/* Header */}
                         <div>
-                            <Badge variant="outline" className="mb-3">
-                                {product.category}
+                            <Badge variant="outline" className="mb-3 border-orange-200 text-orange-700 bg-orange-50">
+                                {product.category.charAt(0).toUpperCase() + product.category.slice(1)}
                             </Badge>
-                            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2 leading-tight">
                                 {product.name}
                             </h1>
 
                             {/* Rating */}
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className="flex items-center">
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                        <Star
-                                            key={star}
-                                            className="h-4 w-4 fill-yellow-400 text-yellow-400"
-                                        />
-                                    ))}
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-4">
+                                <div className="flex items-center gap-1">
+                                    <div className="flex items-center">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                            <Star
+                                                key={star}
+                                                className="h-4 w-4 fill-yellow-400 text-yellow-400"
+                                            />
+                                        ))}
+                                    </div>
+                                    <span className="text-sm text-gray-600 ml-1">(24 reviews)</span>
                                 </div>
-                                <span className="text-sm text-gray-600">(24 reviews)</span>
+                                <div className="flex items-center gap-2">
+                                    <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
+                                        ✓ Verified Artisan
+                                    </Badge>
+                                    <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">
+                                        🏆 Premium Quality
+                                    </Badge>
+                                </div>
                             </div>
                         </div>
 
                         {/* Price */}
-                        <div className="bg-orange-50 p-4 rounded-lg">
-                            <div className="flex items-center gap-2">
-                                <span className="text-3xl font-bold text-orange-600">
-                                    {formatPrice(product.price)}
-                                </span>
+                        <div className="bg-gradient-to-r from-orange-50 to-amber-50 p-4 sm:p-6 rounded-xl border border-orange-100">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div>
+                                    <span className="text-2xl sm:text-3xl lg:text-4xl font-bold text-orange-600">
+                                        {formatPrice(product.price)}
+                                    </span>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className="text-sm text-gray-500 line-through">₹{Math.round(product.price * 1.3)}</span>
+                                        <Badge className="bg-red-100 text-red-800 text-xs">23% OFF</Badge>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-sm font-medium text-green-600">✓ Free shipping</div>
+                                    <div className="text-xs text-gray-500">On orders over ₹500</div>
+                                </div>
                             </div>
-                            <p className="text-sm text-gray-600 mt-1">
-                                Free shipping on orders over ₹500
-                            </p>
                         </div>
 
                         {/* Availability */}

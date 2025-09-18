@@ -65,15 +65,15 @@ export function StoryRecordingMic({
   const { toast } = useToast();
 
   const sizeClasses = {
-    sm: 'h-8 w-8',
-    md: 'h-10 w-10',
-    lg: 'h-12 w-12'
+    sm: 'h-8 w-8 sm:h-10 sm:w-10',
+    md: 'h-10 w-10 sm:h-12 sm:w-12',
+    lg: 'h-12 w-12 sm:h-14 sm:w-14'
   };
 
   const iconSizes = {
-    sm: 'h-4 w-4',
-    md: 'h-5 w-5',
-    lg: 'h-6 w-6'
+    sm: 'h-4 w-4 sm:h-5 sm:w-5',
+    md: 'h-5 w-5 sm:h-6 sm:w-6',
+    lg: 'h-6 w-6 sm:h-7 sm:w-7'
   };
 
   // Voice options for story narration
@@ -1056,9 +1056,9 @@ export function StoryRecordingMic({
           onClick={checkGoogleCloudStatus}
           size="sm"
           variant="outline"
-          className="absolute -top-12 left-0 text-xs"
+          className="absolute -top-10 sm:-top-12 left-0 text-xs px-2 py-1"
         >
-          🔍 Debug STT
+          🔍 Debug
         </Button>
       )}
       

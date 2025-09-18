@@ -48,10 +48,9 @@ export function Dashboard() {
   }, [language]);
 
   return (
-    <div className="flex flex-col gap-8">
-
-      <div>
-        <h1 className="text-4xl font-headline font-bold">
+    <div className="flex flex-col gap-4 sm:gap-6 lg:gap-8">
+      <div className="px-2 sm:px-0">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-headline font-bold leading-tight">
           {translatedGreeting}, {displayName}!
           {isTranslating && (
             <span className="ml-2 inline-flex items-center">
@@ -59,7 +58,7 @@ export function Dashboard() {
             </span>
           )}
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
           {translatedWelcome}
           {isTranslating && (
             <span className="ml-2 text-xs text-blue-500 animate-pulse">
@@ -68,22 +67,29 @@ export function Dashboard() {
           )}
         </p>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      
+      {/* Responsive grid with better mobile layout */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
         {features.filter(feature => !feature.hidden).map((feature) => (
           <Card key={feature.title.en} className="flex flex-col hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="flex items-center gap-4">
-                <feature.icon className={`size-8 ${feature.color}`} />
-                <CardTitle className="font-headline">{t(feature.title as { [key: string]: string }, language)}</CardTitle>
+            <CardHeader className="pb-3 sm:pb-4">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <feature.icon className={`size-6 sm:size-8 ${feature.color} flex-shrink-0`} />
+                <CardTitle className="font-headline text-sm sm:text-base leading-tight">
+                  {t(feature.title as { [key: string]: string }, language)}
+                </CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="flex-1">
-              <CardDescription>{t(feature.description as { [key: string]: string }, language)}</CardDescription>
+            <CardContent className="flex-1 pt-0 pb-3 sm:pb-4">
+              <CardDescription className="text-xs sm:text-sm leading-relaxed">
+                {t(feature.description as { [key: string]: string }, language)}
+              </CardDescription>
             </CardContent>
-            <div className="p-6 pt-0">
-              <Button asChild variant="outline" className="w-full">
+            <div className="p-3 sm:p-4 lg:p-6 pt-0">
+              <Button asChild variant="outline" className="w-full text-xs sm:text-sm h-8 sm:h-9">
                 <Link href={feature.path}>
-                  {t('open', language)} <ArrowRight className="ml-2" />
+                  <span className="truncate">{t('open', language)}</span>
+                  <ArrowRight className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                 </Link>
               </Button>
             </div>
@@ -91,5 +97,5 @@ export function Dashboard() {
         ))}
       </div>
     </div>
-  );
+  )
 }

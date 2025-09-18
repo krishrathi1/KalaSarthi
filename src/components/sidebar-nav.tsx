@@ -95,9 +95,9 @@ export function SidebarNav() {
   return (
     <>
       <SidebarHeader>
-        <div className="flex items-center gap-2">
-          <Logo className="size-8 text-primary" />
-          <h1 className="font-headline text-xl font-semibold">{translatedAppName}</h1>
+        <div className="flex items-center gap-2 px-2">
+          <Logo className="size-6 sm:size-8 text-primary flex-shrink-0" />
+          <h1 className="font-headline text-lg sm:text-xl font-semibold truncate">{translatedAppName}</h1>
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -119,7 +119,7 @@ export function SidebarNav() {
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter>
-        <p className="px-2 text-xs text-muted-foreground">
+        <p className="px-2 text-xs sm:text-sm text-muted-foreground leading-relaxed">
           {translatedTagline}
         </p>
       </SidebarFooter>

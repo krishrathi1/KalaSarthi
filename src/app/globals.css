@@ -4,24 +4,33 @@
 
 @layer base {
   :root {
-    --background: 43 56% 92%; /* #F2E8D5 */
+    --background: 43 56% 92%;
+    /* #F2E8D5 */
     --foreground: 222.2 84% 4.9%;
-    --card: 43 56% 92%; /* Adjusted to match background */
+    --card: 43 56% 92%;
+    /* Adjusted to match background */
     --card-foreground: 222.2 84% 4.9%;
-    --popover: 43 56% 92%; /* Adjusted to match background */
+    --popover: 43 56% 92%;
+    /* Adjusted to match background */
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 15 69% 62%; /* #E07A5F */
+    --primary: 15 69% 62%;
+    /* #E07A5F */
     --primary-foreground: 210 40% 98%;
-    --secondary: 43 56% 92%; /* Same as background for a clean look */
+    --secondary: 43 56% 92%;
+    /* Same as background for a clean look */
     --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 43 33% 85%; /* Muted version of accent */
+    --muted: 43 33% 85%;
+    /* Muted version of accent */
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 43 33% 85%; /* #D8C3A3 */
+    --accent: 43 33% 85%;
+    /* #D8C3A3 */
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 15 50% 85%; /* Softer border color derived from primary */
-    --input: 15 50% 85%; /* Softer input color */
+    --border: 15 50% 85%;
+    /* Softer border color derived from primary */
+    --input: 15 50% 85%;
+    /* Softer input color */
     --ring: 15 69% 62%;
     --radius: 0.5rem;
     --chart-1: 15 76% 61%;
@@ -29,7 +38,8 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --sidebar-background: 15 25% 35%; /* Darker, desaturated terracotta */
+    --sidebar-background: 15 25% 35%;
+    /* Darker, desaturated terracotta */
     --sidebar-foreground: 43 56% 92%;
     --sidebar-primary: 43 56% 92%;
     --sidebar-primary-foreground: 15 25% 35%;
@@ -79,7 +89,7 @@
   * {
     @apply border-border;
   }
-  
+
   body {
     @apply bg-background text-foreground;
     /* Updated font stack with better rupee symbol support */
@@ -88,13 +98,17 @@
 }
 
 @layer base {
+
   /* Force fonts that properly support Indian Rupee symbol */
   * {
     font-family: 'PT Sans', 'Segoe UI', 'Roboto', 'Arial', 'DejaVu Sans', sans-serif !important;
   }
-  
+
   /* Specific override for currency symbols */
-  body, span, div, p {
+  body,
+  span,
+  div,
+  p {
     font-family: 'Segoe UI', 'Roboto', 'Arial', system-ui, sans-serif !important;
   }
 }
@@ -107,5 +121,142 @@
   
   .currency-display {
     font-feature-settings: 'tnum' 1; /* Tabular numbers for better alignment */
+  }
+}
+
+/* Profile page specific responsive improvements */
+@layer utilities {
+  /* Responsive text truncation */
+  .profile-text-responsive {
+    @apply text-sm sm:text-base;
+    word-break: break-word;
+    hyphens: auto;
+  }
+  
+  /* Responsive card spacing */
+  .profile-card-spacing {
+    @apply p-3 sm:p-4 lg:p-6;
+  }
+  
+  /* Mobile-friendly tabs */
+  .profile-tabs-mobile {
+    @apply text-xs sm:text-sm;
+    min-height: 40px;
+  }
+  
+  /* Responsive grid for profile content */
+  .profile-grid-responsive {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6;
+  }
+}
+
+/* Smart Product Creator responsive improvements */
+@layer utilities {
+  /* Responsive step indicator */
+  .step-indicator-responsive {
+    @apply flex items-center space-x-2 sm:space-x-4 overflow-x-auto pb-2;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .step-indicator-responsive::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Responsive form layouts */
+  .product-form-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6;
+  }
+  
+  /* Mobile-friendly buttons */
+  .mobile-button {
+    @apply w-full sm:w-auto text-sm sm:text-base px-3 sm:px-4 py-2 sm:py-2.5;
+  }
+  
+  /* Responsive image containers */
+  .image-container-responsive {
+    @apply aspect-video w-full min-h-[200px] sm:min-h-[250px] lg:min-h-[300px];
+  }
+  
+  /* Voice workflow responsive */
+  .voice-workflow-responsive {
+    @apply p-2 sm:p-3 lg:p-4 space-y-2 sm:space-y-3;
+  }
+  
+  /* Responsive text sizing */
+  .text-responsive {
+    @apply text-sm sm:text-base;
+  }
+  
+  .text-responsive-lg {
+    @apply text-base sm:text-lg lg:text-xl;
+  }
+  
+  .text-responsive-xl {
+    @apply text-lg sm:text-xl lg:text-2xl;
+  }
+}
+
+/* Marketplace responsive improvements */
+@layer utilities {
+  /* Product card hover effects */
+  .product-card-hover {
+    @apply transition-all duration-500 hover:shadow-2xl hover:-translate-y-2;
+  }
+  
+  /* Category grid responsive */
+  .category-grid-responsive {
+    @apply grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4;
+  }
+  
+  /* Marketplace grid responsive */
+  .marketplace-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6;
+    grid-auto-rows: max-content;
+  }
+  
+  /* Product card compact */
+  .product-card-compact {
+    @apply flex flex-col h-auto;
+  }
+  
+  /* Filter section responsive */
+  .filter-section-responsive {
+    @apply flex flex-col gap-3 sm:gap-4;
+  }
+  
+  /* Search input responsive */
+  .search-input-responsive {
+    @apply h-12 sm:h-14 text-sm sm:text-base;
+  }
+  
+  /* Price display responsive */
+  .price-display-responsive {
+    @apply text-lg sm:text-xl lg:text-2xl font-bold;
+  }
+  
+  /* Badge responsive */
+  .badge-responsive {
+    @apply text-xs sm:text-sm px-2 sm:px-3 py-1;
+  }
+  
+  /* Button responsive */
+  .button-responsive {
+    @apply text-sm sm:text-base px-3 sm:px-4 py-2 sm:py-2.5;
+  }
+}
+
+/* Custom slider styles for price range */
+@layer utilities {
+  .slider {
+    @apply appearance-none bg-gray-200 rounded-lg cursor-pointer;
+  }
+  
+  .slider::-webkit-slider-thumb {
+    @apply appearance-none w-5 h-5 bg-orange-500 rounded-full cursor-pointer shadow-lg;
+  }
+  
+  .slider::-moz-range-thumb {
+    @apply w-5 h-5 bg-orange-500 rounded-full cursor-pointer border-0 shadow-lg;
   }
 }

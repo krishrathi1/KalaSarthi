@@ -99,13 +99,13 @@ const AuthPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background py-12 px-4">
-      <div className="container mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-headline font-bold text-foreground mb-4">
+    <div className="min-h-screen bg-background py-6 sm:py-8 lg:py-12 px-4">
+      <div className="container mx-auto max-w-md sm:max-w-lg lg:max-w-2xl">
+        <div className="text-center mb-8 sm:mb-10 lg:mb-12">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-headline font-bold text-foreground mb-2 sm:mb-4">
             KalaSarthi
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-base sm:text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed px-2">
             Your AI-powered artisan marketplace. Connect with talented craftspeople and discover authentic handmade treasures.
           </p>
         </div>
@@ -113,16 +113,16 @@ const AuthPage: React.FC = () => {
         {authStep === 'login' && (
           <>
             <PhoneAuth onAuthSuccess={handleAuthSuccess} />
-            <div className="mt-8 p-4 bg-muted rounded-lg max-w-md mx-auto">
-              <h3 className="text-sm font-semibold mb-3 text-center">Test Credentials</h3>
-              <div className="space-y-2 text-xs text-muted-foreground text-center">
+            <div className="mt-6 sm:mt-8 p-3 sm:p-4 bg-muted rounded-lg max-w-sm sm:max-w-md mx-auto">
+              <h3 className="text-sm sm:text-base font-semibold mb-3 text-center">Test Credentials</h3>
+              <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm text-muted-foreground text-center">
                 <div>
                   <span className="block mb-1">Phone Number:</span>
-                  <code className="bg-background px-2 py-1 rounded text-sm">+919876543210</code>
+                  <code className="bg-background px-2 py-1 rounded text-xs sm:text-sm">+919876543210</code>
                 </div>
                 <div>
                   <span className="block mb-1">OTP:</span>
-                  <code className="bg-background px-2 py-1 rounded text-sm">123456</code>
+                  <code className="bg-background px-2 py-1 rounded text-xs sm:text-sm">123456</code>
                 </div>
               </div>
             </div>

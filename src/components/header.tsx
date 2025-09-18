@@ -229,130 +229,150 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-8">
+    <header className="sticky top-0 z-10 flex h-14 sm:h-16 items-center gap-2 sm:gap-4 border-b bg-background/80 backdrop-blur-sm px-2 sm:px-4 md:px-8">
       <SidebarTrigger className="md:hidden" />
-      <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
-        <GlobalTranslationToggle />
+      <div className="flex w-full items-center gap-1 sm:gap-2 md:ml-auto md:gap-2 lg:gap-4">
 
-        {/* Offline Status */}
-        <SimpleOfflineStatus className="hidden md:flex" />
+        {/* Translation Toggle - Always visible but compact on mobile */}
+        <div className="flex-shrink-0">
+          <GlobalTranslationToggle />
+        </div>
 
-        {/* Cart and Wishlist buttons - show for all authenticated users */}
-        <CartWishlistButton
-          icon={ShoppingCart}
-          count={cartCount}
-          onClick={handleCartClick}
-          tooltip="Shopping Cart"
-        />
-        <CartWishlistButton
-          icon={Heart}
-          count={wishlistCount}
-          onClick={handleWishlistClick}
-          tooltip="Wishlist"
-        />
+        {/* Offline Status - Hidden on mobile */}
+        <SimpleOfflineStatus className="hidden lg:flex" />
 
-        <IntelligentVoiceButton
-          size="md"
-          context="header"
-        />
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={open}
-              className="w-[200px] justify-between"
-            >
-              {language
-                ? (languages[language as keyof typeof languages]?.name || language)
-                : "Select language..."}
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[250px] p-0">
-            <Command>
-              <CommandInput
-                placeholder="Search or type language..."
-                value={searchValue}
-                onValueChange={setSearchValue}
-              />
-              <CommandList>
-                <CommandEmpty>
-                  {searchValue && (
-                    <CommandItem
-                      onSelect={() => {
-                        // Handle custom language input
-                        const customCode = searchValue.toLowerCase();
-                        if (customCode in languages) {
-                          setLanguage(customCode as LanguageCode);
-                        } else {
-                          // For custom, try to map common codes or fallback to en
-                          const mappedCode = mapCustomLanguage(customCode);
-                          setLanguage(mappedCode);
-                        }
-                        setOpen(false);
-                      }}
-                    >
-                      Use "{searchValue}" as custom language
-                    </CommandItem>
-                  )}
-                </CommandEmpty>
-                <CommandGroup heading="Indian Languages">
-                  {indianLanguages.map(([code, lang]) => (
-                    <CommandItem
-                      key={code}
-                      value={lang.name}
-                      onSelect={() => {
-                        setLanguage(code as LanguageCode);
-                        setOpen(false);
-                      }}
-                    >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          language === code ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                      {lang.name}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-                <CommandGroup heading="Foreign Languages">
-                  {foreignLanguages.map(([code, lang]) => (
-                    <CommandItem
-                      key={code}
-                      value={lang.name}
-                      onSelect={() => {
-                        setLanguage(code as LanguageCode);
-                        setOpen(false);
-                      }}
-                    >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          language === code ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                      {lang.name}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
-        <div className="flex-1 sm:flex-initial max-w-fit">
+        {/* Cart and Wishlist - Always visible, compact on mobile */}
+        <div className="flex gap-1 sm:gap-2 flex-shrink-0">
+          <CartWishlistButton
+            icon={ShoppingCart}
+            count={cartCount}
+            onClick={handleCartClick}
+            tooltip="Shopping Cart"
+          />
+          <CartWishlistButton
+            icon={Heart}
+            count={wishlistCount}
+            onClick={handleWishlistClick}
+            tooltip="Wishlist"
+          />
+        </div>
+
+        {/* Voice Button - Always visible */}
+        <div className="flex flex-shrink-0">
+          <IntelligentVoiceButton
+            size="md"
+            context="header"
+          />
+        </div>
+
+        {/* Language Selector - Responsive width */}
+        <div className="hidden md:flex flex-shrink-0">
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={open}
+                className="w-[120px] lg:w-[180px] justify-between text-xs sm:text-sm"
+              >
+                <span className="truncate">
+                  {language
+                    ? (languages[language as keyof typeof languages]?.name || language)
+                    : "Lang"}
+                </span>
+                <ChevronsUpDown className="ml-1 h-3 w-3 sm:ml-2 sm:h-4 sm:w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[250px] p-0">
+              <Command>
+                <CommandInput
+                  placeholder="Search or type language..."
+                  value={searchValue}
+                  onValueChange={setSearchValue}
+                />
+                <CommandList>
+                  <CommandEmpty>
+                    {searchValue && (
+                      <CommandItem
+                        onSelect={() => {
+                          // Handle custom language input
+                          const customCode = searchValue.toLowerCase();
+                          if (customCode in languages) {
+                            setLanguage(customCode as LanguageCode);
+                          } else {
+                            // For custom, try to map common codes or fallback to en
+                            const mappedCode = mapCustomLanguage(customCode);
+                            setLanguage(mappedCode);
+                          }
+                          setOpen(false);
+                        }}
+                      >
+                        Use "{searchValue}" as custom language
+                      </CommandItem>
+                    )}
+                  </CommandEmpty>
+                  <CommandGroup heading="Indian Languages">
+                    {indianLanguages.map(([code, lang]) => (
+                      <CommandItem
+                        key={code}
+                        value={lang.name}
+                        onSelect={() => {
+                          setLanguage(code as LanguageCode);
+                          setOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            language === code ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {lang.name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                  <CommandGroup heading="Foreign Languages">
+                    {foreignLanguages.map(([code, lang]) => (
+                      <CommandItem
+                        key={code}
+                        value={lang.name}
+                        onSelect={() => {
+                          setLanguage(code as LanguageCode);
+                          setOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            language === code ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {lang.name}
+                      </CommandItem>
+
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {/* User Info - Hidden on mobile, visible on larger screens */}
+        <div className="hidden lg:flex flex-1 sm:flex-initial max-w-fit">
           <div className="relative font-headline text-right">
-            <p className="font-semibold">{getDisplayName()}</p>
-            <p className="text-sm text-muted-foreground">{translatedTitle}</p>
+            <p className="font-semibold text-sm">{getDisplayName()}</p>
+            <p className="text-xs text-muted-foreground">{translatedTitle}</p>
           </div>
         </div>
+
+        {/* User avatar dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-              <Avatar>
+            <Button variant="ghost" className="relative h-8 w-8 sm:h-10 sm:w-10 rounded-full flex-shrink-0">
+              <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
                 <AvatarImage src={getUserAvatar() || undefined} alt={getDisplayName()} />
-                <AvatarFallback>{getUserInitials()}</AvatarFallback>
+                <AvatarFallback className="text-xs sm:text-sm">{getUserInitials()}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
@@ -366,6 +386,102 @@ export function Header() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+
+
+
+            {/* Language selector for mobile */}
+            <div className="md:hidden">
+              <DropdownMenuItem asChild>
+                <Popover open={open} onOpenChange={setOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      role="combobox"
+                      aria-expanded={open}
+                      className="w-full justify-start h-auto p-2"
+                    >
+                      <span className="mr-2">🌐</span>
+                      <span>
+                        Language: {language
+                          ? (languages[language as keyof typeof languages]?.name || language)
+                          : "Select"}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[250px] p-0">
+                    <Command>
+                      <CommandInput
+                        placeholder="Search or type language..."
+                        value={searchValue}
+                        onValueChange={setSearchValue}
+                      />
+                      <CommandList>
+                        <CommandEmpty>
+                          {searchValue && (
+                            <CommandItem
+                              onSelect={() => {
+                                const customCode = searchValue.toLowerCase();
+                                if (customCode in languages) {
+                                  setLanguage(customCode as LanguageCode);
+                                } else {
+                                  const mappedCode = mapCustomLanguage(customCode);
+                                  setLanguage(mappedCode);
+                                }
+                                setOpen(false);
+                              }}
+                            >
+                              Use "{searchValue}" as custom language
+                            </CommandItem>
+                          )}
+                        </CommandEmpty>
+                        <CommandGroup heading="Indian Languages">
+                          {indianLanguages.map(([code, lang]) => (
+                            <CommandItem
+                              key={code}
+                              value={lang.name}
+                              onSelect={() => {
+                                setLanguage(code as LanguageCode);
+                                setOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  language === code ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {lang.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                        <CommandGroup heading="Foreign Languages">
+                          {foreignLanguages.map(([code, lang]) => (
+                            <CommandItem
+                              key={code}
+                              value={lang.name}
+                              onSelect={() => {
+                                setLanguage(code as LanguageCode);
+                                setOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  language === code ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {lang.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </div>
+
             <DropdownMenuItem onClick={handleViewProfile}>
               <User className="mr-2 h-4 w-4" />
               <span>Profile</span>

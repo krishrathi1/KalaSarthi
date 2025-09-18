@@ -17,6 +17,10 @@ interface ProductCardProps {
 export default function ProductCard({ product }: ProductCardProps) {
     const [isWishlisted, setIsWishlisted] = useState(false);
     const [imageError, setImageError] = useState(false);
+    
+    // Determine if product is trending (example logic - you can adjust this)
+    const isTrending = Math.random() > 0.7; // 30% chance to be trending
+    const isNew = new Date(product.createdAt).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000;
 
     const handleWishlistToggle = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -34,128 +38,149 @@ export default function ProductCard({ product }: ProductCardProps) {
 
     return (
         <Link href={`/marketplace/products/${product.productId}`}>
-            <Card className="group overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white border-0 shadow-md h-full flex flex-col">
+            <Card className="group overflow-hidden hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 bg-white border border-gray-100 shadow-lg flex flex-col rounded-xl h-full">
                 {/* Product Image */}
-                <div className="relative aspect-square overflow-hidden">
+                <div className="relative aspect-square overflow-hidden rounded-t-xl">
                     {product.images && product.images.length > 0 && !imageError ? (
                         <Image
                             src={product.images[0]}
                             alt={product.name}
                             fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-300"
-                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                            className="object-cover group-hover:scale-110 transition-transform duration-500"
+                            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                             onError={() => setImageError(true)}
                         />
                     ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                            <Package className="h-16 w-16 text-gray-400" />
+                        <div className="w-full h-full bg-gradient-to-br from-orange-50 to-amber-100 flex items-center justify-center">
+                            <Package className="h-12 w-12 sm:h-16 sm:w-16 text-orange-300" />
                         </div>
                     )}
 
                     {/* Wishlist Button */}
                     <button
                         onClick={handleWishlistToggle}
-                        className="absolute top-3 right-3 p-2 bg-white/90 hover:bg-white rounded-full shadow-md transition-all duration-200 opacity-0 group-hover:opacity-100"
+                        className="absolute top-2 sm:top-3 right-2 sm:right-3 p-1.5 sm:p-2 bg-white/95 hover:bg-white rounded-full shadow-lg transition-all duration-300 opacity-0 group-hover:opacity-100 hover:scale-110"
                     >
                         <Heart
-                            className={`h-4 w-4 transition-colors ${isWishlisted ? 'fill-red-500 text-red-500' : 'text-gray-600'
+                            className={`h-3 w-3 sm:h-4 sm:w-4 transition-colors ${isWishlisted ? 'fill-red-500 text-red-500' : 'text-gray-600'
                                 }`}
                         />
                     </button>
 
                     {/* Availability Badge */}
                     {!product.inventory.isAvailable && (
-                        <div className="absolute top-3 left-3">
-                            <Badge variant="destructive" className="text-xs">
+                        <div className="absolute top-2 sm:top-3 left-2 sm:left-3">
+                            <Badge variant="destructive" className="text-xs px-2 py-1 rounded-full">
                                 Out of Stock
                             </Badge>
                         </div>
                     )}
 
+                    {/* Trending/New Badges */}
+                    {(isTrending || isNew) && (
+                        <div className="absolute top-2 sm:top-3 left-2 sm:left-3 flex flex-col gap-1">
+                            {isTrending && (
+                                <Badge className="text-xs px-2 py-1 rounded-full bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white shadow-lg">
+                                    🔥 Trending
+                                </Badge>
+                            )}
+                            {isNew && !isTrending && (
+                                <Badge className="text-xs px-2 py-1 rounded-full bg-green-500 hover:bg-green-600 text-white shadow-lg">
+                                    ✨ New
+                                </Badge>
+                            )}
+                        </div>
+                    )}
+
                     {/* Quick View Button */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                        <Button variant="secondary" size="sm" className="shadow-lg">
-                            <Eye className="h-4 w-4 mr-2" />
-                            Quick View
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-end justify-center pb-4">
+                        <Button variant="secondary" size="sm" className="shadow-xl bg-white/95 hover:bg-white text-gray-900 rounded-full px-4">
+                            <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                            <span className="text-xs sm:text-sm">Quick View</span>
                         </Button>
                     </div>
                 </div>
 
-                <CardContent className="p-4 space-y-3 flex-1 flex flex-col">
+                <CardContent className="p-3 space-y-2 flex-1 flex flex-col">
                     {/* Category Badge */}
-                    <Badge variant="outline" className="text-xs w-fit">
-                        {product.category}
+                    <Badge variant="outline" className="text-xs w-fit border-orange-200 text-orange-700 bg-orange-50">
+                        {product.category.charAt(0).toUpperCase() + product.category.slice(1)}
                     </Badge>
 
-                    {/* Product Name - Fixed height */}
-                    <h3 className="font-semibold text-lg line-clamp-2 group-hover:text-orange-600 transition-colors min-h-[3.5rem] flex items-start">
+                    {/* Product Name - Reduced height */}
+                    <h3 className="font-semibold text-sm sm:text-base line-clamp-2 group-hover:text-orange-600 transition-colors leading-tight">
                         {product.name}
                     </h3>
 
-                    {/* Description - Fixed height */}
-                    <p className="text-gray-600 line-clamp-2 text-sm min-h-[2.5rem] flex items-start">
+                    {/* Description - Reduced height */}
+                    <p className="text-gray-600 line-clamp-2 text-xs leading-relaxed">
                         {product.description}
                     </p>
 
-                    {/* Tags - Fixed height */}
-                    <div className="min-h-[1.75rem] flex items-start">
-                        {product.tags && product.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                                {product.tags.slice(0, 2).map((tag, index) => (
-                                    <Badge key={index} variant="secondary" className="text-xs">
-                                        {tag}
-                                    </Badge>
-                                ))}
-                                {product.tags.length > 2 && (
-                                    <Badge variant="secondary" className="text-xs">
-                                        +{product.tags.length - 2}
-                                    </Badge>
-                                )}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Spacer to push content to bottom */}
-                    <div className="flex-1" />
-
-                    {/* Price and Availability */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                            <span className="font-bold text-lg text-orange-600">
-                                {formatPrice(product.price)}
-                            </span>
+                    {/* Tags - Compact */}
+                    {product.tags && product.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                            {product.tags.slice(0, 2).map((tag, index) => (
+                                <Badge key={index} variant="secondary" className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 hover:bg-gray-200">
+                                    {tag}
+                                </Badge>
+                            ))}
+                            {product.tags.length > 2 && (
+                                <Badge variant="secondary" className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600">
+                                    +{product.tags.length - 2}
+                                </Badge>
+                            )}
                         </div>
-                        <span className="text-gray-500 text-sm">
-                            {product.inventory.quantity} available
+                    )}
+
+                    {/* Spacer - Reduced */}
+                    <div className="flex-1 min-h-[0.5rem]" />
+
+                    {/* Rating and Stock - Compact */}
+                    <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1">
+                            <div className="flex items-center">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <Star
+                                        key={star}
+                                        className="h-3 w-3 fill-yellow-400 text-yellow-400"
+                                    />
+                                ))}
+                            </div>
+                            <span className="text-gray-500 ml-1">(24)</span>
+                        </div>
+                        <span className="text-gray-500">
+                            {product.inventory.quantity} left
                         </span>
                     </div>
 
-                    {/* Rating (placeholder for now) */}
-                    <div className="flex items-center gap-1">
-                        <div className="flex items-center">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                                <Star
-                                    key={star}
-                                    className="h-3 w-3 fill-yellow-400 text-yellow-400"
-                                />
-                            ))}
+                    {/* Price - Compact */}
+                    <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-2">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <span className="font-bold text-base sm:text-lg text-orange-600">
+                                    {formatPrice(product.price)}
+                                </span>
+                                <div className="text-xs text-gray-500">Free shipping</div>
+                            </div>
+                            <div className="text-right text-xs">
+                                <div className="text-gray-500">Handmade</div>
+                                <div className="text-green-600 font-medium">✓ Authentic</div>
+                            </div>
                         </div>
-                        <span className="text-xs text-gray-500 ml-1">(24 reviews)</span>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex gap-2 pt-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            onClick={handleAddToCart}
-                            disabled={!product.inventory.isAvailable}
-                        >
-                            <ShoppingBag className="h-4 w-4 mr-1" />
-                            Add to Cart
-                        </Button>
-                    </div>
+                    {/* Action Buttons - Compact */}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full border-orange-200 text-orange-600 hover:bg-orange-50 hover:border-orange-300 transition-all duration-200 h-8"
+                        onClick={handleAddToCart}
+                        disabled={!product.inventory.isAvailable}
+                    >
+                        <ShoppingBag className="h-3 w-3 mr-1" />
+                        <span className="text-xs">Add to Cart</span>
+                    </Button>
                 </CardContent>
             </Card>
         </Link>
