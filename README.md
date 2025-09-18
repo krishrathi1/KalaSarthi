@@ -1,25 +1,78 @@
-# KalaSarthi - Your Artisan's Digital Twin
+KalaSarthi: AI-Powered Marketplace for Indian Artisans
+https://via.placeholder.com/150x150.png?text=KS
+Empowering Tradition with Technology
 
-This is a Next.js application for **KalaSarthi**, an AI-Powered Marketplace-as-a-Service (MaaS) designed to empower Indian artisans.
+Overview
+KalaSarthi is an AI-driven platform revolutionizing India's handicraft industry by bridging traditional artisans with modern digital commerce. We empower artisans with AI tools, multilingual support, and government scheme integration while preserving cultural authenticity.
 
-This project was created for the Google GenAI Exchange Program Hackathon 2025.
+Key Features
+🎤 Voice-Based Navigation & Offline Accessibility
+Voice commands in multiple Indian languages
 
-## Core Features (MVP)
+Lightweight offline modules for limited connectivity
 
-1.  **AI Digital Twin**: A multilingual AI agent trained on an artisan’s products, stories, and style, ready to answer buyer queries 24/7.
-2.  **Heritage Storytelling**: A multimodal AI tool that auto-generates product stories, captions, and reels in multiple languages from artisan photos/videos.
-3.  **Cultural Trend Mapper**: An AI that analyzes fashion/home décor trends to suggest modern variations of traditional crafts.
-4.  **Buyer-Artisan Matchmaking**: An AI system that connects artisans with the right buyers based on preferences and cultural context.
+Inclusive design for varying digital literacy
 
-## Getting Started
+🖼️ Product Creator
+Automatically generates product stories from photos
 
-1.  Install dependencies:
-    ```bash
-    npm install
-    ```
-2.  Run the development server:
-    ```bash
-    npm run dev
-    ```
+Creates social media content with cultural authenticity
 
-Open [http://localhost:9002](http://localhost:9002) with your browser to see the result.
+Supports Hindi, English, and regional languages
+
+📈 TrendSpotter with Design Generator
+Scrapes e-commerce data for market insights
+
+Provides actionable trend recommendations
+
+Generates dynamic product mockups and visuals
+
+🤖 Artisan Buddy
+Multilingual conversational AI (Google Gemini)
+
+24/7 buyer support with cultural context
+
+Personalized recommendations via text and voice
+
+ Smart Buyer-Artisan Matchmaking
+AI scoring algorithms for optimal connections
+
+Preference-based matching system
+
+Location-aware logistics support
+
+🏛️ Scheme Sahayak
+Simplifies access to government schemes
+
+Eligibility assessment and application guidance
+
+Benefit tracking and renewal reminders
+
+🌐 Multilingual Accessibility
+Real-time translation across Indian languages
+
+Culturally adaptive communication
+
+Speech-to-text/text-to-speech capabilities
+
+Impact
+For Artisans:
+
+Increased Visibility & Reach: Access to a global marketplace through AI-powered promotion and generative AI tools that create compelling digital content to expand their presence across multiple platforms.
+
+Higher Earnings: Better pricing through intelligent trend analysis and smart recommendations.
+
+Access to Government Benefits: Simplified access to financial support and recognition through Scheme Sahayak.
+
+Skill Preservation & Modernization: Tools to adapt traditional crafts for contemporary markets while maintaining authentic techniques.
+
+Digital Literacy & Inclusion: User-friendly, voice-first interface reduces technology barriers.
+
+For Buyers: Authentic, personalized, and verified cultural experiences with direct connections to artisans.
+
+For the Economy: Job creation, cultural preservation, export potential, and digital inclusion for rural communities.
+
+For Buyers: Authentic, personalized cultural experiences
+
+For Economy: Job creation, cultural preservation, digital inclusion
+
