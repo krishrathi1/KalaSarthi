@@ -103,7 +103,7 @@ const AuthPage: React.FC = () => {
       <div className="container mx-auto">
         <div className="text-center mb-12">
           <h1 className="text-5xl font-headline font-bold text-foreground mb-4">
-            KalaMitra
+            KalaSarthi
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Your AI-powered artisan marketplace. Connect with talented craftspeople and discover authentic handmade treasures.

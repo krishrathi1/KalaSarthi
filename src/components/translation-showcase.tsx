@@ -8,7 +8,7 @@ export function TranslationShowcase() {
   const [showOriginal, setShowOriginal] = useState(true);
 
   const sampleTexts = [
-    "Welcome to KalaMitra - Your Artisan Digital Twin",
+    "Welcome to KalaSarthi - Your Artisan Digital Twin",
     "Empowering artisans with AI-powered tools",
     "From traditional crafts to modern marketplaces",
     "Supporting 40+ languages including regional dialects",

@@ -247,7 +247,7 @@ const UserRegistrationForm: React.FC<UserRegistrationFormProps> = ({
                 <Card className="border-0 shadow-xl bg-card/95 backdrop-blur">
                     <CardHeader className="text-center pb-8">
                         <CardTitle className="text-3xl font-headline text-foreground mb-2">
-                            Welcome to KalaMitra
+                            Welcome to KalaSarthi
                         </CardTitle>
                         <CardDescription className="text-lg text-muted-foreground">
                             Choose your role to get started on your artisan journey

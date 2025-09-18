@@ -5,46 +5,53 @@ This directory contains authentication and authorization components for the Kala
 ## Components
 
 ### AuthGuard
+
 The main authentication guard that protects routes based on user authentication status and role.
 
 **Features:**
-- Redirects unauthenticated users to `/auth` for protected routes
-- Redirects authenticated users away from auth pages to `/dashboard`
-- Role-based route protection (artisan vs buyer)
-- Shows loading states during authentication checks
-- Handles incomplete user profiles
+
+* Redirects unauthenticated users to `/auth` for protected routes
+* Redirects authenticated users away from auth pages to `/dashboard`
+* Role-based route protection (artisan vs buyer)
+* Shows loading states during authentication checks
+* Handles incomplete user profiles
 
 **Route Categories:**
 
 **Public Routes:**
-- `/auth` - Authentication page
+
+* `/auth` - Authentication page
 
 **Artisan Access:**
-- **Full Access** - Artisans can access ALL routes in the application
+
+* **Full Access** - Artisans can access ALL routes in the application
 
 **Buyer Restrictions:**
-- **Restricted Routes** (Buyers cannot access):
-  - `/artisan-buddy` - Digital twin chat for artisans
-  - `/arth-saarthi` - Government scheme advisor
-  - `/price-engine` - Pricing suggestions
-  - `/smart-product-creator` - Smart product creation with AI
-  - `/yojana-mitra` - Scheme recommendations
+
+* **Restricted Routes** (Buyers cannot access):
+  * `/artisan-buddy` - Digital twin chat for artisans
+  * `/arth-saarthi` - Government scheme advisor
+  * `/price-engine` - Pricing suggestions
+  * `/smart-product-creator` - Smart product creation with AI
+  * `/yojana-mitra` - Scheme recommendations
 
 **Shared Routes (Both Roles):**
-- `/dashboard` - Main dashboard
-- `/matchmaking` - Artisan-buyer matching
-- `/multi-marketplace` - Marketplace access
-- `/trend-mapper` - Market trends
-- `/trust-layer` - Trust and verification
-- `/profile` - User profile
-- `/settings` - User settings
-- `/browse` - Browse products
-- `/search` - Search functionality
-- `/orders` - Order management
+
+* `/dashboard` - Main dashboard
+* `/matchmaking` - Artisan-buyer matching
+* `/multi-marketplace` - Marketplace access
+* `/trend-mapper` - Market trends
+* `/trust-layer` - Trust and verification
+* `/profile` - User profile
+* `/settings` - User settings
+* `/browse` - Browse products
+* `/search` - Search functionality
+* `/orders` - Order management
 
 ### Role-Specific Guards
 
 #### ArtisanGuard
+
 Restricts access to artisan-only features.
 
 ```tsx
@@ -60,6 +67,7 @@ export default function ArtisanOnlyPage() {
 ```
 
 #### BuyerGuard
+
 Restricts access to buyer-only features.
 
 ```tsx
@@ -75,6 +83,7 @@ export default function BuyerOnlyPage() {
 ```
 
 #### AdminGuard
+
 Restricts access to admin-only features.
 
 ```tsx
@@ -159,6 +168,7 @@ function MyComponent() {
 
 ## Authentication Flow
 
+
 1. User visits any route
 2. `AuthGuard` checks authentication status
 3. If not authenticated → redirects to `/auth`
@@ -169,10 +179,10 @@ function MyComponent() {
 
 ## Role-Based Redirects
 
-- **Artisan** → Full access to all routes ✅
-- **Buyer** accessing artisan tools → redirected to `/dashboard` ❌
-- **Unauthenticated** user → redirected to `/auth`
-- **Authenticated** user on `/auth` → redirected to `/dashboard`
+* **Artisan** → Full access to all routes ✅
+* **Buyer** accessing artisan tools → redirected to `/dashboard` ❌
+* **Unauthenticated** user → redirected to `/auth`
+* **Authenticated** user on `/auth` → redirected to `/dashboard`
 
 ## Customization
 
@@ -192,8 +202,10 @@ const buyerRestrictedRoutes = [
 
 ## Notes
 
-- Simple and lightweight implementation
-- Automatic role-based protection
-- Clear access denied messages
-- Utility functions for programmatic checks
-- All routes default to "shared" unless explicitly categorized
+* Simple and lightweight implementation
+* Automatic role-based protection
+* Clear access denied messages
+* Utility functions for programmatic checks
+* All routes default to "shared" unless explicitly categorized
+
+

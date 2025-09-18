@@ -8,7 +8,7 @@ import { useLanguage } from '@/context/language-context';
 
 export function TranslationTest() {
   const { language } = useLanguage();
-  const [testText, setTestText] = useState('Hello, welcome to KalaMitra!');
+  const [testText, setTestText] = useState('Hello, welcome to KalaSarthi!');
   const [translatedText, setTranslatedText] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
   const [isFilling, setIsFilling] = useState(false);

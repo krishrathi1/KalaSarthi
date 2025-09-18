@@ -66,7 +66,7 @@ console.log('₽'.charCodeAt(0)); // Should show 8381
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="KalaMitra" />
+        <meta name="apple-mobile-web-app-title" content="KalaSarthi" />
         <link rel="apple-touch-icon" href="/icon-192x192.svg" />
         <link rel="icon" type="image/svg+xml" sizes="192x192" href="/icon-192x192.svg" />
         <link rel="icon" type="image/svg+xml" sizes="512x512" href="/icon-512x512.svg" />
