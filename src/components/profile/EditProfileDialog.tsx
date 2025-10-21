@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, ChangeEvent } from 'react';
 import { UserProfile, useAuth } from '@/context/auth-context';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 import {
     Dialog,
     DialogContent,
@@ -19,8 +20,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Upload, User as UserIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface EditProfileDialogProps {
     userProfile: UserProfile;
@@ -36,6 +38,9 @@ export default function EditProfileDialog({
     const { refreshUserProfile } = useAuth();
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string>(userProfile.profileImage || '');
+    const [uploadingImage, setUploadingImage] = useState<boolean>(false);
     const [formData, setFormData] = useState({
         name: userProfile.name || '',
         email: userProfile.email || '',
@@ -69,17 +74,79 @@ export default function EditProfileDialog({
         }));
     };
 
+    const handleImageChange = async (e: ChangeEvent<HTMLInputElement>): Promise<void> => {
+        const file = e.target.files?.[0];
+        if (file) {
+            // Validate file size (max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                toast({
+                    title: 'File too large',
+                    description: 'Image size should be less than 5MB',
+                    variant: 'destructive',
+                });
+                return;
+            }
+
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                toast({
+                    title: 'Invalid file type',
+                    description: 'Please select a valid image file',
+                    variant: 'destructive',
+                });
+                return;
+            }
+
+            setImageFile(file);
+            setImagePreview(URL.createObjectURL(file));
+        }
+    };
+
+    const uploadProfileImage = async (): Promise<string | null> => {
+        if (!imageFile) return null;
+
+        setUploadingImage(true);
+        try {
+            const result = await uploadToCloudinary(imageFile, {
+                folder: 'profile-images',
+                tags: ['profile', 'user'],
+                public_id: `${userProfile.uid}_${Date.now()}`
+            });
+            return result.secure_url;
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            throw error;
+        } finally {
+            setUploadingImage(false);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
 
         try {
+            let profileImageUrl = formData.profileImage;
+
+            // Upload new image if one was selected
+            if (imageFile) {
+                const uploadedUrl = await uploadProfileImage();
+                if (uploadedUrl) {
+                    profileImageUrl = uploadedUrl;
+                }
+            }
+
+            const updatedFormData = {
+                ...formData,
+                profileImage: profileImageUrl,
+            };
+
             const response = await fetch(`/api/users/${userProfile.uid}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(updatedFormData),
             });
 
             const result = await response.json();
@@ -121,7 +188,45 @@ export default function EditProfileDialog({
                     {/* Basic Information */}
                     <div className="space-y-4">
                         <h3 className="text-lg font-medium">Basic Information</h3>
-                        
+
+                        {/* Profile Image Upload */}
+                        <div className="space-y-4">
+                            <Label>Profile Image</Label>
+                            <div className="flex flex-col items-center space-y-4">
+                                <div className="relative">
+                                    <Avatar className="w-24 h-24 border-4 border-primary/20">
+                                        <AvatarImage src={imagePreview} alt="Profile preview" />
+                                        <AvatarFallback className="bg-muted">
+                                            <UserIcon className="w-8 h-8 text-muted-foreground" />
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    {uploadingImage && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
+                                            <Loader2 className="w-6 h-6 text-white animate-spin" />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex flex-col items-center">
+                                    <Label htmlFor="profile-image-edit" className="cursor-pointer">
+                                        <div className="flex items-center space-x-2 px-4 py-2 bg-secondary hover:bg-secondary/80 rounded-md transition-colors">
+                                            <Upload className="w-4 h-4" />
+                                            <span className="text-sm">Upload New Photo</span>
+                                        </div>
+                                    </Label>
+                                    <input
+                                        id="profile-image-edit"
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleImageChange}
+                                        className="hidden"
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Max 5MB • JPG, PNG
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <Label htmlFor="name">Full Name *</Label>
@@ -175,21 +280,13 @@ export default function EditProfileDialog({
                             />
                         </div>
 
-                        <div>
-                            <Label htmlFor="profileImage">Profile Image URL</Label>
-                            <Input
-                                id="profileImage"
-                                value={formData.profileImage}
-                                onChange={(e) => handleInputChange('profileImage', e.target.value)}
-                                placeholder="https://example.com/your-image.jpg"
-                            />
-                        </div>
+                        
                     </div>
 
                     {/* Address Information */}
                     <div className="space-y-4">
                         <h3 className="text-lg font-medium">Address Information</h3>
-                        
+
                         <div>
                             <Label htmlFor="street">Street Address</Label>
                             <Input

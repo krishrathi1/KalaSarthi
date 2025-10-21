@@ -1,8 +1,7 @@
 'use client'
 import { useState, ChangeEvent, FormEvent } from 'react';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { User } from 'firebase/auth';
-import { storage } from '@/lib/firebase';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -131,10 +130,12 @@ const UserRegistrationForm: React.FC<UserRegistrationFormProps> = ({
 
         setUploadingImage(true);
         try {
-            const imageRef = ref(storage, `profile-images/${user.uid}/${Date.now()}-${imageFile.name}`);
-            const snapshot = await uploadBytes(imageRef, imageFile);
-            const downloadURL = await getDownloadURL(snapshot.ref);
-            return downloadURL;
+            const result = await uploadToCloudinary(imageFile, {
+                folder: 'profile-images',
+                tags: ['profile', 'user'],
+                public_id: `${user.uid}_${Date.now()}`
+            });
+            return result.secure_url;
         } catch (error) {
             console.error('Error uploading image:', error);
             throw error;
