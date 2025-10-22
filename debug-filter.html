@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug CSS Filter on Base64 Image</title>
+    <style>
+        .container {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+        }
+        .image-box {
+            text-align: center;
+        }
+        .test-image {
+            width: 300px;
+            height: 300px;
+            object-fit: cover;
+            border: 2px solid #ccc;
+            margin-bottom: 10px;
+        }
+        .red-filter {
+            filter: hue-rotate(0deg) saturate(3.0) brightness(1.2) contrast(1.4) sepia(0.3) saturate(2.5) contrast(1.5) brightness(1.2);
+        }
+    </style>
+</head>
+<body>
+    <h1>Debug: CSS Filter on Base64 Image</h1>
+    <p>Paste your base64 image data below and see if the red filter works:</p>
+    
+    <div class="container">
+        <div class="image-box">
+            <img id="original" class="test-image" alt="Original">
+            <p>Original Image</p>
+        </div>
+        <div class="image-box">
+            <img id="filtered" class="test-image red-filter" alt="Red Filtered">
+            <p>With Red Filter</p>
+        </div>
+    </div>
+
+    <textarea id="base64Input" placeholder="Paste your base64 image data here (data:image/jpeg;base64,...)" style="width: 100%; height: 100px;"></textarea>
+    <button onclick="loadImage()">Load Image</button>
+
+    <script>
+        function loadImage() {
+            const base64 = document.getElementById('base64Input').value;
+            if (base64) {
+                document.getElementById('original').src = base64;
+                document.getElementById('filtered').src = base64;
+            }
+        }
+    </script>
+</body>
+</html>

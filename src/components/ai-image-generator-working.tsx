@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 
-export function AIImageGeneratorWorking() {
+function AIImageGeneratorWorking() {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -70,6 +70,7 @@ export function AIImageGeneratorWorking() {
 
             // Create AI-generated variations
             const variations = await generateAIVariations(selectedFile, variationPrompt, selectedStyle, selectedColors);
+            console.log('Generated variations:', variations);
             setGeneratedImages(variations);
             alert(`${variations.length} AI-generated variations created!`);
 
@@ -88,7 +89,7 @@ export function AIImageGeneratorWorking() {
 
         // Ensure we have valid values
         const validStyle = style || 'vibrant';
-        const validColors = colors.length > 0 ? colors : ['default'];
+        const validColors = colors.length > 0 ? colors : ['Red']; // Default to Red if no colors selected
 
         console.log('Generating variations with:', { style: validStyle, colors: validColors, prompt });
 
@@ -108,7 +109,7 @@ export function AIImageGeneratorWorking() {
     const generateAIVariation = async (file: File, prompt: string, style: string, color: string): Promise<any> => {
         // Ensure we have valid values
         const validStyle = style || 'vibrant';
-        const validColor = color || 'default';
+        const validColor = color || 'Red';
 
         const formData = new FormData();
         formData.append('image', file);
@@ -124,6 +125,7 @@ export function AIImageGeneratorWorking() {
         });
 
         const data = await response.json();
+        console.log('API Response:', data);
 
         if (!data.success) {
             console.error('API Error:', data);
@@ -135,15 +137,23 @@ export function AIImageGeneratorWorking() {
             console.log('Demo mode active:', data.message);
         }
 
+        // CRITICAL FIX: Use the filter from generatedImages in the API response
+        const apiGeneratedImage = data.generatedImages?.[0];
+        const filter = apiGeneratedImage?.filter || 'none';
+
+        console.log('🎨 Filter from API:', filter);
+
         return {
-            id: `variation_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            id: apiGeneratedImage?.id || `variation_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             url: data.imageUrl,
             style: validStyle,
             color: validColor,
-            prompt: `${prompt} in ${validColor} ${validStyle} style`,
+            prompt: apiGeneratedImage?.prompt || `${prompt} in ${validColor} ${validStyle} style`,
             createdAt: new Date(),
             demoMode: data.demoMode || false,
-            message: data.message
+            message: data.message,
+            filter: filter, // THIS IS THE FIX - Get filter from API response
+            model: apiGeneratedImage?.model || 'unknown'
         };
     };
 
@@ -158,7 +168,7 @@ export function AIImageGeneratorWorking() {
     return (
         <div className="max-w-6xl mx-auto p-6 space-y-6">
             <div className="rounded-lg shadow-lg p-6">
-                <h1 className="text-3xl font-bold mb-4 text-center">AI Product Variation Generator</h1>
+                <h1 className="text-3xl font-bold mb-4 text-center text-gray-800">AI Product Variation Generator</h1>
                 <p className="text-gray-600 mb-6 text-center">Upload your product image and describe the variations you want to see</p>
 
                 {/* File Upload Section */}
@@ -201,13 +211,6 @@ export function AIImageGeneratorWorking() {
                                     <p className="text-xs text-green-600">{selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)</p>
                                 </div>
                             </div>
-                            <button
-                                onClick={handleAnalyzeImage}
-                                disabled={isAnalyzing}
-                                className="mt-4 w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                            >
-                                {isAnalyzing ? 'Analyzing Image...' : 'Analyze Image & Generate Variations'}
-                            </button>
                         </div>
                     )}
                 </div>
@@ -217,7 +220,7 @@ export function AIImageGeneratorWorking() {
                     <div className="bg-gray-50 rounded-lg p-6 mb-6">
                         <h3 className="text-xl font-medium mb-4 text-center">Your Product</h3>
                         <div className="flex justify-center">
-                            <div className="w-80 h-80 border-2 border-blue-500 rounded-lg overflow-hidden bg-white">
+                            <div className="w-80 h-80 border-2 border-blue-500 rounded-lg overflow-hidden bg-white shadow-md">
                                 <img
                                     src={URL.createObjectURL(selectedFile)}
                                     alt="Uploaded product"
@@ -233,7 +236,7 @@ export function AIImageGeneratorWorking() {
 
                 {/* Analysis Results */}
                 {analysis && (
-                    <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                    <div className="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
                         <h3 className="text-lg font-medium mb-2">Analysis Results</h3>
                         <p><strong>Product Type:</strong> {analysis.productType}</p>
                         <p><strong>Confidence:</strong> {Math.round(analysis.confidence * 100)}%</p>
@@ -249,8 +252,8 @@ export function AIImageGeneratorWorking() {
                             <textarea
                                 value={variationPrompt}
                                 onChange={(e) => setVariationPrompt(e.target.value)}
-                                placeholder="e.g., 'Create variations with different colors like blue, red, and green', or 'Show this product in different materials like wood, metal, and ceramic', or 'Generate variations with different patterns and textures'"
-                                className="w-full p-4 border rounded-lg text-lg h-24 resize-none"
+                                placeholder="e.g., 'Create variations with different colors like blue, red, and green', or 'Show this product in different materials like wood, metal, and ceramic'"
+                                className="w-full p-4 border rounded-lg text-lg h-24 resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
                             <p className="text-sm text-gray-500 mt-2">
                                 Be specific about what variations you want - colors, materials, patterns, sizes, etc.
@@ -258,11 +261,11 @@ export function AIImageGeneratorWorking() {
                         </div>
 
                         <div>
-                            <label className="block text-lg font-medium mb-3">Select Style (Optional)</label>
+                            <label className="block text-lg font-medium mb-3">Select Style</label>
                             <select
                                 value={selectedStyle}
                                 onChange={(e) => setSelectedStyle(e.target.value)}
-                                className="w-full p-3 border rounded-lg text-lg"
+                                className="w-full p-3 border rounded-lg text-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             >
                                 <option value="vibrant">Vibrant Colors (Default)</option>
                                 <option value="pastel">Pastel Tones</option>
@@ -274,28 +277,42 @@ export function AIImageGeneratorWorking() {
                         </div>
 
                         <div>
-                            <label className="block text-lg font-medium mb-3">Select Colors (Optional - for color variations)</label>
-                            <div className="grid grid-cols-4 gap-3">
+                            <label className="block text-lg font-medium mb-3">Select Colors (Choose at least one)</label>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                 {['Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Orange', 'Pink', 'Brown'].map((color) => (
-                                    <label key={color} className="flex items-center space-x-2 p-2 border rounded hover:bg-gray-50">
+                                    <label key={color} className={`flex items-center space-x-2 p-3 border-2 rounded-lg cursor-pointer transition-all ${selectedColors.includes(color)
+                                            ? 'border-blue-500 bg-blue-50'
+                                            : 'border-gray-300 hover:bg-gray-50'
+                                        }`}>
                                         <input
                                             type="checkbox"
                                             checked={selectedColors.includes(color)}
                                             onChange={() => handleColorToggle(color)}
-                                            className="rounded"
+                                            className="w-4 h-4 text-blue-600 rounded"
                                         />
                                         <span className="text-sm font-medium">{color}</span>
                                     </label>
                                 ))}
                             </div>
+                            {selectedColors.length === 0 && (
+                                <p className="text-sm text-amber-600 mt-2">⚠️ Please select at least one color</p>
+                            )}
                         </div>
 
                         <button
                             onClick={handleGenerateImages}
-                            disabled={!variationPrompt.trim() || isGenerating}
-                            className="w-full px-6 py-4 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 text-lg font-medium"
+                            disabled={!variationPrompt.trim() || selectedColors.length === 0 || isGenerating}
+                            className="w-full px-6 py-4 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-lg font-medium transition-colors shadow-md"
                         >
-                            {isGenerating ? 'Generating AI Variations...' : 'Generate AI Variations'}
+                            {isGenerating ? (
+                                <span className="flex items-center justify-center">
+                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Generating AI Variations...
+                                </span>
+                            ) : 'Generate AI Variations'}
                         </button>
                     </div>
                 )}
@@ -303,27 +320,32 @@ export function AIImageGeneratorWorking() {
                 {/* Error Display */}
                 {error && (
                     <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                        <p className="text-red-700">{error}</p>
+                        <div className="flex items-center">
+                            <svg className="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
+                            <p className="text-red-700 font-medium">{error}</p>
+                        </div>
                     </div>
                 )}
 
                 {/* Generated Images */}
                 {generatedImages.length > 0 && (
                     <div className="space-y-6">
-                        <h3 className="text-2xl font-medium text-center">AI-Generated Variations</h3>
+                        <h3 className="text-2xl font-bold text-center">AI-Generated Variations</h3>
 
                         {/* Demo Mode Notice */}
                         {generatedImages[0]?.demoMode && (
                             <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                <div className="flex items-center">
-                                    <svg className="w-6 h-6 text-yellow-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className="flex items-start">
+                                    <svg className="w-6 h-6 text-yellow-500 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                                     </svg>
                                     <div>
                                         <p className="text-sm font-medium text-yellow-800">Demo Mode Active</p>
                                         <p className="text-xs text-yellow-600 mt-1">
-                                            Google Cloud AI is not configured. Showing original image with CSS color filters as demo.
-                                            To enable real AI generation, set up GOOGLE_APPLICATION_CREDENTIALS and GCP_PROJECT_ID environment variables.
+                                            AI services are not configured. Showing CSS-filtered variations.
+                                            To enable real AI generation, configure GEMINI_API_KEY or HUGGINGFACE_API_KEY.
                                         </p>
                                     </div>
                                 </div>
@@ -331,72 +353,60 @@ export function AIImageGeneratorWorking() {
                         )}
 
                         <p className="text-center text-gray-600 mb-6">
-                            Your product with the variations you requested - perfect for showcasing to customers
+                            Your product with the color variations you requested
                         </p>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {generatedImages.map((image, index) => (
-                                <div key={index} className="border-2 border-gray-200 rounded-lg overflow-hidden shadow-lg">
-                                    <div className="aspect-square bg-gray-100 flex items-center justify-center">
-                                        <img
-                                            src={image.url}
-                                            alt={`Generated ${image.style} ${image.color}`}
-                                            className="w-full h-full object-cover"
-                                            style={{
-                                                filter: image.filter || 'none',
-                                                transition: 'filter 0.3s ease'
-                                            }}
-                                            onError={(e) => {
-                                                console.error('Image load error for:', image.url);
-                                                // Create a data URL placeholder instead of external image
-                                                const canvas = document.createElement('canvas');
-                                                canvas.width = 400;
-                                                canvas.height = 400;
-                                                const ctx = canvas.getContext('2d');
-                                                if (ctx) {
-                                                    // Create a gradient background
-                                                    const gradient = ctx.createLinearGradient(0, 0, 400, 400);
-                                                    gradient.addColorStop(0, '#f3f4f6');
-                                                    gradient.addColorStop(1, '#e5e7eb');
-                                                    ctx.fillStyle = gradient;
-                                                    ctx.fillRect(0, 0, 400, 400);
+                            {generatedImages.map((image, index) => {
+                                console.log(`🎨 Image ${index} - Color: ${image.color}, Filter:`, image.filter);
 
-                                                    // Add text
-                                                    ctx.fillStyle = '#6b7280';
-                                                    ctx.font = '16px Arial';
-                                                    ctx.textAlign = 'center';
-                                                    ctx.fillText(`${image.style} ${image.color}`, 200, 200);
-                                                    ctx.fillText('Variation', 200, 220);
-                                                }
-                                                (e.target as HTMLImageElement).src = canvas.toDataURL();
-                                            }}
-                                        />
-                                    </div>
-                                    <div className="p-4">
-                                        <div className="flex justify-between items-center">
-                                            <div>
-                                                <span className="text-xs bg-gray-200 px-3 py-1 rounded-full mr-2 font-medium">
-                                                    {image.style}
-                                                </span>
-                                                <span className="text-xs bg-blue-200 px-3 py-1 rounded-full font-medium">
-                                                    {image.color}
-                                                </span>
-                                            </div>
-                                            <button
-                                                onClick={() => {
-                                                    const link = document.createElement('a');
-                                                    link.href = image.url;
-                                                    link.download = `product-${image.style}-${image.color}.jpg`;
-                                                    link.click();
+                                return (
+                                    <div key={image.id || index} className="border-2 border-gray-200 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow bg-white">
+                                        <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
+                                            <img
+                                                src={image.url}
+                                                alt={`${image.color} ${image.style} variation`}
+                                                className="w-full h-full object-cover"
+                                                style={{
+                                                    filter: image.filter || 'none',
+                                                    transition: 'filter 0.3s ease'
                                                 }}
-                                                className="text-blue-500 hover:text-blue-700 font-medium"
-                                            >
-                                                Download
-                                            </button>
+                                                onLoad={() => {
+                                                    console.log(`✅ Image ${index} loaded with filter:`, image.filter);
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="p-4 bg-white">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <div className="flex flex-wrap gap-2">
+                                                    <span className="text-xs bg-purple-100 text-purple-800 px-3 py-1 rounded-full font-medium">
+                                                        {image.style}
+                                                    </span>
+                                                    <span className="text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">
+                                                        {image.color}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between mt-3">
+                                                <span className="text-xs text-gray-500">
+                                                    {image.model || 'AI Generated'}
+                                                </span>
+                                                <button
+                                                    onClick={() => {
+                                                        const link = document.createElement('a');
+                                                        link.href = image.url;
+                                                        link.download = `product-${image.style}-${image.color}.jpg`;
+                                                        link.click();
+                                                    }}
+                                                    className="text-sm text-blue-500 hover:text-blue-700 font-medium transition-colors"
+                                                >
+                                                    ⬇ Download
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 )}
@@ -404,3 +414,6 @@ export function AIImageGeneratorWorking() {
         </div>
     );
 }
+
+export { AIImageGeneratorWorking };
+export default AIImageGeneratorWorking;

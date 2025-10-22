@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleCloudService } from '@/lib/google-cloud-service';
 import { HuggingFaceService } from '@/lib/huggingface-service';
+import { GeminiImageService } from '@/lib/gemini-image-service';
 import { AI_IMAGE_CONFIG } from '@/lib/ai-image-config';
 
 // Helper function to generate CSS filters for demo mode
@@ -127,11 +128,11 @@ export async function POST(request: NextRequest) {
 
         console.log(`Starting image generation for ${colors.length} colors with style: ${style}`);
 
-        // Try Hugging Face API first (easier to set up)
-        console.log('Attempting to generate images with Hugging Face API...');
+        // Try Gemini Vision API first (you already have the API key)
+        console.log('Attempting to generate images with Gemini Vision API...');
 
         try {
-            const generatedImages = await HuggingFaceService.generateImageVariations(
+            const generatedImages = await GeminiImageService.generateImageVariations(
                 originalImageUrl,
                 style,
                 colors,
@@ -139,7 +140,7 @@ export async function POST(request: NextRequest) {
             );
 
             const processingTime = Date.now() - startTime;
-            console.log(`Hugging Face generation completed in ${processingTime}ms`);
+            console.log(`Gemini generation completed in ${processingTime}ms`);
 
             // Return single image URL for the frontend
             const imageUrl = generatedImages.length > 0 ? generatedImages[0].url : originalImageUrl;
@@ -152,39 +153,69 @@ export async function POST(request: NextRequest) {
                 colors,
                 count: generatedImages.length,
                 processingTimeMs: processingTime,
-                message: `Successfully generated ${generatedImages.length} image variations using Hugging Face AI`,
-                aiProvider: 'huggingface'
+                message: `Successfully generated ${generatedImages.length} image variations using Gemini Vision AI`,
+                aiProvider: 'gemini'
             });
 
-        } catch (huggingFaceError) {
-            console.log('Hugging Face failed, trying Google Cloud...', huggingFaceError);
+        } catch (geminiError) {
+            console.log('Gemini failed, trying Hugging Face...', geminiError);
 
-            // Fallback to Google Cloud if configured
-            if (process.env.GOOGLE_APPLICATION_CREDENTIALS && process.env.GCP_PROJECT_ID) {
-                try {
-                    const generatedImages = await GoogleCloudService.generateImageVariations(
-                        originalImageUrl,
-                        style,
-                        colors,
-                        prompt
-                    );
+            // Fallback to Hugging Face
+            try {
+                const generatedImages = await HuggingFaceService.generateImageVariations(
+                    originalImageUrl,
+                    style,
+                    colors,
+                    prompt
+                );
 
-                    const processingTime = Date.now() - startTime;
-                    const imageUrl = generatedImages.length > 0 ? generatedImages[0].url : originalImageUrl;
+                const processingTime = Date.now() - startTime;
+                console.log(`Hugging Face generation completed in ${processingTime}ms`);
 
-                    return NextResponse.json({
-                        success: true,
-                        imageUrl,
-                        generatedImages,
-                        style,
-                        colors,
-                        count: generatedImages.length,
-                        processingTimeMs: processingTime,
-                        message: `Successfully generated ${generatedImages.length} image variations using Google Cloud AI`,
-                        aiProvider: 'google-cloud'
-                    });
-                } catch (googleError) {
-                    console.log('Google Cloud also failed, using demo mode...', googleError);
+                const imageUrl = generatedImages.length > 0 ? generatedImages[0].url : originalImageUrl;
+
+                return NextResponse.json({
+                    success: true,
+                    imageUrl,
+                    generatedImages,
+                    style,
+                    colors,
+                    count: generatedImages.length,
+                    processingTimeMs: processingTime,
+                    message: `Successfully generated ${generatedImages.length} image variations using Hugging Face AI`,
+                    aiProvider: 'huggingface'
+                });
+
+            } catch (huggingFaceError) {
+                console.log('Hugging Face failed, trying Google Cloud...', huggingFaceError);
+
+                // Fallback to Google Cloud if configured
+                if (process.env.GOOGLE_APPLICATION_CREDENTIALS && (process.env.GCP_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT_ID)) {
+                    try {
+                        const generatedImages = await GoogleCloudService.generateImageVariations(
+                            originalImageUrl,
+                            style,
+                            colors,
+                            prompt
+                        );
+
+                        const processingTime = Date.now() - startTime;
+                        const imageUrl = generatedImages.length > 0 ? generatedImages[0].url : originalImageUrl;
+
+                        return NextResponse.json({
+                            success: true,
+                            imageUrl,
+                            generatedImages,
+                            style,
+                            colors,
+                            count: generatedImages.length,
+                            processingTimeMs: processingTime,
+                            message: `Successfully generated ${generatedImages.length} image variations using Google Cloud AI`,
+                            aiProvider: 'google-cloud'
+                        });
+                    } catch (googleError) {
+                        console.log('Google Cloud also failed, using demo mode...', googleError);
+                    }
                 }
             }
         }

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSS Filter Test</title>
+    <style>
+        .container {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+        }
+        .image-box {
+            text-align: center;
+        }
+        .test-image {
+            width: 200px;
+            height: 200px;
+            object-fit: cover;
+            border: 2px solid #ccc;
+            margin-bottom: 10px;
+        }
+        .red-filter {
+            filter: hue-rotate(0deg) saturate(3.0) brightness(1.2) contrast(1.4) sepia(0.3) saturate(2.5) contrast(1.5) brightness(1.2);
+        }
+        .blue-filter {
+            filter: hue-rotate(240deg) saturate(2.5) brightness(1.0) contrast(1.3) saturate(2.5) contrast(1.5) brightness(1.2);
+        }
+        .green-filter {
+            filter: hue-rotate(120deg) saturate(2.8) brightness(1.1) contrast(1.3) saturate(2.5) contrast(1.5) brightness(1.2);
+        }
+    </style>
+</head>
+<body>
+    <h1>CSS Filter Test</h1>
+    <div class="container">
+        <div class="image-box">
+            <img src="https://via.placeholder.com/200x200/8B4513/FFFFFF?text=Original" class="test-image" alt="Original">
+            <p>Original</p>
+        </div>
+        <div class="image-box">
+            <img src="https://via.placeholder.com/200x200/8B4513/FFFFFF?text=Red" class="test-image red-filter" alt="Red Filter">
+            <p>Red Filter</p>
+        </div>
+        <div class="image-box">
+            <img src="https://via.placeholder.com/200x200/8B4513/FFFFFF?text=Blue" class="test-image blue-filter" alt="Blue Filter">
+            <p>Blue Filter</p>
+        </div>
+        <div class="image-box">
+            <img src="https://via.placeholder.com/200x200/8B4513/FFFFFF?text=Green" class="test-image green-filter" alt="Green Filter">
+            <p>Green Filter</p>
+        </div>
+    </div>
+</body>
+</html>
