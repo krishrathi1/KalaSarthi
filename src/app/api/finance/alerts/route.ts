@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { 
         error: 'Failed to fetch alerts',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'
       },
       { status: 500 }
     );
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { 
         error: 'Failed to process alert action',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'
       },
       { status: 500 }
     );
@@ -172,7 +172,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(
       { 
         error: 'Failed to update alert settings',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'
       },
       { status: 500 }
     );

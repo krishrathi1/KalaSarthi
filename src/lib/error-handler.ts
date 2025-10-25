@@ -48,7 +48,7 @@ export class ErrorHandler {
         lastError = error instanceof Error ? error : new Error('Unknown fetch error');
         
         this.logError({
-          message: `Fetch attempt ${attempt} failed: ${lastError.message}`,
+          message: `Fetch attempt ${attempt} failed: ${lastError instanceof Error ? lastError.message : String(lastError)}`,
           code: 'FETCH_ERROR',
           context: url,
           timestamp: Date.now()
@@ -72,23 +72,23 @@ export class ErrorHandler {
     let userMessage = 'An unexpected error occurred.';
 
     if (error instanceof Error) {
-      if (error.message.includes('Failed to fetch')) {
+      if (error instanceof Error ? error.message : String(error).includes('Failed to fetch')) {
         userMessage = 'Network connection failed. Please check your internet connection and try again.';
-      } else if (error.message.includes('HTTP 404')) {
+      } else if (error instanceof Error ? error.message : String(error).includes('HTTP 404')) {
         userMessage = 'The requested resource was not found. Please try again later.';
-      } else if (error.message.includes('HTTP 500')) {
+      } else if (error instanceof Error ? error.message : String(error).includes('HTTP 500')) {
         userMessage = 'Server error occurred. Please try again in a few moments.';
-      } else if (error.message.includes('HTTP 429')) {
+      } else if (error instanceof Error ? error.message : String(error).includes('HTTP 429')) {
         userMessage = 'Too many requests. Please wait a moment before trying again.';
-      } else if (error.message.includes('timeout')) {
+      } else if (error instanceof Error ? error.message : String(error).includes('timeout')) {
         userMessage = 'Request timed out. Please check your connection and try again.';
       } else {
-        userMessage = error.message;
+        userMessage = error instanceof Error ? error.message : String(error);
       }
     }
 
     this.logError({
-      message: error instanceof Error ? error.message : 'Unknown error',
+      message: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error',
       code: 'API_ERROR',
       context,
       timestamp: Date.now()
@@ -104,19 +104,19 @@ export class ErrorHandler {
     let userMessage = 'File upload failed.';
 
     if (error instanceof Error) {
-      if (error.message.includes('413')) {
+      if (error instanceof Error ? error.message : String(error).includes('413')) {
         userMessage = 'File is too large. Please choose a smaller file.';
-      } else if (error.message.includes('415')) {
+      } else if (error instanceof Error ? error.message : String(error).includes('415')) {
         userMessage = 'File type not supported. Please choose a valid image file.';
-      } else if (error.message.includes('Failed to fetch')) {
+      } else if (error instanceof Error ? error.message : String(error).includes('Failed to fetch')) {
         userMessage = 'Upload failed due to network issues. Please try again.';
       } else {
-        userMessage = `Upload failed: ${error.message}`;
+        userMessage = `Upload failed: ${error instanceof Error ? error.message : String(error)}`;
       }
     }
 
     this.logError({
-      message: `File upload error for ${fileName}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `File upload error for ${fileName}: ${error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'}`,
       code: 'FILE_UPLOAD_ERROR',
       context: fileName,
       timestamp: Date.now()
@@ -132,19 +132,19 @@ export class ErrorHandler {
     let userMessage = 'Speech recognition is not available.';
 
     if (error instanceof Error) {
-      if (error.message.includes('not supported')) {
+      if (error instanceof Error ? error.message : String(error).includes('not supported')) {
         userMessage = 'Speech recognition is not supported in this browser.';
-      } else if (error.message.includes('permission')) {
+      } else if (error instanceof Error ? error.message : String(error).includes('permission')) {
         userMessage = 'Microphone permission denied. Please allow microphone access.';
-      } else if (error.message.includes('network')) {
+      } else if (error instanceof Error ? error.message : String(error).includes('network')) {
         userMessage = 'Speech recognition requires internet connection.';
-      } else if (error.message.includes('GOOGLE_AI_API_KEY')) {
+      } else if (error instanceof Error ? error.message : String(error).includes('GOOGLE_AI_API_KEY')) {
         userMessage = 'Voice features require API configuration. Please use text input instead.';
       }
     }
 
     this.logError({
-      message: `Speech recognition error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Speech recognition error: ${error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'}`,
       code: 'SPEECH_ERROR',
       context: 'voice',
       timestamp: Date.now()

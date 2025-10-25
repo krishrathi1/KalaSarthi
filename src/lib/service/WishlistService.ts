@@ -52,7 +52,7 @@ export class WishlistService {
             console.error('Error creating wishlist:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -114,7 +114,7 @@ export class WishlistService {
             console.error('Error fetching wishlist:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -171,7 +171,7 @@ export class WishlistService {
             console.error('Error adding to wishlist:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -204,7 +204,7 @@ export class WishlistService {
             console.error('Error removing from wishlist:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -226,7 +226,7 @@ export class WishlistService {
             console.error('Error checking wishlist:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -248,7 +248,7 @@ export class WishlistService {
             console.error('Error clearing wishlist:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -268,7 +268,7 @@ export class WishlistService {
             console.error('Error getting wishlist count:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }

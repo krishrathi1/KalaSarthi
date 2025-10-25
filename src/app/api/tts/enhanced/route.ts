@@ -210,23 +210,23 @@ export async function POST(request: NextRequest) {
     // More specific error messages
     let errorMessage = 'TTS service error';
     if (error instanceof Error) {
-      if (error.message.includes('credentials')) {
+      if (error instanceof Error ? error.message : String(error).includes('credentials')) {
         errorMessage = 'Google Cloud credentials not configured properly';
-      } else if (error.message.includes('permission')) {
+      } else if (error instanceof Error ? error.message : String(error).includes('permission')) {
         errorMessage = 'Insufficient permissions for TTS service';
-      } else if (error.message.includes('quota')) {
+      } else if (error instanceof Error ? error.message : String(error).includes('quota')) {
         errorMessage = 'TTS quota exceeded';
-      } else if (error.message.includes('voice')) {
+      } else if (error instanceof Error ? error.message : String(error).includes('voice')) {
         errorMessage = 'Selected voice not available';
       } else {
-        errorMessage = error.message;
+        errorMessage = error instanceof Error ? error.message : String(error);
       }
     }
     
     return NextResponse.json({
       success: false,
       error: errorMessage,
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'
     }, { status: 500 });
   }
 }

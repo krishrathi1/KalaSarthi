@@ -113,7 +113,7 @@ export class UnifiedNotificationService {
         results.push({
           recipientId: recipient.userId,
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'
         });
       }
     }
@@ -200,7 +200,7 @@ export class UnifiedNotificationService {
         notifications: [{
           channel: 'error',
           success: false,
-          message: error instanceof Error ? error.message : 'Unknown error'
+          message: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'
         }]
       };
     }
@@ -227,7 +227,7 @@ export class UnifiedNotificationService {
     } catch (error) {
       return {
         success: false,
-        message: `Email failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        message: `Email failed: ${error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'}`
       };
     }
   }
@@ -253,7 +253,7 @@ export class UnifiedNotificationService {
     } catch (error) {
       return {
         success: false,
-        message: `SMS failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        message: `SMS failed: ${error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'}`
       };
     }
   }
@@ -279,7 +279,7 @@ export class UnifiedNotificationService {
     } catch (error) {
       return {
         success: false,
-        message: `Push notification failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        message: `Push notification failed: ${error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'}`
       };
     }
   }
@@ -305,7 +305,7 @@ export class UnifiedNotificationService {
     } catch (error) {
       return {
         success: false,
-        message: `In-app notification failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        message: `In-app notification failed: ${error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'}`
       };
     }
   }

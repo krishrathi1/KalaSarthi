@@ -186,7 +186,7 @@ export class EnhancedTextToSpeechService {
 
     } catch (error: any) {
       console.error('Enhanced TTS error:', error);
-      throw new Error(`Enhanced TTS failed: ${error.message}`);
+      throw new Error(`Enhanced TTS failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -498,7 +498,7 @@ export class EnhancedTextToSpeechService {
 
     } catch (error : any) {
       console.error('Enhanced SSML synthesis error:', error);
-      throw new Error(`Enhanced SSML synthesis failed: ${error.message}`);
+      throw new Error(`Enhanced SSML synthesis failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 }

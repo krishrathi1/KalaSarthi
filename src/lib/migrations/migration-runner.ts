@@ -55,10 +55,10 @@ export class MigrationRunner {
           name: migration.name,
           success: false,
           duration,
-          error: error.message
+          error: error instanceof Error ? error.message : String(error)
         });
 
-        console.error(`❌ Migration ${migration.name} failed:`, error.message);
+        console.error(`❌ Migration ${migration.name} failed:`, error instanceof Error ? error.message : String(error));
 
         // Stop on first failure
         break;
@@ -120,13 +120,13 @@ export class MigrationRunner {
     } catch (error: any) {
       const duration = Date.now() - startTime;
 
-      console.error(`❌ Migration ${migrationName} failed:`, error.message);
+      console.error(`❌ Migration ${migrationName} failed:`, error instanceof Error ? error.message : String(error));
 
       return {
         name: migrationName,
         success: false,
         duration,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       };
     }
   }

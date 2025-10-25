@@ -110,7 +110,7 @@ export class VoiceNavigationService {
       }
     } catch (error) {
       console.error('Failed to start voice navigation:', error);
-      this.emit('error', { error: error instanceof Error ? error.message : 'Unknown error' });
+      this.emit('error', { error: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error' });
     }
   }
 
@@ -128,7 +128,7 @@ export class VoiceNavigationService {
       }
     } catch (error) {
       console.error('Failed to stop voice navigation:', error);
-      this.emit('error', { error: error instanceof Error ? error.message : 'Unknown error' });
+      this.emit('error', { error: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error' });
     }
   }
 
@@ -170,7 +170,7 @@ export class VoiceNavigationService {
       if (this.options.feedbackEnabled) {
         await this.speak('Sorry, I had trouble understanding that. Could you please try again?');
       }
-      this.emit('error', { error: error instanceof Error ? error.message : 'Audio processing failed' });
+      this.emit('error', { error: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Audio processing failed' });
     }
   }
 
@@ -226,7 +226,7 @@ export class VoiceNavigationService {
       if (this.options.feedbackEnabled) {
         await this.speak('Sorry, I didn\'t understand that. Could you please try again?');
       }
-      this.emit('error', { error: error instanceof Error ? error.message : 'Unknown error' });
+      this.emit('error', { error: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error' });
     }
   }
 
@@ -250,7 +250,7 @@ export class VoiceNavigationService {
       this.emit('action', { action, executed: true });
     } catch (error) {
       console.error('Error executing action:', error);
-      this.emit('error', { error: error instanceof Error ? error.message : 'Unknown error' });
+      this.emit('error', { error: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error' });
     }
   }
 
@@ -276,7 +276,7 @@ export class VoiceNavigationService {
 
   private handleError(error: Error): void {
     console.error('Voice navigation error:', error);
-    this.emit('error', { error: error.message });
+    this.emit('error', { error: error instanceof Error ? error.message : String(error) });
   }
 
   // Event system

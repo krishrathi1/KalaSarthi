@@ -149,7 +149,6 @@ export function canAccessRoute(pathname: string, userRole?: 'artisan' | 'buyer')
         '/yojana-mitra',
         '/dashboard/inventory',
         '/trend-spotter',
-        '/trend-mapper',
         '/voice-enrollment'
     ];
 
@@ -191,7 +190,6 @@ export function useRouteAccess() {
         '/yojana-mitra',
         '/dashboard/inventory',
         '/trend-spotter',
-        '/trend-mapper',
         '/voice-enrollment'
     ];
 

@@ -219,7 +219,7 @@ export class OrderService {
             console.error('Error creating order:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -246,7 +246,7 @@ export class OrderService {
             console.error('Error fetching order:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -274,7 +274,7 @@ export class OrderService {
             console.error('Error fetching user orders:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -302,7 +302,7 @@ export class OrderService {
             console.error('Error fetching artisan orders:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -383,7 +383,7 @@ export class OrderService {
             console.error('Error updating order:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -466,7 +466,7 @@ export class OrderService {
             console.error('Error cancelling order:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -510,7 +510,7 @@ export class OrderService {
             console.error('Error fetching all orders:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -567,7 +567,7 @@ export class OrderService {
             console.error('Error fetching order stats:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -597,7 +597,7 @@ export class OrderService {
             console.error('Error searching orders:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }

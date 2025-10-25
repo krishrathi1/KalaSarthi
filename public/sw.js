@@ -9,7 +9,6 @@ const STATIC_FILES = [
     '/',
     '/dashboard',
     '/trend-spotter',
-    '/trend-mapper',
     '/smart-product-creator',
     '/artisan-buddy',
     '/matchmaking',

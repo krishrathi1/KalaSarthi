@@ -167,7 +167,7 @@ export class AnomalyService {
       result.processingTime = Date.now() - startTime;
       
     } catch (error) {
-      result.errors.push(`Detection failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      result.errors.push(`Detection failed: ${error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'}`);
     }
 
     return result;

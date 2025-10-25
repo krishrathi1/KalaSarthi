@@ -17,7 +17,7 @@ export function useRoleBasedAccess() {
     '/smart-product-creator',
     '/arth-saarthi',
     '/yojana-mitra',
-    '/trend-mapper',
+
     '/voice-enrollment',
     '/trust-layer'
   ];

@@ -41,7 +41,7 @@ export class UserService {
             console.error('Error creating user:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -101,7 +101,7 @@ export class UserService {
             console.error('Error updating user:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -118,7 +118,7 @@ export class UserService {
             console.error('Error deleting user:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }

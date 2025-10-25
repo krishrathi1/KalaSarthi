@@ -53,7 +53,7 @@ export class CartService {
             console.error('Error creating cart:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -144,7 +144,7 @@ export class CartService {
             console.error('Error fetching cart:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -232,7 +232,7 @@ export class CartService {
             console.error('Error adding to cart:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -291,7 +291,7 @@ export class CartService {
             console.error('Error updating cart item:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -329,7 +329,7 @@ export class CartService {
             console.error('Error removing from cart:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -357,7 +357,7 @@ export class CartService {
             console.error('Error clearing cart:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -377,7 +377,7 @@ export class CartService {
             console.error('Error getting cart count:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -402,7 +402,7 @@ export class CartService {
             console.error('Error getting cart total:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }

@@ -109,7 +109,7 @@ async function handleFullPipeline(
     
     results.aggregation = await aggregationService.aggregateFinancialData(aggregationOptions);
   } catch (error) {
-    results.aggregationError = error instanceof Error ? error.message : 'Aggregation failed';
+    results.aggregationError = error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Aggregation failed';
   }
   
   // Step 2: Run anomaly detection (only if aggregation succeeded)
@@ -118,7 +118,7 @@ async function handleFullPipeline(
       results.anomalies = await anomalyService.detectAnomalies(request.artisanId);
       results.alertSummary = await anomalyService.getAlertSummary(request.artisanId);
     } catch (error) {
-      results.anomalyError = error instanceof Error ? error.message : 'Anomaly detection failed';
+      results.anomalyError = error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Anomaly detection failed';
     }
   }
   
@@ -126,7 +126,7 @@ async function handleFullPipeline(
   try {
     results.status = await aggregationService.getAggregationStatus(request.artisanId);
   } catch (error) {
-    results.statusError = error instanceof Error ? error.message : 'Status check failed';
+    results.statusError = error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Status check failed';
   }
   
   return results;
@@ -365,7 +365,7 @@ async function financeAggregatorFlow(request: FinanceAggregatorRequest): Promise
       console.log(`Finance Aggregator Agent: Successfully completed ${request.action}`);
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error';
       response.errors.push(errorMessage);
       console.error(`Finance Aggregator Agent Error:`, error);
     }

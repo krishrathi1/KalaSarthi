@@ -118,7 +118,7 @@ export class DocumentPreparationService {
       console.error('Document preparation error:', error);
       return {
         success: false,
-        errors: [error.message]
+        errors: [error instanceof Error ? error.message : String(error)]
       };
     }
   }
@@ -134,7 +134,7 @@ export class DocumentPreparationService {
       console.error('Document data extraction error:', error);
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       };
     }
   }
@@ -178,7 +178,7 @@ export class DocumentPreparationService {
         valid: false,
         extractedData: null,
         compliance: [],
-        issues: [error.message]
+        issues: [error instanceof Error ? error.message : String(error)]
       };
     }
   }

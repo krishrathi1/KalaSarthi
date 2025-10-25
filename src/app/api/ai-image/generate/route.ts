@@ -264,23 +264,23 @@ export async function POST(request: NextRequest) {
         let statusCode = 500;
 
         if (error instanceof Error) {
-            if (error.message.includes('quota')) {
+            if (error instanceof Error ? error.message : String(error).includes('quota')) {
                 errorMessage = 'API quota exceeded. Please try again later.';
                 errorCode = 'QUOTA_EXCEEDED';
                 statusCode = 429;
-            } else if (error.message.includes('permission')) {
+            } else if (error instanceof Error ? error.message : String(error).includes('permission')) {
                 errorMessage = 'Insufficient permissions for image generation.';
                 errorCode = 'PERMISSION_DENIED';
                 statusCode = 403;
-            } else if (error.message.includes('safety')) {
+            } else if (error instanceof Error ? error.message : String(error).includes('safety')) {
                 errorMessage = 'Content blocked by safety filters. Please try a different prompt.';
                 errorCode = 'SAFETY_VIOLATION';
                 statusCode = 400;
-            } else if (error.message.includes('timeout')) {
+            } else if (error instanceof Error ? error.message : String(error).includes('timeout')) {
                 errorMessage = 'Request timed out. Please try again.';
                 errorCode = 'TIMEOUT';
                 statusCode = 408;
-            } else if (error.message.includes('network')) {
+            } else if (error instanceof Error ? error.message : String(error).includes('network')) {
                 errorMessage = 'Network error occurred. Please check your connection.';
                 errorCode = 'NETWORK_ERROR';
                 statusCode = 503;
@@ -293,7 +293,7 @@ export async function POST(request: NextRequest) {
                 error: errorMessage,
                 code: errorCode,
                 processingTimeMs: processingTime,
-                details: error instanceof Error ? error.message : 'Unknown error',
+                details: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error',
                 timestamp: new Date().toISOString()
             },
             { status: statusCode }

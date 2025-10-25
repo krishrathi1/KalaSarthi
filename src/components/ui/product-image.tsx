@@ -27,15 +27,17 @@ export function ProductImage({
 }: ProductImageProps) {
     const [imageError, setImageError] = useState(false);
     const [imageLoading, setImageLoading] = useState(true);
+    const [currentSrc, setCurrentSrc] = useState(src || 'https://via.placeholder.com/400x400/6366f1/ffffff?text=Product+Image');
+    const [fallbackAttempts, setFallbackAttempts] = useState(0);
 
-    // Fallback image sources
+    // Fallback image sources - more reliable options
     const fallbackImages = [
-        'https://picsum.photos/400/400?random=1',
-        'https://picsum.photos/400/400?random=2',
-        'https://picsum.photos/400/400?random=3',
-        'https://via.placeholder.com/400x400/6366f1/ffffff?text=Product',
-        'https://via.placeholder.com/400x400/10b981/ffffff?text=Handmade',
-        'https://via.placeholder.com/400x400/f59e0b/ffffff?text=Artisan'
+        'https://via.placeholder.com/400x400/6366f1/ffffff?text=Handmade+Product',
+        'https://via.placeholder.com/400x400/10b981/ffffff?text=Artisan+Craft',
+        'https://via.placeholder.com/400x400/f59e0b/ffffff?text=Trending+Item',
+        'https://via.placeholder.com/400x400/ef4444/ffffff?text=Popular+Product',
+        'https://via.placeholder.com/400x400/8b5cf6/ffffff?text=Craft+Item',
+        'https://via.placeholder.com/400x400/06b6d4/ffffff?text=Handcrafted'
     ];
 
     const getFallbackImage = () => {
@@ -44,8 +46,17 @@ export function ProductImage({
     };
 
     const handleError = () => {
-        setImageError(true);
-        setImageLoading(false);
+        // Try fallback images before giving up
+        if (fallbackAttempts < fallbackImages.length) {
+            const fallbackSrc = fallbackImages[fallbackAttempts];
+            setCurrentSrc(fallbackSrc);
+            setFallbackAttempts(prev => prev + 1);
+            setImageLoading(true);
+        } else {
+            // If all fallbacks fail, show a simple colored placeholder
+            setCurrentSrc('https://via.placeholder.com/400x400/6366f1/ffffff?text=Product');
+            setImageLoading(false);
+        }
     };
 
     const handleLoad = () => {
@@ -68,7 +79,7 @@ export function ProductImage({
                 </div>
             )}
             <Image
-                src={src}
+                src={currentSrc}
                 alt={alt}
                 fill={fill}
                 width={width}
@@ -78,6 +89,7 @@ export function ProductImage({
                 onError={handleError}
                 onLoad={handleLoad}
                 priority={false}
+                unoptimized={currentSrc.includes('placeholder') || currentSrc.includes('picsum')}
             />
         </div>
     );

@@ -58,7 +58,7 @@ export class LoanApplicationService {
       console.error('Error creating loan application:', error);
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       };
     }
   }
@@ -85,7 +85,7 @@ export class LoanApplicationService {
       console.error('Error fetching loan application:', error);
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       };
     }
   }
@@ -106,7 +106,7 @@ export class LoanApplicationService {
       console.error('Error fetching user loan applications:', error);
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       };
     }
   }
@@ -151,7 +151,7 @@ export class LoanApplicationService {
       console.error('Error updating loan application:', error);
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       };
     }
   }
@@ -193,7 +193,7 @@ export class LoanApplicationService {
       console.error('Error submitting loan application:', error);
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       };
     }
   }
@@ -245,7 +245,7 @@ export class LoanApplicationService {
       console.error('Error adding document to loan application:', error);
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       };
     }
   }
@@ -266,7 +266,7 @@ export class LoanApplicationService {
       console.error('Error fetching loan applications by status:', error);
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       };
     }
   }
@@ -304,7 +304,7 @@ export class LoanApplicationService {
       console.error('Error fetching loan application stats:', error);
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       };
     }
   }
@@ -354,7 +354,7 @@ export class LoanApplicationService {
       console.error('Error updating automation status:', error);
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       };
     }
   }
@@ -382,7 +382,7 @@ export class LoanApplicationService {
       console.error('Error searching loan applications:', error);
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       };
     }
   }

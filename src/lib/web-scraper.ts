@@ -129,7 +129,7 @@ class WebScraperService {
         success: false,
         products: [],
         totalFound: 0,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'
       };
     }
   }
@@ -183,7 +183,7 @@ class WebScraperService {
         success: false,
         products: [],
         totalFound: 0,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'
       };
     }
   }
@@ -237,7 +237,7 @@ class WebScraperService {
         success: false,
         products: [],
         totalFound: 0,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'
       };
     }
   }
@@ -275,7 +275,7 @@ class WebScraperService {
         await new Promise(resolve => setTimeout(resolve, 2000));
 
       } catch (error) {
-        errors.push(`${platform}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        errors.push(`${platform}: ${error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'}`);
       }
     }
 

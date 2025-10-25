@@ -114,7 +114,7 @@ class OfflineSyncManager {
                 success: false,
                 synced: 0,
                 failed: 0,
-                errors: [error instanceof Error ? error.message : 'Unknown sync error']
+                errors: [error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown sync error']
             };
         } finally {
             this.isSyncing = false;
