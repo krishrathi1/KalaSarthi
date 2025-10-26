@@ -1,309 +1,311 @@
-import { ai } from '@/ai/genkit';
-import { z } from 'zod';
+import { GoogleAuth } from 'google-auth-library';
 
-export interface TrendSummarizationInput {
-  artisanProfession: string;
-  googleTrendsData: any;
-  scrapedProducts: any[];
-  marketData: any;
-}
+export class VertexAIImageService {
+    private auth: GoogleAuth;
+    private projectId: string;
+    private location: string = 'us-central1';
+    private apiEndpoint: string;
 
-export interface TrendInsights {
-  summary: string;
-  keyTrends: string[];
-  recommendations: string[];
-  marketOpportunities: string[];
-  competitiveAnalysis: string;
-  confidence: number;
-}
+    constructor() {
+        this.projectId = process.env.GOOGLE_CLOUD_PROJECT_ID || '';
+        
+        if (!this.projectId) {
+            throw new Error('GOOGLE_CLOUD_PROJECT_ID environment variable is required');
+        }
 
-export interface SentimentAnalysisResult {
-  overallSentiment: 'positive' | 'neutral' | 'negative';
-  sentimentScore: number;
-  keyThemes: string[];
-  customerPainPoints: string[];
-  positiveAspects: string[];
-}
+        this.apiEndpoint = `https://${this.location}-aiplatform.googleapis.com/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models`;
 
-const TrendInsightsInputSchema = z.object({
-  artisanProfession: z.string().describe('The artisan\'s profession or craft type'),
-  googleTrendsData: z.any().describe('Google Trends data for analysis'),
-  scrapedProducts: z.array(z.any()).describe('Scraped product data from marketplaces'),
-  marketData: z.any().describe('Additional market context and data')
-});
-
-const TrendInsightsOutputSchema = z.object({
-  summary: z.string().describe('Executive summary of market trends'),
-  keyTrends: z.array(z.string()).describe('Top trending aspects with data points'),
-  recommendations: z.array(z.string()).describe('Actionable recommendations for the artisan'),
-  marketOpportunities: z.array(z.string()).describe('Specific market opportunities identified'),
-  competitiveAnalysis: z.string().describe('Analysis of competitive landscape'),
-  confidence: z.number().describe('Confidence score for the analysis')
-});
-
-const SentimentAnalysisInputSchema = z.object({
-  reviews: z.array(z.string()).describe('Customer reviews to analyze'),
-  productCategory: z.string().describe('Product category for context')
-});
-
-const SentimentAnalysisOutputSchema = z.object({
-  overallSentiment: z.enum(['positive', 'neutral', 'negative']).describe('Overall sentiment'),
-  sentimentScore: z.number().describe('Sentiment score from 0-1'),
-  keyThemes: z.array(z.string()).describe('Top themes mentioned'),
-  customerPainPoints: z.array(z.string()).describe('Main customer complaints'),
-  positiveAspects: z.array(z.string()).describe('What customers love most')
-});
-
-// Helper function to generate trend insights using the available AI service
-async function generateTrendInsightsWithAI(input: TrendSummarizationInput): Promise<TrendInsights> {
-  const prompt = `You are an expert market analyst specializing in handicraft and artisan products. Analyze the following data and provide comprehensive insights:
-
-ARTISAN PROFESSION: ${input.artisanProfession}
-
-GOOGLE TRENDS DATA:
-${JSON.stringify(input.googleTrendsData)}
-
-SCRAPED PRODUCTS DATA:
-${JSON.stringify(input.scrapedProducts)}
-
-MARKET CONTEXT:
-${JSON.stringify(input.marketData)}
-
-Please provide a detailed analysis covering:
-- Current demand patterns and search interest
-- Price positioning and competitive analysis
-- Platform performance and customer preferences
-- Seasonal trends and regional variations
-- Innovation opportunities and product development suggestions
-- Marketing and branding recommendations
-- Supply chain and production optimization
-
-Focus on actionable insights that will help the artisan improve their business.`;
-
-  const response = await ai.generateText(prompt);
-  
-  // Parse the response and return structured data
-  // For now, return fallback data since the AI service is a placeholder
-  return {
-    summary: `Current market analysis for ${input.artisanProfession} shows steady demand with opportunities for growth through digital channels and product innovation.`,
-    keyTrends: [
-      'Increasing demand for authentic, handmade products',
-      'Growing preference for sustainable and eco-friendly materials',
-      'Rising interest in personalized and customized items'
-    ],
-    recommendations: [
-      'Focus on high-quality product photography',
-      'Emphasize authentic craftsmanship in marketing',
-      'Consider offering customization options'
-    ],
-    marketOpportunities: [
-      'Expand to international markets',
-      'Create product lines for gifting occasions',
-      'Develop workshop and experience offerings'
-    ],
-    competitiveAnalysis: 'Market shows healthy competition with opportunities to differentiate through unique designs and superior quality.',
-    confidence: 0.7
-  };
-}
-
-// Helper function to analyze sentiment using the available AI service
-async function analyzeSentimentWithAI(reviews: string[], productCategory: string): Promise<SentimentAnalysisResult> {
-  const prompt = `Analyze the sentiment and key themes from these customer reviews for ${productCategory} products:
-
-REVIEWS:
-${reviews.join('\n')}
-
-Consider:
-- Overall satisfaction levels
-- Product quality perceptions
-- Value for money assessments
-- Delivery and service experiences
-- Common feature requests or suggestions
-
-Provide detailed sentiment analysis with specific examples from the reviews.`;
-
-  const response = await ai.generateText(prompt);
-  
-  // Parse the response and return structured data
-  // For now, return fallback data since the AI service is a placeholder
-  return {
-    overallSentiment: 'positive',
-    sentimentScore: 0.7,
-    keyThemes: ['Product quality', 'Value for money', 'Customer service'],
-    customerPainPoints: ['Shipping delays', 'Product durability concerns'],
-    positiveAspects: ['Unique designs', 'Artisan craftsmanship', 'Cultural authenticity']
-  };
-}
-
-export class VertexAIService {
-  /**
-   * Generate comprehensive trend insights using Vertex AI
-   */
-  async generateTrendInsights(input: TrendSummarizationInput): Promise<TrendInsights> {
-    try {
-      const result = await generateTrendInsightsWithAI(input);
-      return result;
-    } catch (error) {
-      console.error('Error generating trend insights:', error);
-      return this.generateFallbackInsights(input);
-    }
-  }
-
-  /**
-   * Analyze customer sentiment from reviews
-   */
-  async analyzeSentiment(reviews: string[], productCategory: string): Promise<SentimentAnalysisResult> {
-    if (reviews.length === 0) {
-      return {
-        overallSentiment: 'neutral',
-        sentimentScore: 0.5,
-        keyThemes: [],
-        customerPainPoints: [],
-        positiveAspects: []
-      };
+        // Initialize Google Auth
+        this.auth = new GoogleAuth({
+            scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+        });
     }
 
-    try {
-      const result = await analyzeSentimentWithAI(reviews.slice(0, 50), productCategory);
-      return result;
-    } catch (error) {
-      console.error('Error analyzing sentiment:', error);
-      return this.generateFallbackSentiment(reviews);
+    /**
+     * Get access token for API calls
+     */
+    private async getAccessToken(): Promise<string> {
+        const client = await this.auth.getClient();
+        const accessToken = await client.getAccessToken();
+        
+        if (!accessToken.token) {
+            throw new Error('Failed to get access token');
+        }
+        
+        return accessToken.token;
     }
-  }
 
-  /**
-   * Generate personalized recommendations for artisans
-   */
-  async generatePersonalizedRecommendations(
-    artisanProfession: string,
-    trends: any[],
-    currentProducts: any[],
-    targetMarket: string = 'India'
-  ): Promise<string[]> {
-    // For now, use the existing trend insights flow with modified input
-    try {
-      const insights = await this.generateTrendInsights({
-        artisanProfession,
-        googleTrendsData: trends,
-        scrapedProducts: currentProducts,
-        marketData: { targetMarket }
-      });
+    /**
+     * Generate design variations with different colors using Vertex AI Imagen
+     */
+    async generateDesignVariations(
+        originalImageUrl: string,
+        productName: string,
+        colors: string[],
+        style?: string
+    ): Promise<Array<{ color: string; imageUrl: string; prompt: string }>> {
+        const results = [];
 
-      return insights.recommendations;
-    } catch (error) {
-      console.error('Error generating recommendations:', error);
-      return this.generateFallbackRecommendations(artisanProfession);
+        for (const color of colors) {
+            try {
+                const prompt = this.buildPrompt(productName, color, style);
+                
+                // For text-to-image generation (no reference image)
+                const requestBody = {
+                    instances: [
+                        {
+                            prompt: prompt,
+                        }
+                    ],
+                    parameters: {
+                        sampleCount: 1,
+                        aspectRatio: '1:1',
+                        safetySetting: 'block_some',
+                        personGeneration: 'allow_adult',
+                    }
+                };
+
+                const imageUrl = await this.callImageGenerationAPI(requestBody);
+
+                results.push({
+                    color,
+                    imageUrl,
+                    prompt,
+                });
+            } catch (error) {
+                console.error(`Error generating variation for color ${color}:`, error);
+                // Continue with other colors even if one fails
+            }
+        }
+
+        return results;
     }
-  }
 
-  /**
-   * Predict future trends based on current data
-   */
-  async predictFutureTrends(
-    historicalData: any[],
-    currentTrends: any[],
-    profession: string
-  ): Promise<{
-    predictions: string[];
-    timeframes: string[];
-    confidence: number;
-  }> {
-    // For now, provide basic predictions based on current trends
-    try {
-      const insights = await this.generateTrendInsights({
-        artisanProfession: profession,
-        googleTrendsData: currentTrends,
-        scrapedProducts: historicalData,
-        marketData: { historicalAnalysis: true }
-      });
+    /**
+     * Call the Vertex AI Image Generation API
+     */
+    private async callImageGenerationAPI(requestBody: any): Promise<string> {
+        const accessToken = await this.getAccessToken();
+        
+        const response = await fetch(
+            `${this.apiEndpoint}/imagegeneration@006:predict`,
+            {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody),
+            }
+        );
 
-      return {
-        predictions: [
-          'Continued demand for authentic, handmade products',
-          'Growing interest in sustainable and eco-friendly materials',
-          'Increasing preference for personalized and customized items',
-          'Rising popularity of multi-channel selling approaches'
-        ],
-        timeframes: ['3-6 months', '6-12 months', '1-2 years', '2-3 years'],
-        confidence: insights.confidence
-      };
-    } catch (error) {
-      console.error('Error predicting trends:', error);
-      return {
-        predictions: ['Market trends are evolving rapidly'],
-        timeframes: ['3-6 months'],
-        confidence: 0.5
-      };
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API request failed: ${response.status} - ${errorText}`);
+        }
+
+        const data = await response.json();
+        
+        // Extract the generated image
+        if (data.predictions && data.predictions.length > 0) {
+            const prediction = data.predictions[0];
+            
+            // The response typically contains bytesBase64Encoded
+            if (prediction.bytesBase64Encoded) {
+                return `data:image/png;base64,${prediction.bytesBase64Encoded}`;
+            } else if (prediction.gcsUri) {
+                return prediction.gcsUri;
+            }
+        }
+
+        throw new Error('No image generated in response');
     }
-  }
 
+    /**
+     * Edit an existing image with color changes
+     */
+    async editImageColor(
+        imageUrl: string,
+        maskUrl: string | null,
+        targetColor: string,
+        productDescription: string
+    ): Promise<string> {
+        try {
+            const prompt = `Change the color of this ${productDescription} to ${targetColor}. Maintain all other details and quality.`;
 
-  /**
-   * Generate fallback insights when AI fails
-   */
-  private generateFallbackInsights(input: TrendSummarizationInput): TrendInsights {
-    return {
-      summary: `Current market analysis for ${input.artisanProfession} shows steady demand with opportunities for growth through digital channels and product innovation.`,
-      keyTrends: [
-        'Increasing demand for authentic, handmade products',
-        'Growing preference for sustainable and eco-friendly materials',
-        'Rising interest in personalized and customized items',
-        'Strong performance on e-commerce platforms',
-        'Seasonal demand patterns showing consistent trends'
-      ],
-      recommendations: [
-        'Focus on high-quality product photography',
-        'Emphasize authentic craftsmanship in marketing',
-        'Consider offering customization options',
-        'Optimize product listings with detailed descriptions',
-        'Build strong social media presence',
-        'Partner with influencers in the artisan space',
-        'Offer competitive pricing with value justification',
-        'Consider bundling products for better value'
-      ],
-      marketOpportunities: [
-        'Expand to international markets through Etsy',
-        'Create product lines for gifting occasions',
-        'Develop workshop and experience offerings',
-        'Partner with interior designers and decorators',
-        'Explore corporate gifting market'
-      ],
-      competitiveAnalysis: 'Market shows healthy competition with opportunities to differentiate through unique designs, superior quality, and excellent customer service.',
-      confidence: 0.6
-    };
-  }
+            // Fetch and convert image to base64
+            let imageBase64 = '';
+            if (imageUrl.startsWith('http')) {
+                imageBase64 = await this.fetchImageAsBase64(imageUrl);
+            } else if (imageUrl.startsWith('data:')) {
+                imageBase64 = imageUrl.split(',')[1];
+            }
 
-  /**
-   * Generate fallback sentiment analysis
-   */
-  private generateFallbackSentiment(reviews: string[]): SentimentAnalysisResult {
-    return {
-      overallSentiment: 'neutral',
-      sentimentScore: 0.5,
-      keyThemes: ['Product quality', 'Value for money', 'Customer service'],
-      customerPainPoints: ['Shipping delays', 'Product durability concerns'],
-      positiveAspects: ['Unique designs', 'Artisan craftsmanship', 'Cultural authenticity']
-    };
-  }
+            const requestBody: any = {
+                instances: [
+                    {
+                        prompt: prompt,
+                        image: {
+                            bytesBase64Encoded: imageBase64,
+                        },
+                    }
+                ],
+                parameters: {
+                    sampleCount: 1,
+                    editMode: 'inpainting-insert',
+                }
+            };
 
-  /**
-   * Generate fallback recommendations
-   */
-  private generateFallbackRecommendations(profession: string): string[] {
-    return [
-      'Focus on high-quality product photography to showcase craftsmanship',
-      'Create detailed product stories highlighting heritage and techniques',
-      'Offer customization options to increase perceived value',
-      'Optimize pricing strategy based on market research',
-      'Build strong social media presence with behind-the-scenes content',
-      'Partner with local influencers and brand ambassadors',
-      'Consider limited edition collections to create urgency',
-      'Invest in professional packaging to enhance unboxing experience',
-      'Develop loyalty programs for repeat customers',
-      'Explore wholesale opportunities with retailers'
-    ];
-  }
+            // Add mask if provided
+            if (maskUrl) {
+                let maskBase64 = '';
+                if (maskUrl.startsWith('http')) {
+                    maskBase64 = await this.fetchImageAsBase64(maskUrl);
+                } else if (maskUrl.startsWith('data:')) {
+                    maskBase64 = maskUrl.split(',')[1];
+                }
+                
+                requestBody.instances[0].mask = {
+                    bytesBase64Encoded: maskBase64,
+                };
+            }
+
+            return await this.callImageGenerationAPI(requestBody);
+        } catch (error) {
+            console.error('Error editing image color:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Build a detailed prompt for design generation
+     */
+    private buildPrompt(productName: string, color: string, style?: string): string {
+        const basePrompt = `Create a beautiful ${color} colored variation of this ${productName} design.`;
+        
+        const styleDescriptions: Record<string, string> = {
+            traditional: 'with traditional Indian handicraft patterns and motifs',
+            modern: 'with contemporary, minimalist aesthetic',
+            vibrant: 'with bold, vibrant colors and energetic patterns',
+            elegant: 'with sophisticated, elegant details',
+            rustic: 'with natural, rustic textures',
+            festive: 'with festive, celebratory decorations',
+        };
+
+        const styleDesc = style && styleDescriptions[style] 
+            ? styleDescriptions[style] 
+            : 'maintaining the original artistic style';
+
+        return `${basePrompt} ${styleDesc}. Keep the same product structure and form, only change the color scheme to ${color}. High quality, professional product photography, well-lit, clean background.`;
+    }
+
+    /**
+     * Fetch image from URL and convert to base64
+     * Converts AVIF/WebP to PNG for compatibility
+     */
+    private async fetchImageAsBase64(url: string): Promise<string> {
+        try {
+            const response = await fetch(url);
+            const arrayBuffer = await response.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            
+            // Check if image needs conversion (AVIF or WebP)
+            const contentType = response.headers.get('content-type') || '';
+            
+            if (contentType.includes('avif') || contentType.includes('webp') || url.includes('.avif') || url.includes('.webp')) {
+                // Import sharp dynamically (server-side only)
+                const sharp = (await import('sharp')).default;
+                const pngBuffer = await sharp(buffer).png().toBuffer();
+                return pngBuffer.toString('base64');
+            }
+            
+            // For JPEG/PNG, return as-is
+            return buffer.toString('base64');
+        } catch (error) {
+            console.error('Error fetching and converting image:', error);
+            throw new Error(`Failed to fetch image from URL: ${url}`);
+        }
+    }
+
+    /**
+     * Generate variations using reference image (style transfer approach)
+     */
+    async generateVariationsWithReference(
+        originalImageUrl: string,
+        productName: string,
+        colors: string[],
+        style?: string
+    ): Promise<Array<{ color: string; imageUrl: string; prompt: string }>> {
+        const results = [];
+
+        // Fetch reference image once
+        let referenceImageBase64 = '';
+        if (originalImageUrl.startsWith('http')) {
+            referenceImageBase64 = await this.fetchImageAsBase64(originalImageUrl);
+        } else if (originalImageUrl.startsWith('data:')) {
+            referenceImageBase64 = originalImageUrl.split(',')[1];
+        }
+
+        for (const color of colors) {
+            try {
+                const prompt = this.buildPrompt(productName, color, style);
+                
+                // Use upscaling/editing endpoint for style preservation
+                const requestBody = {
+                    instances: [
+                        {
+                            prompt: prompt,
+                            referenceImage: {
+                                bytesBase64Encoded: referenceImageBase64,
+                            }
+                        }
+                    ],
+                    parameters: {
+                        sampleCount: 1,
+                        mode: 'stylize', // Try to preserve style from reference
+                    }
+                };
+
+                const imageUrl = await this.callImageGenerationAPI(requestBody);
+
+                results.push({
+                    color,
+                    imageUrl,
+                    prompt,
+                });
+            } catch (error) {
+                console.error(`Error generating variation for color ${color}:`, error);
+            }
+        }
+
+        return results;
+    }
+
+    /**
+     * Simple image generation without reference image
+     */
+    async generateSimpleImage(prompt: string): Promise<string> {
+        const requestBody = {
+            instances: [
+                {
+                    prompt: prompt,
+                }
+            ],
+            parameters: {
+                sampleCount: 1,
+            }
+        };
+
+        return await this.callImageGenerationAPI(requestBody);
+    }
 }
 
-export const vertexAIService = new VertexAIService();
+// Singleton instance
+let vertexAIService: VertexAIImageService | null = null;
+
+export function getVertexAIService(): VertexAIImageService {
+    if (!vertexAIService) {
+        vertexAIService = new VertexAIImageService();
+    }
+    return vertexAIService;
+}

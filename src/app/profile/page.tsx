@@ -8,7 +8,7 @@ import AuthGuard from '@/components/auth/AuthGuard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, Search, TrendingUp, Mic, MicOff } from 'lucide-react';
+import { Loader2, Search, TrendingUp, Mic, MicOff, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ProductGrid, ProfileHeader, ProfileInfo } from '@/components/profile';
 import ScrapedProductGrid from '@/components/profile/ScrapedProductGrid';
@@ -374,6 +374,20 @@ export default function ProfilePage() {
                     {/* Profile Header Section */}
                     <div className="mb-6 sm:mb-8">
                         <ProfileHeader userProfile={userProfile} />
+                        
+                        {/* AI Design Generator Button - Only for artisans */}
+                        {userProfile.role === 'artisan' && (
+                            <div className="mt-4">
+                                <Button
+                                    onClick={() => router.push('/ai-design-generator')}
+                                    className="w-full sm:w-auto"
+                                    variant="default"
+                                >
+                                    <Sparkles className="h-4 w-4 mr-2" />
+                                    AI Design Generator
+                                </Button>
+                            </div>
+                        )}
                         
                         {/* Voice Control - Mobile responsive */}
                         <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">

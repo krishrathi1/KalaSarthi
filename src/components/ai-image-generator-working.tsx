@@ -385,6 +385,15 @@ function AIImageGeneratorWorking() {
                                                     <span className="text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">
                                                         {image.color}
                                                     </span>
+                                                    {image.filter ? (
+                                                        <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-medium">
+                                                            🎨 CSS Filtered
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">
+                                                            🤖 AI Generated
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="flex items-center justify-between mt-3">

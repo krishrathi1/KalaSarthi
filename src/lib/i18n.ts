@@ -986,7 +986,7 @@ export const menuItems: MenuItem[] = [
         ur: 'ڈیزائن جنریٹر',
       },
       icon: Sparkles,
-      path: "/ai-image-generator",
+      path: "/ai-design-generator",
     },
     {
       label: {
@@ -1315,10 +1315,10 @@ export const features: Feature[] = [
     color: "text-emerald-500",
   },
   {
-    title: {en: 'Design Generator', hi: 'डिज़ाइन जेनरेटर', ta: 'வடிவமைப்பு உருவாக்கி', bn: 'ডিজাইন জেনারেটর', te: 'డిజైన్ జనరేటర్'},
-    description: {en: "Generate stunning product images using AI with custom styles, colors, and artistic effects.", hi: "कस्टम स्टाइल, रंग और कलात्मक प्रभावों के साथ AI का उपयोग करके शानदार उत्पाद छवियां उत्पन्न करें।", ta: "தனிப்பயன் பாணிகள், நிறங்கள் மற்றும் கலை விளைவுகளுடன் AI ஐப் பயன்படுத்தி அற்புதமான தயாரிப்பு படங்களை உருவாக்கவும்।", bn: "কাস্টম স্টাইল, রঙ এবং শৈল্পিক প্রভাব সহ AI ব্যবহার করে চমৎকার পণ্যের ছবি তৈরি করুন।", te: "కస్టమ్ స్టైల్‌లు, రంగులు మరియు కళాత్మక ప్రభావాలతో AI ని ఉపయోగించి అద్భుతమైన ఉత్పత్తి చిత్రాలను రూపొందించండి."},
-    icon: Sparkles,
-    path: "/ai-image-generator",
+    title: {en: 'AI Design Generator', hi: 'AI डिज़ाइन जेनरेटर', ta: 'AI வடிவமைப்பு உருவாக்கி', bn: 'AI ডিজাইন জেনারেটর', te: 'AI డిజైన్ జనరేటర్'},
+    description: {en: "Generate color variations of your products using Vertex AI Imagen. Select products and colors to create stunning design variations.", hi: "Vertex AI Imagen का उपयोग करके अपने उत्पादों के रंग भिन्नताएं उत्पन्न करें। शानदार डिज़ाइन भिन्नताएं बनाने के लिए उत्पाद और रंग चुनें।", ta: "Vertex AI Imagen ஐப் பயன்படுத்தி உங்கள் தயாரிப்புகளின் வண்ண மாறுபாடுகளை உருவாக்கவும். அற்புதமான வடிவமைப்பு மாறுபாடுகளை உருவாக்க தயாரிப்புகள் மற்றும் நிறங்களைத் தேர்ந்தெடுக்கவும்।", bn: "Vertex AI Imagen ব্যবহার করে আপনার পণ্যের রঙের বৈচিত্র তৈরি করুন। চমৎকার ডিজাইনের বৈচিত্র তৈরি করতে পণ্য এবং রঙ নির্বাচন করুন।", te: "Vertex AI Imagen ని ఉపయోగించి మీ ఉత్పత్తుల రంగు వైవిధ్యాలను రూపొందించండి. అద్భుతమైన డిజైన్ వైవిధ్యాలను సృష్టించడానికి ఉత్పత్తులు మరియు రంగులను ఎంచుకోండి."},
+    icon: Palette,
+    path: "/ai-design-generator",
     color: "text-purple-500",
   },
   {
