@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const geminiService = GeminiSpeechService.getInstance();
     const result = await geminiService.speechToText(arrayBuffer, {
       language,
-      model: 'gemini-1.5-flash'
+      model: 'gemini-2.0-flash'
     });
 
     return NextResponse.json({

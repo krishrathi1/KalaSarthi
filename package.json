@@ -73,7 +73,7 @@
     "google-trends-api": "^4.9.2",
     "langchain": "^0.3.32",
     "lucide-react": "^0.475.0",
-    "mongoose": "^8.18.0",
+    "mongoose": "^8.19.2",
     "next": "15.3.3",
     "node-cron": "^4.2.1",
     "patch-package": "^8.0.0",
