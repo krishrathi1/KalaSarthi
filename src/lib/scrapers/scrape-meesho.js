@@ -305,7 +305,46 @@ async function scrapeMeesho(categoryQuery, options = {}) {
 
     Logger.info('Starting Meesho scrape', { categoryQuery, minPrice, maxPrice, maxResults });
 
-    const browser = await puppeteer.launch({
+    // Auto-detect browser executable path based on platform
+    const getBrowserExecutablePath = () => {
+        const os = require('os');
+        const platform = os.platform();
+        
+        if (platform === 'win32') {
+            // Windows paths for Chrome and Edge
+            const possiblePaths = [
+                'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+                'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+                process.env.LOCALAPPDATA + '\\Google\\Chrome\\Application\\chrome.exe',
+                'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+                'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'
+            ];
+            
+            for (const path of possiblePaths) {
+                try {
+                    if (require('fs').existsSync(path)) {
+                        Logger.info('Found browser executable', { path });
+                        return path;
+                    }
+                } catch (e) {
+                    // Continue to next path
+                }
+            }
+            Logger.warn('No browser executable found in common Windows paths');
+        } else if (platform === 'darwin') {
+            // macOS path
+            const chromePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+            if (require('fs').existsSync(chromePath)) {
+                return chromePath;
+            }
+        }
+        
+        // Linux or fallback - let Puppeteer auto-detect
+        return undefined;
+    };
+
+    const executablePath = getBrowserExecutablePath();
+    const launchOptions = {
         headless,
         args: [
             '--no-sandbox',
@@ -320,7 +359,16 @@ async function scrapeMeesho(categoryQuery, options = {}) {
             '--allow-running-insecure-content',
             '--disable-features=VizDisplayCompositor'
         ]
-    });
+    };
+
+    if (executablePath) {
+        launchOptions.executablePath = executablePath;
+        Logger.info('Using browser executable path', { executablePath });
+    } else {
+        Logger.info('Using default browser detection');
+    }
+
+    const browser = await puppeteer.launch(launchOptions);
 
     let allProducts = [];
 

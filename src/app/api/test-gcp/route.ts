@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     console.error('Google Cloud Vision API Error:', error);
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error',
       details: {
         projectId: process.env.GCP_PROJECT_ID,
         credentialsPath: process.env.GOOGLE_APPLICATION_CREDENTIALS,

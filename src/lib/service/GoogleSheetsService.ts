@@ -157,7 +157,7 @@ export class GoogleSheetsService {
       return {
         success: false,
         orderId: orderData.orderId,
-        message: `Failed to add order: ${error instanceof Error ? error.message : 'Unknown error'}`
+        message: `Failed to add order: ${error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'}`
       };
     }
   }
@@ -501,7 +501,7 @@ export class GoogleSheetsService {
     } catch (error) {
       return {
         success: false,
-        message: `Failed to connect to Google Sheets: ${error instanceof Error ? error.message : 'Unknown error'}`
+        message: `Failed to connect to Google Sheets: ${error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'}`
       };
     }
   }

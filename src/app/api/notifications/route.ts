@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       },
       { status: 500 }
     );
@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       },
       { status: 500 }
     );

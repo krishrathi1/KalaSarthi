@@ -21,7 +21,9 @@ import {
   Mic,
   UserPlus,
   DollarSign,
+  TrendingUp,
 } from "lucide-react";
+import TrendingIndicator from "@/components/ui/trending-indicator";
 import { Logo } from "@/components/icons";
 import {
   SidebarHeader,
@@ -59,7 +61,6 @@ export function SidebarNav() {
         '/auth',
         '/smart-product-creator',
         '/trend-spotter',
-        '/trend-mapper',
         '/ai-image-generator',
         '/arth-saarthi',
         '/artisan-buddy',
@@ -111,7 +112,6 @@ export function SidebarNav() {
                 <Link href={item.path} prefetch={true}>
                   <item.icon />
                   <span>{t(item.label, language)}</span>
-
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

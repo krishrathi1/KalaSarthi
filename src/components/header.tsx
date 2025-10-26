@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { ChevronsUpDown, Check, User, LogOut, Settings, FileText, Archive, Package, ShoppingCart, Heart } from 'lucide-react';
+import { ChevronsUpDown, Check, User, LogOut, Settings, FileText, Archive, Package, ShoppingCart, Heart, TrendingUp } from 'lucide-react';
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from '@/components/ui/button';
@@ -43,6 +43,7 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '@/hooks/use-cart';
 import { useWishlist } from '@/hooks/use-wishlist';
 import { SimpleOfflineStatus } from './simple-offline-status';
+
 
 // Group languages by region
 const indianLanguages = Object.entries(languages).filter(([_, lang]) => lang.region === 'indian');
@@ -240,6 +241,28 @@ export function Header() {
 
         {/* Offline Status - Hidden on mobile */}
         <SimpleOfflineStatus className="hidden lg:flex" />
+
+        {/* Trending Indicator - Hidden on mobile */}
+        <div className="hidden md:flex flex-shrink-0">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push('/trend-spotter')}
+                  className="flex items-center gap-2"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  <span className="hidden lg:inline text-sm">Trends</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>View trending opportunities</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
 
         {/* Cart and Wishlist - Always visible, compact on mobile */}
         <div className="flex gap-1 sm:gap-2 flex-shrink-0">
@@ -505,6 +528,12 @@ export function Header() {
                   {wishlistCount}
                 </Badge>
               )}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+
+            <DropdownMenuItem onClick={() => router.push('/trend-spotter')}>
+              <TrendingUp className="mr-2 h-4 w-4" />
+              <span>Trend Spotter</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
 

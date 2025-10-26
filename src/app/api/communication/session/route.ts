@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to create session'
+        error: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Failed to create session'
       },
       { status: 500 }
     );
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch session'
+        error: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Failed to fetch session'
       },
       { status: 500 }
     );

@@ -125,7 +125,7 @@ export class SalesBackfillJob {
     } catch (error) {
       console.error(`❌ Backfill job ${this.jobId} failed:`, error);
       this.state.status = 'failed';
-      this.state.error = error instanceof Error ? error.message : 'Unknown error';
+      this.state.error = error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error';
       await this.saveJobState();
 
       return {

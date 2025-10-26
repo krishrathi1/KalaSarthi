@@ -34,7 +34,7 @@ export function usePermissions() {
     canUseMultiMarketplace: isArtisan || isBuyer, // Both can access marketplace
     canUsePriceEngine: isArtisan, // Pricing suggestions for artisans
     canUseStoryGenerator: isArtisan, // Product story generation for artisans
-    canUseTrendMapper: isArtisan || isBuyer, // Market trends for both
+
     canUseTrustLayer: isArtisan || isBuyer, // Trust and verification for both
     canUseYojanaMitra: isArtisan, // Scheme recommendations for artisans
   };

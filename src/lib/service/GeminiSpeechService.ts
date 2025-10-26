@@ -335,7 +335,7 @@ Audio data: ${audioBase64}
           console.error(`Gemini STT attempt ${retryCount + 1} failed:`, error);
 
           // Check if it's a quota/overload error
-          if (error.message?.includes('429') || error.message?.includes('503') || error.message?.includes('overloaded')) {
+          if (error instanceof Error ? error.message : String(error)?.includes('429') || error instanceof Error ? error.message : String(error)?.includes('503') || error instanceof Error ? error.message : String(error)?.includes('overloaded')) {
             retryCount++;
             if (retryCount < maxRetries) {
               // Wait before retry (exponential backoff)
@@ -369,7 +369,7 @@ Audio data: ${audioBase64}
       console.error('Gemini STT error after retries:', error);
 
       // Check if it's a network-related error
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error ? error instanceof Error ? error.message : String(error) : String(error);
       const isNetworkError = errorMessage.includes('network') ||
         errorMessage.includes('fetch') ||
         errorMessage.includes('timeout') ||

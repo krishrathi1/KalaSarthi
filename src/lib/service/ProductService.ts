@@ -60,7 +60,7 @@ export class ProductService {
             console.error('Error creating product:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -170,7 +170,7 @@ export class ProductService {
             console.error('Error updating product:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -197,7 +197,7 @@ export class ProductService {
             console.error('Error updating product story:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }
@@ -214,7 +214,7 @@ export class ProductService {
             console.error('Error deleting product:', error);
             return {
                 success: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             };
         }
     }

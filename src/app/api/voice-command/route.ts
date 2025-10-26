@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Voice command processing failed'
+        error: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Voice command processing failed'
       },
       { status: 500 }
     );

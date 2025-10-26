@@ -75,7 +75,7 @@ export class TranslationService {
 
     } catch (error) {
       console.error('Translation error:', error);
-      throw new Error(`Failed to translate text: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to translate text: ${error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'}`);
     }
   }
 
@@ -133,7 +133,7 @@ export class TranslationService {
 
     } catch (error) {
       console.error('Batch translation error:', error);
-      throw new Error(`Failed to translate texts: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to translate texts: ${error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'}`);
     }
   }
 
@@ -152,7 +152,7 @@ export class TranslationService {
 
     } catch (error) {
       console.error('Language detection error:', error);
-      throw new Error(`Failed to detect language: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to detect language: ${error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'}`);
     }
   }
 
@@ -216,7 +216,7 @@ export class TranslationService {
 
     } catch (error) {
       console.error('Translation with glossary error:', error);
-      throw new Error(`Failed to translate text with glossary: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to translate text with glossary: ${error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'}`);
     }
   }
 

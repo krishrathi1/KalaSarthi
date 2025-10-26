@@ -184,7 +184,7 @@ Return only the enhanced story in ${detectedLanguage}, nothing else.`;
           console.error(`Gemini generation attempt ${retryCount + 1} failed:`, error);
           
           // Check if it's a quota/overload error
-          if (error.message?.includes('429') || error.message?.includes('503') || error.message?.includes('overloaded') || error.message?.includes('quota')) {
+          if (error instanceof Error ? error.message : String(error)?.includes('429') || error instanceof Error ? error.message : String(error)?.includes('503') || error instanceof Error ? error.message : String(error)?.includes('overloaded') || error instanceof Error ? error.message : String(error)?.includes('quota')) {
             retryCount++;
             if (retryCount < maxRetries) {
               // Wait before retry (exponential backoff)
@@ -209,7 +209,7 @@ Return only the enhanced story in ${detectedLanguage}, nothing else.`;
     } catch (error) {
       console.error('Gemini generation error after retries:', error);
       console.error('Error details:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined,
         name: error instanceof Error ? error.name : undefined
       });
@@ -217,12 +217,12 @@ Return only the enhanced story in ${detectedLanguage}, nothing else.`;
       // Return more specific error information
       return NextResponse.json({
         success: false,
-        error: `Failed to enhance story with AI: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        error: `Failed to enhance story with AI: ${error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'}`,
         originalStory: story,
         language: language,
         debugInfo: {
           errorType: error instanceof Error ? error.name : 'Unknown',
-          errorMessage: error instanceof Error ? error.message : 'Unknown error'
+          errorMessage: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'
         }
       }, { status: 500 });
     }
@@ -241,7 +241,7 @@ Return only the enhanced story in ${detectedLanguage}, nothing else.`;
     // Return error instead of fallback story
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Story enhancement failed',
+      error: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Story enhancement failed',
       originalStory: story,
       language: language
     }, { status: 500 });

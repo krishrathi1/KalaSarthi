@@ -233,13 +233,13 @@ export class GoogleCloudService {
 
             // Handle specific Vertex AI errors
             if (error instanceof Error) {
-                if (error.message.includes('quota')) {
+                if (error instanceof Error ? error.message : String(error).includes('quota')) {
                     throw new Error('API quota exceeded. Please try again later.');
-                } else if (error.message.includes('permission')) {
+                } else if (error instanceof Error ? error.message : String(error).includes('permission')) {
                     throw new Error('Insufficient permissions for image generation.');
-                } else if (error.message.includes('safety')) {
+                } else if (error instanceof Error ? error.message : String(error).includes('safety')) {
                     throw new Error('Content blocked by safety filters. Please try a different prompt.');
-                } else if (error.message.includes('timeout')) {
+                } else if (error instanceof Error ? error.message : String(error).includes('timeout')) {
                     throw new Error('Request timed out. Please try again.');
                 }
             }

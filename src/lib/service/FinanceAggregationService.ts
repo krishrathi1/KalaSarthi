@@ -65,7 +65,7 @@ export class FinanceAggregationService {
           }
           
         } catch (error) {
-          const errorMsg = `Failed to aggregate ${period} data: ${error instanceof Error ? error.message : 'Unknown error'}`;
+          const errorMsg = `Failed to aggregate ${period} data: ${error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'}`;
           result.errors.push(errorMsg);
           console.error(errorMsg, error);
         }
@@ -84,7 +84,7 @@ export class FinanceAggregationService {
       
     } catch (error) {
       result.success = false;
-      result.errors.push(`Aggregation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      result.errors.push(`Aggregation failed: ${error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'}`);
       result.processingTime = Date.now() - startTime;
     }
 
@@ -135,7 +135,7 @@ export class FinanceAggregationService {
         processedCount++;
         
       } catch (error) {
-        const errorMsg = `Failed to process ${period} period ${periodInfo.key}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        const errorMsg = `Failed to process ${period} period ${periodInfo.key}: ${error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'}`;
         errors.push(errorMsg);
         console.error(errorMsg, error);
       }

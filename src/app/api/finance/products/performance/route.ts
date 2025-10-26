@@ -207,7 +207,7 @@ export async function GET(request: NextRequest) {
           lastUpdated: new Date(),
           cacheStatus: 'stale',
         },
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        error: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error occurred',
       } as PerformanceResponse,
       { status: 500 }
     );
@@ -401,7 +401,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        error: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error occurred',
       },
       { status: 500 }
     );

@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Speech-to-text failed'
+        error: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Speech-to-text failed'
       },
       { status: 500 }
     );

@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(response);
 
     } catch (cloudError) {
-      console.warn('⚠️ Cloud services not available, using fallback analysis:', cloudError instanceof Error ? cloudError.message : 'Unknown error');
+      console.warn('⚠️ Cloud services not available, using fallback analysis:', cloudError instanceof Error ? cloudError.message : String(cloudError));
 
       // Fallback to local analysis without cloud services
       const fallbackResult = await generateFallbackAnalysis(artisanProfession, limit, userProfile);
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
       trends: fallbackTrends,
       analysis: analysis + '\n\n⚠️ Note: Using basic fallback analysis.',
       recommendations,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
+      error: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error occurred'
     };
 
     console.log('📤 Ultimate fallback response:', response);

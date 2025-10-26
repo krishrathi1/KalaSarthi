@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Voice communication failed'
+        error: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Voice communication failed'
       },
       { status: 500 }
     );
@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch messages'
+        error: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Failed to fetch messages'
       },
       { status: 500 }
     );

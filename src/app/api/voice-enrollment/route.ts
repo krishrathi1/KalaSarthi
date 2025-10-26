@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       {
         response: "I'm sorry, I encountered an error. Please try again.",
         nextStep: "error",
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'
       },
       { status: 500 }
     );

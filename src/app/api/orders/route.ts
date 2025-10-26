@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
         console.error('Orders GET API Error:', error);
         return NextResponse.json({
             success: false,
-            error: error.message
+            error: error instanceof Error ? error.message : String(error)
         }, { status: 500 });
     }
 }
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
         console.error('Orders POST API Error:', error);
         return NextResponse.json({
             success: false,
-            error: error.message
+            error: error instanceof Error ? error.message : String(error)
         }, { status: 500 });
     }
 }
