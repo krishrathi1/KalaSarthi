@@ -60,7 +60,7 @@ export function DigitalTwinChat() {
     const handleVoiceInput = (event: CustomEvent) => {
       const { transcript, isVoice } = event.detail;
       console.log('Voice input received:', { transcript, isVoice });
-      
+
       if (transcript && isVoice) {
         // Add voice input as user message immediately
         const voiceMessage: EnhancedChatMessage = {
@@ -71,14 +71,14 @@ export function DigitalTwinChat() {
           language: language,
           isVoice: true
         };
-        
+
         console.log('Adding voice message to chat:', voiceMessage);
         setMessages(prev => {
           const newMessages = [...prev, voiceMessage];
           console.log('Updated messages:', newMessages);
           return newMessages;
         });
-        
+
         // Process the voice input
         handleVoiceSubmit(transcript);
       }
@@ -104,12 +104,12 @@ export function DigitalTwinChat() {
     try {
       const userId = user?.uid || 'default-user';
       console.log('Loading chat history for user:', userId);
-      
+
       const response = await fetch(`/api/artisan-buddy/chat?limit=50&userId=${userId}`);
       if (response.ok) {
         const data = await response.json();
         console.log('Chat history loaded:', data);
-        
+
         if (data.messages && data.messages.length > 0) {
           // Convert stored messages to EnhancedChatMessage format
           const enhancedMessages: EnhancedChatMessage[] = data.messages.map((msg: any) => ({
@@ -211,7 +211,7 @@ export function DigitalTwinChat() {
 
     try {
       const userId = user?.uid || 'default-user';
-      
+
       // First, try to get an instant response from stream API
       try {
         const streamResponse = await fetch('/api/artisan-buddy/stream', {
@@ -222,29 +222,32 @@ export function DigitalTwinChat() {
           body: JSON.stringify({
             message: transcript,
             language: language,
-            userId: userId
+            userId: userId,
+            artisanId: user?.uid, // Use current user as artisan ID
+            useDialogflow: true,
+            useVectorSearch: true
           }),
         });
 
         if (streamResponse.ok) {
           const streamData = await streamResponse.json();
           console.log('Stream response received:', streamData);
-          
+
           if (streamData.isFast) {
             // Show instant response
-            const responseContent = typeof streamData.response === 'string' 
-              ? streamData.response 
+            const responseContent = typeof streamData.response === 'string'
+              ? streamData.response
               : JSON.stringify(streamData.response);
-              
-            const instantMessage: EnhancedChatMessage = { 
+
+            const instantMessage: EnhancedChatMessage = {
               id: `instant_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-              role: "assistant", 
+              role: "assistant",
               content: responseContent,
               timestamp: new Date(),
               language: streamData.language || language,
               isVoice: false
             };
-            
+
             setMessages((prev) => [...prev, instantMessage]);
 
             // Speak the response if voice is enabled
@@ -271,7 +274,7 @@ export function DigitalTwinChat() {
       // Fallback to main API if stream doesn't work
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
-      
+
       const response = await fetch('/api/artisan-buddy/chat', {
         method: 'POST',
         headers: {
@@ -285,7 +288,10 @@ export function DigitalTwinChat() {
           enableVoice: isVoiceEnabled,
           isVoice: true,
           userId: userId,
-          fastMode: true
+          artisanId: user?.uid, // Use current user as artisan ID
+          fastMode: true,
+          useDialogflow: true,
+          useVectorSearch: true
         }),
       });
 
@@ -296,22 +302,22 @@ export function DigitalTwinChat() {
         console.log('AI response received:', data);
         console.log('Response type:', typeof data.response);
         console.log('Response content:', data.response);
-        
+
         // Ensure response is a string
-        const responseContent = typeof data.response === 'string' 
-          ? data.response 
+        const responseContent = typeof data.response === 'string'
+          ? data.response
           : JSON.stringify(data.response);
-        
-        const assistantMessage: EnhancedChatMessage = { 
+
+        const assistantMessage: EnhancedChatMessage = {
           id: `ai_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          role: "assistant", 
+          role: "assistant",
           content: responseContent,
           timestamp: new Date(),
           language: data.language || language,
           isVoice: false,
           audioUrl: data.audio
         };
-        
+
         setMessages((prev) => [...prev, assistantMessage]);
 
         // Speak the response if voice is enabled
@@ -339,7 +345,7 @@ export function DigitalTwinChat() {
       }
     } catch (error) {
       console.error('Voice chat error:', error);
-      
+
       // Add error message to chat
       const errorMessage: EnhancedChatMessage = {
         id: `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -350,7 +356,7 @@ export function DigitalTwinChat() {
         isVoice: false
       };
       setMessages((prev) => [...prev, errorMessage]);
-      
+
       toast({
         title: t('chatError', language) || "Chat Error",
         description: "Failed to get response. Please try again.",
@@ -364,15 +370,15 @@ export function DigitalTwinChat() {
     e.preventDefault();
     if (!input.trim() || loading) return;
 
-    const userMessage: EnhancedChatMessage = { 
+    const userMessage: EnhancedChatMessage = {
       id: `text_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      role: "user", 
+      role: "user",
       content: input,
       timestamp: new Date(),
       language: language,
       isVoice: false
     };
-    
+
     console.log('Adding user text message:', userMessage);
     setMessages((prev) => [...prev, userMessage]);
     const currentInput = input;
@@ -392,29 +398,32 @@ export function DigitalTwinChat() {
           enableTranslation: isTranslationEnabled,
           enableVoice: isVoiceEnabled,
           isVoice: false,
-          userId: userId
+          userId: userId,
+          artisanId: user?.uid, // Use current user as artisan ID
+          useDialogflow: true,
+          useVectorSearch: true
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
         console.log('AI response received for text:', data);
-        
+
         // Ensure response is a string
-        const responseContent = typeof data.response === 'string' 
-          ? data.response 
+        const responseContent = typeof data.response === 'string'
+          ? data.response
           : JSON.stringify(data.response);
-        
-        const assistantMessage: EnhancedChatMessage = { 
+
+        const assistantMessage: EnhancedChatMessage = {
           id: `ai_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          role: "assistant", 
+          role: "assistant",
           content: responseContent,
           timestamp: new Date(),
           language: data.language || language,
           isVoice: false,
           audioUrl: data.audio // Store audio URL if available
         };
-        
+
         console.log('Adding AI response to chat:', assistantMessage);
         setMessages((prev) => [...prev, assistantMessage]);
 
@@ -430,7 +439,7 @@ export function DigitalTwinChat() {
       }
     } catch (error) {
       console.error('Chat error:', error);
-      
+
       // Add error message to chat
       const errorMessage: EnhancedChatMessage = {
         id: `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -441,7 +450,7 @@ export function DigitalTwinChat() {
         isVoice: false
       };
       setMessages((prev) => [...prev, errorMessage]);
-      
+
       toast({
         title: t('chatError', language) || "Chat Error",
         description: "Failed to get response. Please try again.",
@@ -489,10 +498,22 @@ export function DigitalTwinChat() {
           {translatedDescription}
         </CardDescription>
         {messages.length === 1 && messages[0].role === 'assistant' && (
-          <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-700">
-              💡 <strong>Tip:</strong> Use the universal microphone button in the header to speak your messages, or type below to chat with me!
-            </p>
+          <div className="mt-2 space-y-2">
+            <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-700">
+                💡 <strong>Tip:</strong> Use the universal microphone button in the header to speak your messages, or type below to chat with me!
+              </p>
+            </div>
+            <div className="p-2 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm text-green-700">
+                🎯 <strong>I can help with:</strong> Product creation, Sales tracking, Trend analysis, Buyer connections, and general business advice!
+              </p>
+            </div>
+            <div className="p-2 bg-purple-50 border border-purple-200 rounded-lg">
+              <p className="text-sm text-purple-700">
+                👤 <strong>Personalize me:</strong> <a href="/artisan-buddy/profile" className="underline font-semibold">Set up your artisan profile</a> for more personalized assistance!
+              </p>
+            </div>
           </div>
         )}
       </CardHeader>
@@ -531,7 +552,7 @@ export function DigitalTwinChat() {
                       : "bg-primary text-primary-foreground"
                   )}
                 >
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
                     {message.isVoice && (
                       <Badge variant="secondary" className="text-xs flex items-center gap-1">
                         <Mic className="h-3 w-3" />
@@ -541,6 +562,16 @@ export function DigitalTwinChat() {
                     {message.language && message.language !== language && (
                       <Badge variant="outline" className="text-xs">
                         {message.language}
+                      </Badge>
+                    )}
+                    {(message as any).intent && (
+                      <Badge variant="default" className="text-xs">
+                        {(message as any).intent}
+                      </Badge>
+                    )}
+                    {(message as any).contextUsed && (
+                      <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                        🧠 Context
                       </Badge>
                     )}
                     {message.audioUrl && (
@@ -558,8 +589,8 @@ export function DigitalTwinChat() {
                     )}
                   </div>
                   <div className="whitespace-pre-wrap break-words">
-                    {typeof message.content === 'string' 
-                      ? message.content 
+                    {typeof message.content === 'string'
+                      ? message.content
                       : JSON.stringify(message.content)
                     }
                   </div>

@@ -10,9 +10,9 @@ export async function POST(request: NextRequest) {
     const { imageUrl, language: reqLanguage = 'hi', voiceStyle = 'default' } = requestBody;
     language = reqLanguage; // Update with request language
 
-    console.log('Story enhancement request:', { 
-      story: story?.substring(0, 100) + '...', 
-      language, 
+    console.log('Story enhancement request:', {
+      story: story?.substring(0, 100) + '...',
+      language,
       hasImageUrl: !!imageUrl,
       imageUrlType: typeof imageUrl,
       imageUrlLength: imageUrl?.length || 0,
@@ -28,16 +28,16 @@ export async function POST(request: NextRequest) {
 
     // Initialize Gemini directly
     const apiKey = process.env.GOOGLE_AI_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY;
-    
+
     console.log('API Key check:', {
       hasGoogleAIKey: !!process.env.GOOGLE_AI_API_KEY,
       hasNextPublicKey: !!process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY,
       finalApiKey: apiKey ? 'Present' : 'Missing'
     });
-    
+
     if (!apiKey) {
       console.warn('GOOGLE_AI_API_KEY not found, using fallback');
-      
+
       // Return error when API key is missing
       return NextResponse.json({
         success: false,
@@ -48,8 +48,8 @@ export async function POST(request: NextRequest) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
     console.log('Gemini model initialized successfully');
 
     // Voice style instructions
@@ -66,10 +66,10 @@ export async function POST(request: NextRequest) {
     // Detect the language of the input story
     const isHindi = /[\u0900-\u097F]/.test(story);
     // Use the language parameter from frontend, but fallback to detection if not provided
-    const detectedLanguage = language === 'hi-IN' || language === 'hi' ? 'Hindi' : 
-                           language === 'en-US' || language === 'en' ? 'English' :
-                           isHindi ? 'Hindi' : 'English';
-    
+    const detectedLanguage = language === 'hi-IN' || language === 'hi' ? 'Hindi' :
+      language === 'en-US' || language === 'en' ? 'English' :
+        isHindi ? 'Hindi' : 'English';
+
     console.log(`🌍 Story language detected: ${detectedLanguage} (${isHindi ? 'Hindi' : 'English'})`);
 
     // Detailed, specific prompt to prevent hallucination and focus on the actual product
@@ -125,14 +125,14 @@ WHAT NOT TO DO:
 Return only the enhanced story in ${detectedLanguage}, nothing else.`;
 
     let enhancedStory = '';
-    
+
     try {
       console.log('Starting Gemini API call...', {
         hasImageUrl: !!imageUrl,
         promptLength: prompt.length,
-        model: 'gemini-1.5-flash'
+        model: 'gemini-2.5-flash'
       });
-      
+
       // Retry logic for Gemini API overload/rate limit errors
       let result;
       let retryCount = 0;
@@ -141,19 +141,19 @@ Return only the enhanced story in ${detectedLanguage}, nothing else.`;
       while (retryCount < maxRetries) {
         try {
           console.log(`Gemini API attempt ${retryCount + 1}/${maxRetries}`);
-          
+
           // If we have an image, use multimodal approach
           if (imageUrl && imageUrl.startsWith('data:image/')) {
             console.log('Using multimodal approach with image');
-            
+
             // Extract base64 data properly
             let base64Data = imageUrl;
             if (imageUrl.includes(',')) {
               base64Data = imageUrl.split(',')[1]; // Remove data:image/jpeg;base64, prefix
             }
-            
+
             console.log('Image data length:', base64Data.length);
-            
+
             // Validate that we have actual image data
             if (!base64Data || base64Data.length < 100) {
               console.log('Invalid image data, falling back to text-only approach');
@@ -182,7 +182,7 @@ Return only the enhanced story in ${detectedLanguage}, nothing else.`;
           break; // Success, exit retry loop
         } catch (error: any) {
           console.error(`Gemini generation attempt ${retryCount + 1} failed:`, error);
-          
+
           // Check if it's a quota/overload error
           if (error instanceof Error ? error.message : String(error)?.includes('429') || error instanceof Error ? error.message : String(error)?.includes('503') || error instanceof Error ? error.message : String(error)?.includes('overloaded') || error instanceof Error ? error.message : String(error)?.includes('quota')) {
             retryCount++;
@@ -194,7 +194,7 @@ Return only the enhanced story in ${detectedLanguage}, nothing else.`;
               continue;
             }
           }
-          
+
           // If not a retryable error or max retries reached, throw
           throw error;
         }
@@ -213,7 +213,7 @@ Return only the enhanced story in ${detectedLanguage}, nothing else.`;
         stack: error instanceof Error ? error.stack : undefined,
         name: error instanceof Error ? error.name : undefined
       });
-      
+
       // Return more specific error information
       return NextResponse.json({
         success: false,
@@ -237,7 +237,7 @@ Return only the enhanced story in ${detectedLanguage}, nothing else.`;
 
   } catch (error) {
     console.error('Story enhancement error:', error);
-    
+
     // Return error instead of fallback story
     return NextResponse.json({
       success: false,

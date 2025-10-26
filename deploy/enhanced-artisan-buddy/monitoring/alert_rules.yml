@@ -1,0 +1,122 @@
+groups:
+  - name: enhanced-artisan-buddy-alerts
+    rules:
+      # Application availability
+      - alert: EnhancedArtisanBuddyDown
+        expr: up{job="enhanced-artisan-buddy"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Enhanced Artisan Buddy application is down"
+          description: "Enhanced Artisan Buddy application has been down for more than 1 minute."
+
+      # High response time
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="enhanced-artisan-buddy"}[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is above 2 seconds for 5 minutes."
+
+      # High error rate
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{job="enhanced-artisan-buddy",status=~"5.."}[5m]) / rate(http_requests_total{job="enhanced-artisan-buddy"}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is above 5% for 5 minutes."
+
+      # Memory usage
+      - alert: HighMemoryUsage
+        expr: (process_resident_memory_bytes{job="enhanced-artisan-buddy"} / 1024 / 1024) > 512
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Application memory usage is above 512MB for 10 minutes."
+
+      # CPU usage
+      - alert: HighCPUUsage
+        expr: rate(process_cpu_seconds_total{job="enhanced-artisan-buddy"}[5m]) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is above 80% for 10 minutes."
+
+      # Database connectivity
+      - alert: DatabaseConnectionFailure
+        expr: mongodb_up{job="mongodb"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database connection failure"
+          description: "MongoDB connection has been down for more than 1 minute."
+
+      # Redis connectivity
+      - alert: RedisConnectionFailure
+        expr: redis_up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis connection failure"
+          description: "Redis connection has been down for more than 1 minute."
+
+      # Vector database connectivity
+      - alert: VectorDBConnectionFailure
+        expr: up{job="vector-db"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Vector database connection failure"
+          description: "Vector database connection has been down for more than 1 minute."
+
+      # Disk space
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space"
+          description: "Disk space is below 10% for 5 minutes."
+
+      # Rate limiting
+      - alert: HighRateLimitHits
+        expr: rate(nginx_http_requests_total{status="429"}[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High rate limit hits"
+          description: "Rate limiting is being triggered frequently."
+
+      # Security alerts
+      - alert: SecurityViolation
+        expr: increase(security_violations_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Security violation detected"
+          description: "Security violation has been detected in the application."
+
+      # Data compliance alerts
+      - alert: DataRetentionViolation
+        expr: data_retention_violations_total > 0
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Data retention policy violation"
+          description: "Data retention policy violation detected."

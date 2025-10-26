@@ -4,7 +4,7 @@ import { FastResponseGenerator } from '@/lib/service/FastResponseGenerator';
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, language, userId } = await request.json();
+    const { message, language, userId, artisanId, useDialogflow, useVectorSearch } = await request.json();
 
     if (!message) {
       return NextResponse.json(
@@ -32,10 +32,10 @@ export async function POST(request: NextRequest) {
     const fastResponse = fastResponseGenerator.getFastResponse(message, language);
     if (fastResponse) {
       console.log('⚡ Stream: Fast generated response');
-      
+
       // Cache the response
       fastResponseCache.set(message, language, fastResponse.response);
-      
+
       return NextResponse.json({
         response: fastResponse.response,
         language: language,
@@ -46,14 +46,34 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // If no fast response available, return a generic response
+    // If no fast response available, return a contextual generic response
+    let genericResponse = language === 'hi'
+      ? 'मैं आपकी बात समझ रहा हूं। कृपया थोड़ा इंतज़ार करें...'
+      : 'I understand what you\'re saying. Please wait a moment...';
+
+    // Add context if artisan profile is available
+    if (artisanId && useVectorSearch) {
+      try {
+        const { VectorStoreService } = await import('@/lib/service/VectorStoreService');
+        const vectorStore = VectorStoreService.getInstance();
+        const profile = vectorStore.getArtisanProfile(artisanId);
+
+        if (profile) {
+          genericResponse = language === 'hi'
+            ? `नमस्ते! मैं ${profile.name} का AI असिस्टेंट हूं। मैं ${profile.craft} के बारे में जानकारी दे सकता हूं। कृपया थोड़ा इंतज़ार करें...`
+            : `Hello! I'm ${profile.name}'s AI assistant. I can help with information about ${profile.craft}. Please wait a moment...`;
+        }
+      } catch (error) {
+        console.error('Error loading artisan context:', error);
+      }
+    }
+
     return NextResponse.json({
-      response: language === 'hi' 
-        ? 'मैं आपकी बात समझ रहा हूं। कृपया थोड़ा इंतज़ार करें...'
-        : 'I understand what you\'re saying. Please wait a moment...',
+      response: genericResponse,
       language: language,
       isFast: false,
-      needsProcessing: true
+      needsProcessing: true,
+      contextAvailable: !!artisanId
     });
 
   } catch (error) {

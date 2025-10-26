@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: enhanced-artisan-buddy-config
+  namespace: enhanced-artisan-buddy
+data:
+  NODE_ENV: "production"
+  PORT: "3000"
+  HOSTNAME: "0.0.0.0"
+  SESSION_TIMEOUT: "60"
+  MAX_REQUESTS_PER_MINUTE: "100"
+  ENABLE_AUDIT_LOGGING: "true"
+  CONVERSATION_RETENTION_DAYS: "365"
+  PROFILE_RETENTION_DAYS: "1095"
+  AUDIT_LOG_RETENTION_DAYS: "2555"
+  ANONYMIZE_AFTER_DAYS: "730"
+  ENABLE_VOICE_FEATURES: "true"
+  ENABLE_VECTOR_SEARCH: "true"
+  ENABLE_ANALYTICS: "true"
+  ENABLE_RATE_LIMITING: "true"
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+  HEALTH_CHECK_INTERVAL: "30"
+  HEALTH_CHECK_TIMEOUT: "10"
+  HEALTH_CHECK_RETRIES: "3"

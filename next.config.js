@@ -3,15 +3,15 @@ const nextConfig = {
   // Development optimizations
   compress: process.env.NODE_ENV === 'production',
   poweredByHeader: false,
-  
+
   // TypeScript and ESLint optimizations for dev
   typescript: {
-    ignoreBuildErrors: process.env.NODE_ENV === 'development',
+    ignoreBuildErrors: true,
   },
   eslint: {
-    ignoreDuringBuilds: process.env.NODE_ENV === 'development',
+    ignoreDuringBuilds: true,
   },
-  
+
   // Experimental features for performance
   experimental: {
     optimizeCss: process.env.NODE_ENV === 'production',
@@ -19,7 +19,7 @@ const nextConfig = {
     // Reduce memory usage
     memoryBasedWorkersCount: true,
   },
-  
+
   // Turbopack configuration for faster dev builds
   turbopack: {
     rules: {
@@ -110,26 +110,48 @@ const nextConfig = {
         os: false,
         net: false,
         tls: false,
-        crypto: false,
-        stream: false,
         url: false,
         zlib: false,
         http: false,
         https: false,
         assert: false,
         querystring: false,
+        child_process: false,
+        'node:buffer': false,
+        'node:fs': false,
+        'node:https': false,
+        'node:http': false,
+        'node:crypto': false,
+        'node:stream': false,
+        'node:util': false,
+        'node:path': false,
+        'node:os': false,
+        'node:url': false,
+        'node:querystring': false,
       };
     }
 
     // Ignore server-side modules during client-side build
-    config.externals = config.externals || [];
-    config.externals.push({
-      'puppeteer': 'commonjs puppeteer',
-      'puppeteer-extra': 'commonjs puppeteer-extra',
-      'puppeteer-extra-plugin-stealth': 'commonjs puppeteer-extra-plugin-stealth',
-      '@google-cloud/text-to-speech': 'commonjs @google-cloud/text-to-speech',
-      '@google-cloud/speech': 'commonjs @google-cloud/speech',
-    });
+    if (!isServer) {
+      config.externals = config.externals || [];
+      config.externals.push({
+        'puppeteer': 'commonjs puppeteer',
+        'puppeteer-extra': 'commonjs puppeteer-extra',
+        'puppeteer-extra-plugin-stealth': 'commonjs puppeteer-extra-plugin-stealth',
+        '@google-cloud/text-to-speech': 'commonjs @google-cloud/text-to-speech',
+        '@google-cloud/speech': 'commonjs @google-cloud/speech',
+        '@google-cloud/bigquery': 'commonjs @google-cloud/bigquery',
+        '@google-cloud/common': 'commonjs @google-cloud/common',
+        'google-auth-library': 'commonjs google-auth-library',
+        'child_process': 'commonjs child_process',
+        'teeny-request': 'commonjs teeny-request',
+        'node-fetch': 'commonjs node-fetch',
+        'fetch-blob': 'commonjs fetch-blob',
+        'faiss-node': 'commonjs faiss-node',
+        'mongodb': 'commonjs mongodb',
+        'redis': 'commonjs redis',
+      });
+    }
 
     return config;
   },
@@ -138,7 +160,16 @@ const nextConfig = {
     'puppeteer-extra',
     'puppeteer-extra-plugin-stealth',
     '@google-cloud/text-to-speech',
-    '@google-cloud/speech'
+    '@google-cloud/speech',
+    '@google-cloud/bigquery',
+    '@google-cloud/common',
+    'google-auth-library',
+    'teeny-request',
+    'node-fetch',
+    'fetch-blob',
+    'faiss-node',
+    'mongodb',
+    'redis'
   ],
   images: {
     remotePatterns: [

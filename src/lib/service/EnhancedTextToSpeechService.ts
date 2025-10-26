@@ -1,49 +1,70 @@
 import { TextToSpeechClient } from '@google-cloud/text-to-speech';
 import { google } from '@google-cloud/text-to-speech/build/protos/protos';
-import { 
-  VOICE_MAPPING, 
-  VoiceConfig, 
-  getBestVoiceForLanguage, 
-  getDefaultVoice, 
-  getFallbackVoice,
-  isLanguageSupported 
-} from '../voice-mapping';
 
-export interface EnhancedTTSOptions {
+export interface EnhancedTextToSpeechOptions {
   language?: string;
   voice?: string;
-  gender?: 'MALE' | 'FEMALE';
-  quality?: 'Neural2' | 'Wavenet' | 'Standard';
+  gender?: 'MALE' | 'FEMALE' | 'NEUTRAL';
   speed?: number;
   pitch?: number;
   volume?: number;
-  enableTranslation?: boolean;
-  sourceLanguage?: string;
+  audioEncoding?: 'LINEAR16' | 'MP3' | 'OGG_OPUS' | 'MULAW' | 'ALAW';
+  sampleRateHertz?: number;
+  effectsProfile?: string[];
+  enableCache?: boolean;
+  cacheKey?: string;
+  ssmlOptions?: {
+    emphasis?: Array<{ text: string; level: 'strong' | 'moderate' | 'reduced' }>;
+    breaks?: Array<{ position: number; time: string }>;
+    prosody?: {
+      rate?: string;
+      pitch?: string;
+      volume?: string;
+    };
+    sayAs?: Array<{ text: string; interpretAs: string; format?: string }>;
+  };
 }
 
-export interface EnhancedTTSResult {
+export interface EnhancedTextToSpeechResult {
   audioBuffer: ArrayBuffer;
   audioFormat: string;
   language: string;
   voice: string;
-  translatedText?: string;
-  originalText?: string;
-  processingTime: number;
+  duration: number;
+  cached: boolean;
+  audioUrl?: string;
+  metadata: {
+    textLength: number;
+    processingTime: number;
+    voiceQuality: 'standard' | 'wavenet' | 'neural2';
+    estimatedCost: number;
+  };
+}
+
+export interface VoiceInfo {
+  name: string;
+  languageCode: string;
+  gender: 'MALE' | 'FEMALE' | 'NEUTRAL';
+  naturalSampleRateHertz: number;
+  voiceType: 'standard' | 'wavenet' | 'neural2';
+  quality: number; // 1-10 scale
 }
 
 export class EnhancedTextToSpeechService {
   private static instance: EnhancedTextToSpeechService;
   private ttsClient: TextToSpeechClient;
-  private voiceCache: Map<string, VoiceConfig[]> = new Map();
-  private audioCache: Map<string, ArrayBuffer> = new Map();
-  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-  private cacheTimestamps: Map<string, number> = new Map();
+  private audioCache: Map<string, { buffer: ArrayBuffer; timestamp: number; metadata: any }> = new Map();
+  private readonly CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+  private readonly MAX_CACHE_SIZE = 100; // Maximum cached items
 
   private constructor() {
     this.ttsClient = new TextToSpeechClient({
       keyFilename: 'google-credentials.json',
       projectId: 'gen-lang-client-0314311341'
     });
+
+    // Clean cache periodically
+    setInterval(() => this.cleanCache(), 60 * 60 * 1000); // Every hour
   }
 
   public static getInstance(): EnhancedTextToSpeechService {
@@ -54,89 +75,67 @@ export class EnhancedTextToSpeechService {
   }
 
   /**
-   * Enhanced speech synthesis with intelligent voice selection
+   * Synthesize speech with enhanced features
    */
   public async synthesizeSpeech(
     text: string,
-    options: EnhancedTTSOptions = {}
-  ): Promise<EnhancedTTSResult> {
+    options: EnhancedTextToSpeechOptions = {}
+  ): Promise<EnhancedTextToSpeechResult> {
     const startTime = Date.now();
-    
+
     try {
       const {
-        language = 'en-IN',
+        language = 'en-US',
         voice,
         gender = 'FEMALE',
-        quality = 'Neural2',
         speed = 1.0,
         pitch = 0.0,
-        volume = 1.0,
-        enableTranslation = false,
-        sourceLanguage = 'en'
+        volume = 0.0,
+        audioEncoding = 'MP3',
+        sampleRateHertz = 24000,
+        effectsProfile = ['headphone-class-device'],
+        enableCache = true,
+        cacheKey,
+        ssmlOptions
       } = options;
 
-      // Validate language support
-      if (!isLanguageSupported(language)) {
-        throw new Error(`Language ${language} is not supported`);
-      }
+      // Generate cache key
+      const finalCacheKey = cacheKey || this.generateCacheKey(text, options);
 
       // Check cache first
-      const cacheKey = this.generateCacheKey(text, language, voice, gender, quality);
-      const cachedAudio = this.getCachedAudio(cacheKey);
-      if (cachedAudio) {
-        console.log('Using cached audio for:', cacheKey);
-        return {
-          audioBuffer: cachedAudio,
-          audioFormat: 'MP3',
-          language,
-          voice: voice || getDefaultVoice(language),
-          processingTime: Date.now() - startTime
-        };
-      }
-
-      // Handle translation if needed
-      let processedText = text;
-      let translatedText: string | undefined;
-      
-      if (enableTranslation && language !== sourceLanguage) {
-        try {
-          // Import translation service dynamically to avoid circular dependencies
-          const { TranslationService } = await import('./TranslationService');
-          const translationService = TranslationService.getInstance();
-          const translationResult = await translationService.translateText(text, language, sourceLanguage);
-          translatedText = translationResult.translatedText;
-          processedText = translatedText;
-        } catch (error) {
-          console.warn('Translation failed, using original text:', error);
+      if (enableCache) {
+        const cached = this.getFromCache(finalCacheKey);
+        if (cached) {
+          return {
+            ...cached.metadata,
+            audioBuffer: cached.buffer,
+            cached: true
+          };
         }
       }
 
-      // Select optimal voice
-      const selectedVoice = await this.selectOptimalVoice(language, voice, gender, quality);
-      
-      console.log('TTS Synthesis:', {
-        language,
-        voice: selectedVoice.name,
-        gender: selectedVoice.gender,
-        quality: selectedVoice.quality,
-        textLength: processedText.length
-      });
+      // Get optimal voice for the language and gender
+      const selectedVoice = voice || await this.getOptimalVoice(language, gender);
 
-      // Enhanced voice configuration
+      // Convert text to SSML if options are provided
+      const inputText = ssmlOptions ? this.createSSML(text, ssmlOptions) : text;
+      const isSSML = ssmlOptions !== undefined;
+
+      // Build synthesis request
       const request: google.cloud.texttospeech.v1.ISynthesizeSpeechRequest = {
-        input: { text: processedText },
+        input: isSSML ? { ssml: inputText } : { text: inputText },
         voice: {
           languageCode: language,
-          name: selectedVoice.name,
-          ssmlGender: selectedVoice.gender,
+          name: selectedVoice,
+          ssmlGender: gender,
         },
         audioConfig: {
-          audioEncoding: 'MP3',
-          speakingRate: speed,
-          pitch: pitch,
-          volumeGainDb: volume,
-          effectsProfileId: ['headphone-class-device'],
-          sampleRateHertz: 24000, // High quality audio
+          audioEncoding: audioEncoding,
+          speakingRate: Math.max(0.25, Math.min(4.0, speed)),
+          pitch: Math.max(-20.0, Math.min(20.0, pitch)),
+          volumeGainDb: Math.max(-96.0, Math.min(16.0, volume)),
+          sampleRateHertz,
+          effectsProfileId: effectsProfile,
         },
       };
 
@@ -147,318 +146,102 @@ export class EnhancedTextToSpeechService {
       }
 
       // Convert to ArrayBuffer
-      let audioBuffer: ArrayBuffer;
-      if (typeof response.audioContent === 'string') {
-        // If it's a base64 string, decode it
-        audioBuffer = Buffer.from(response.audioContent, 'base64').buffer;
-      } else if (response.audioContent instanceof Uint8Array) {
-        const slicedBuffer = response.audioContent.buffer.slice(
-          response.audioContent.byteOffset,
-          response.audioContent.byteOffset + response.audioContent.byteLength
-        );
-        audioBuffer = slicedBuffer instanceof ArrayBuffer ? slicedBuffer : new ArrayBuffer(slicedBuffer.byteLength);
-        if (!(slicedBuffer instanceof ArrayBuffer)) {
-          // Copy data if it's a SharedArrayBuffer
-          const view = new Uint8Array(audioBuffer);
-          view.set(new Uint8Array(slicedBuffer));
-        }
-      } else if (typeof Buffer !== 'undefined' && Buffer.isBuffer(response.audioContent)) {
-        const buf: Buffer = response.audioContent as Buffer;
-        audioBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
-      } else {
-        throw new Error('Unknown audioContent type');
-      }
+      const audioBuffer = this.convertToArrayBuffer(response.audioContent);
 
-      // Cache the result
-      this.setCachedAudio(cacheKey, audioBuffer);
+      // Calculate duration (approximate)
+      const duration = this.estimateAudioDuration(audioBuffer, sampleRateHertz, audioEncoding);
 
+      // Get voice quality info
+      const voiceInfo = await this.getVoiceInfo(selectedVoice || '', language);
+
+      // Calculate processing time and estimated cost
       const processingTime = Date.now() - startTime;
+      const estimatedCost = this.calculateEstimatedCost(text.length, voiceInfo?.voiceType || 'standard');
 
-      return {
+      const result: EnhancedTextToSpeechResult = {
         audioBuffer,
-        audioFormat: 'MP3',
+        audioFormat: audioEncoding.toLowerCase(),
         language,
-        voice: selectedVoice.name,
-        translatedText,
-        originalText: enableTranslation ? text : undefined,
-        processingTime
+        voice: selectedVoice || '',
+        duration,
+        cached: false,
+        metadata: {
+          textLength: text.length,
+          processingTime,
+          voiceQuality: voiceInfo?.voiceType || 'standard',
+          estimatedCost
+        }
       };
 
-    } catch (error: any) {
-      console.error('Enhanced TTS error:', error);
-      throw new Error(`Enhanced TTS failed: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-
-  /**
-   * Intelligent voice selection based on preferences and availability
-   */
-  private async selectOptimalVoice(
-    language: string,
-    preferredVoice?: string,
-    gender: 'MALE' | 'FEMALE' = 'FEMALE',
-    quality: 'Neural2' | 'Wavenet' | 'Standard' = 'Neural2'
-  ): Promise<VoiceConfig> {
-    // If specific voice is requested, try to use it
-    if (preferredVoice) {
-      const voices = VOICE_MAPPING[language]?.voices || [];
-      const specificVoice = voices.find(v => v.name === preferredVoice);
-      if (specificVoice) {
-        return specificVoice;
-      }
-    }
-
-    // Get best voice for the language
-    const bestVoice = getBestVoiceForLanguage(language, gender, quality);
-    if (bestVoice) {
-      return bestVoice;
-    }
-
-    // Fallback to default voice
-    const defaultVoiceName = getDefaultVoice(language);
-    const voices = VOICE_MAPPING[language]?.voices || [];
-    const defaultVoice = voices.find(v => v.name === defaultVoiceName);
-    
-    if (defaultVoice) {
-      return defaultVoice;
-    }
-
-    // Last resort fallback
-    const fallbackVoiceName = getFallbackVoice(language);
-    const fallbackVoice = voices.find(v => v.name === fallbackVoiceName);
-    
-    if (fallbackVoice) {
-      return fallbackVoice;
-    }
-
-    // Ultimate fallback - return first available voice
-    if (voices.length > 0) {
-      return voices[0];
-    }
-
-    throw new Error(`No voices available for language: ${language}`);
-  }
-
-  /**
-   * Get available voices for a language
-   */
-  public async getAvailableVoices(language: string): Promise<VoiceConfig[]> {
-    // Check cache first
-    if (this.voiceCache.has(language)) {
-      return this.voiceCache.get(language)!;
-    }
-
-    try {
-      // Get voices from our mapping
-      const voices = VOICE_MAPPING[language]?.voices || [];
-      
       // Cache the result
-      this.voiceCache.set(language, voices);
-      
-      return voices;
+      if (enableCache) {
+        this.addToCache(finalCacheKey, audioBuffer, result);
+      }
+
+      return result;
+
     } catch (error) {
-      console.error('Error getting voices:', error);
-      return [];
+      console.error('Enhanced text-to-speech error:', error);
+      throw new Error(`Failed to synthesize speech: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   /**
-   * Get all supported languages
-   */
-  public getSupportedLanguages(): string[] {
-    return Object.keys(VOICE_MAPPING);
-  }
-
-  /**
-   * Preload voices for better performance
-   */
-  public async preloadVoices(languages: string[]): Promise<void> {
-    const promises = languages.map(async (lang) => {
-      if (isLanguageSupported(lang)) {
-        await this.getAvailableVoices(lang);
-      }
-    });
-    
-    await Promise.allSettled(promises);
-  }
-
-  /**
-   * Generate cache key for audio
-   */
-  private generateCacheKey(
-    text: string, 
-    language: string, 
-    voice?: string, 
-    gender?: string, 
-    quality?: string
-  ): string {
-    const textHash = this.simpleHash(text);
-    return `${language}_${voice || 'auto'}_${gender || 'auto'}_${quality || 'auto'}_${textHash}`;
-  }
-
-  /**
-   * Simple hash function for text
-   */
-  private simpleHash(text: string): string {
-    let hash = 0;
-    for (let i = 0; i < text.length; i++) {
-      const char = text.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    return Math.abs(hash).toString(36);
-  }
-
-  /**
-   * Get cached audio if available and not expired
-   */
-  private getCachedAudio(cacheKey: string): ArrayBuffer | null {
-    const timestamp = this.cacheTimestamps.get(cacheKey);
-    if (!timestamp || Date.now() - timestamp > this.CACHE_TTL) {
-      this.audioCache.delete(cacheKey);
-      this.cacheTimestamps.delete(cacheKey);
-      return null;
-    }
-    return this.audioCache.get(cacheKey) || null;
-  }
-
-  /**
-   * Set cached audio with timestamp
-   */
-  private setCachedAudio(cacheKey: string, audioBuffer: ArrayBuffer): void {
-    this.audioCache.set(cacheKey, audioBuffer);
-    this.cacheTimestamps.set(cacheKey, Date.now());
-  }
-
-  /**
-   * Clear expired cache entries
-   */
-  public clearExpiredCache(): void {
-    const now = Date.now();
-    for (const [key, timestamp] of this.cacheTimestamps.entries()) {
-      if (now - timestamp > this.CACHE_TTL) {
-        this.audioCache.delete(key);
-        this.cacheTimestamps.delete(key);
-      }
-    }
-  }
-
-  /**
-   * Clear all cache
-   */
-  public clearCache(): void {
-    this.audioCache.clear();
-    this.cacheTimestamps.clear();
-    this.voiceCache.clear();
-  }
-
-  /**
-   * Get cache statistics
-   */
-  public getCacheStats(): {
-    audioCacheSize: number;
-    voiceCacheSize: number;
-    totalCacheSize: number;
-  } {
-    return {
-      audioCacheSize: this.audioCache.size,
-      voiceCacheSize: this.voiceCache.size,
-      totalCacheSize: this.audioCache.size + this.voiceCache.size
-    };
-  }
-
-  /**
-   * Create SSML with enhanced features
-   */
-  public createEnhancedSSML(
-    text: string,
-    options: {
-      pause?: number;
-      emphasis?: string[];
-      break?: number;
-      speed?: number;
-      voice?: string;
-      language?: string;
-    } = {}
-  ): string {
-    const { pause = 0, emphasis = [], break: breakTime = 0, speed = 1.0, voice, language } = options;
-
-    let ssml = `<speak>`;
-    
-    if (voice && language) {
-      ssml += `<voice name="${voice}" language="${language}">`;
-    }
-    
-    if (speed !== 1.0) {
-      ssml += `<prosody rate="${speed}">`;
-    }
-
-    if (emphasis.length > 0) {
-      emphasis.forEach(word => {
-        text = text.replace(new RegExp(word, 'gi'), `<emphasis level="strong">${word}</emphasis>`);
-      });
-    }
-
-    ssml += text;
-
-    if (speed !== 1.0) {
-      ssml += `</prosody>`;
-    }
-
-    if (voice && language) {
-      ssml += `</voice>`;
-    }
-
-    if (breakTime > 0) {
-      ssml += `<break time="${breakTime}ms"/>`;
-    }
-
-    if (pause > 0) {
-      ssml += `<break time="${pause}ms"/>`;
-    }
-
-    ssml += `</speak>`;
-
-    return ssml;
-  }
-
-  /**
-   * Synthesize SSML with enhanced features
+   * Synthesize SSML directly
    */
   public async synthesizeSSML(
     ssml: string,
-    options: EnhancedTTSOptions = {}
-  ): Promise<EnhancedTTSResult> {
+    options: Omit<EnhancedTextToSpeechOptions, 'ssmlOptions'> = {}
+  ): Promise<EnhancedTextToSpeechResult> {
     const startTime = Date.now();
-    
+
     try {
       const {
-        language = 'en-IN',
+        language = 'en-US',
         voice,
         gender = 'FEMALE',
-        quality = 'Neural2',
         speed = 1.0,
         pitch = 0.0,
-        volume = 1.0
+        volume = 0.0,
+        audioEncoding = 'MP3',
+        sampleRateHertz = 24000,
+        effectsProfile = ['headphone-class-device'],
+        enableCache = true,
+        cacheKey
       } = options;
 
-      // Select optimal voice
-      const selectedVoice = await this.selectOptimalVoice(language, voice, gender, quality);
+      // Generate cache key
+      const finalCacheKey = cacheKey || this.generateCacheKey(ssml, options);
+
+      // Check cache first
+      if (enableCache) {
+        const cached = this.getFromCache(finalCacheKey);
+        if (cached) {
+          return {
+            ...cached.metadata,
+            audioBuffer: cached.buffer,
+            cached: true
+          };
+        }
+      }
+
+      // Get optimal voice
+      const selectedVoice = voice || await this.getOptimalVoice(language, gender);
 
       const request: google.cloud.texttospeech.v1.ISynthesizeSpeechRequest = {
         input: { ssml },
         voice: {
           languageCode: language,
-          name: selectedVoice.name,
-          ssmlGender: selectedVoice.gender,
+          name: selectedVoice,
+          ssmlGender: gender,
         },
         audioConfig: {
-          audioEncoding: 'MP3',
-          speakingRate: speed,
-          pitch: pitch,
-          volumeGainDb: volume,
-          effectsProfileId: ['headphone-class-device'],
-          sampleRateHertz: 24000,
+          audioEncoding: audioEncoding,
+          speakingRate: Math.max(0.25, Math.min(4.0, speed)),
+          pitch: Math.max(-20.0, Math.min(20.0, pitch)),
+          volumeGainDb: Math.max(-96.0, Math.min(16.0, volume)),
+          sampleRateHertz,
+          effectsProfileId: effectsProfile,
         },
       };
 
@@ -468,37 +251,316 @@ export class EnhancedTextToSpeechService {
         throw new Error('No audio content received from TTS service');
       }
 
-      let audioBuffer: ArrayBuffer;
-      if (typeof response.audioContent === 'string') {
-        audioBuffer = Buffer.from(response.audioContent, 'base64').buffer;
-      } else if (response.audioContent instanceof Uint8Array) {
-        const slicedBuffer = response.audioContent.buffer.slice(
-          response.audioContent.byteOffset,
-          response.audioContent.byteOffset + response.audioContent.byteLength
-        );
-        audioBuffer = slicedBuffer instanceof ArrayBuffer ? slicedBuffer : new ArrayBuffer(slicedBuffer.byteLength);
-        if (!(slicedBuffer instanceof ArrayBuffer)) {
-          const view = new Uint8Array(audioBuffer);
-          view.set(new Uint8Array(slicedBuffer));
-        }
-      } else if (typeof Buffer !== 'undefined' && Buffer.isBuffer(response.audioContent)) {
-        const buf: Buffer = response.audioContent as Buffer;
-        audioBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
-      } else {
-        throw new Error('Unknown audioContent type');
-      }
+      const audioBuffer = this.convertToArrayBuffer(response.audioContent);
+      const duration = this.estimateAudioDuration(audioBuffer, sampleRateHertz, audioEncoding);
+      const voiceInfo = await this.getVoiceInfo(selectedVoice || '', language);
+      const processingTime = Date.now() - startTime;
 
-      return {
+      // Extract text length from SSML for cost calculation
+      const textLength = ssml.replace(/<[^>]*>/g, '').length;
+      const estimatedCost = this.calculateEstimatedCost(textLength, voiceInfo?.voiceType || 'standard');
+
+      const result: EnhancedTextToSpeechResult = {
         audioBuffer,
-        audioFormat: 'MP3',
+        audioFormat: audioEncoding.toLowerCase(),
         language,
-        voice: selectedVoice.name,
-        processingTime: Date.now() - startTime
+        voice: selectedVoice || '',
+        duration,
+        cached: false,
+        metadata: {
+          textLength,
+          processingTime,
+          voiceQuality: voiceInfo?.voiceType || 'standard',
+          estimatedCost
+        }
       };
 
-    } catch (error : any) {
-      console.error('Enhanced SSML synthesis error:', error);
-      throw new Error(`Enhanced SSML synthesis failed: ${error instanceof Error ? error.message : String(error)}`);
+      // Cache the result
+      if (enableCache) {
+        this.addToCache(finalCacheKey, audioBuffer, result);
+      }
+
+      return result;
+
+    } catch (error) {
+      console.error('SSML synthesis error:', error);
+      throw new Error(`Failed to synthesize SSML: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  }
+
+  /**
+   * Get available voices with quality information
+   */
+  public async getAvailableVoices(language?: string): Promise<VoiceInfo[]> {
+    try {
+      const [voices] = await this.ttsClient.listVoices({
+        languageCode: language
+      });
+
+      return (voices.voices || []).map(voice => ({
+        name: voice.name || '',
+        languageCode: voice.languageCodes?.[0] || '',
+        gender: (voice.ssmlGender as 'MALE' | 'FEMALE' | 'NEUTRAL') || 'NEUTRAL',
+        naturalSampleRateHertz: voice.naturalSampleRateHertz || 22050,
+        voiceType: this.getVoiceType(voice.name || ''),
+        quality: this.getVoiceQuality(voice.name || '')
+      }));
+
+    } catch (error) {
+      console.error('Get voices error:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get optimal voice for language and gender
+   */
+  public async getOptimalVoice(language: string, gender: 'MALE' | 'FEMALE' | 'NEUTRAL' = 'FEMALE'): Promise<string> {
+    // First try predefined optimal voices
+    const predefinedVoice = this.getPredefinedOptimalVoice(language, gender);
+    if (predefinedVoice) {
+      return predefinedVoice;
+    }
+
+    // Fallback to API lookup
+    try {
+      const voices = await this.getAvailableVoices(language);
+
+      // Filter by gender and sort by quality
+      const filteredVoices = voices
+        .filter(v => v.gender === gender)
+        .sort((a, b) => b.quality - a.quality);
+
+      if (filteredVoices.length > 0) {
+        return filteredVoices[0].name;
+      }
+
+      // If no voices found for specific gender, get any voice for the language
+      const anyVoices = voices.sort((a, b) => b.quality - a.quality);
+      if (anyVoices.length > 0) {
+        return anyVoices[0].name;
+      }
+
+    } catch (error) {
+      console.error('Error getting optimal voice:', error);
+    }
+
+    // Final fallback
+    return this.getFallbackVoice(language, gender);
+  }
+
+  /**
+   * Create SSML from text and options
+   */
+  public createSSML(text: string, options: NonNullable<EnhancedTextToSpeechOptions['ssmlOptions']>): string {
+    let ssml = '<speak>';
+    let processedText = text;
+
+    // Apply prosody if specified
+    if (options.prosody) {
+      const { rate, pitch, volume } = options.prosody;
+      const prosodyAttrs = [];
+      if (rate) prosodyAttrs.push(`rate="${rate}"`);
+      if (pitch) prosodyAttrs.push(`pitch="${pitch}"`);
+      if (volume) prosodyAttrs.push(`volume="${volume}"`);
+
+      if (prosodyAttrs.length > 0) {
+        ssml += `<prosody ${prosodyAttrs.join(' ')}>`;
+      }
+    }
+
+    // Apply emphasis
+    if (options.emphasis) {
+      options.emphasis.forEach(({ text: emphasisText, level }) => {
+        const regex = new RegExp(this.escapeRegExp(emphasisText), 'gi');
+        processedText = processedText.replace(regex, `<emphasis level="${level}">${emphasisText}</emphasis>`);
+      });
+    }
+
+    // Apply say-as interpretations
+    if (options.sayAs) {
+      options.sayAs.forEach(({ text: sayAsText, interpretAs, format }) => {
+        const regex = new RegExp(this.escapeRegExp(sayAsText), 'gi');
+        const formatAttr = format ? ` format="${format}"` : '';
+        processedText = processedText.replace(regex, `<say-as interpret-as="${interpretAs}"${formatAttr}>${sayAsText}</say-as>`);
+      });
+    }
+
+    ssml += processedText;
+
+    // Add breaks
+    if (options.breaks) {
+      options.breaks.forEach(({ position, time }) => {
+        const beforeText = processedText.substring(0, position);
+        const afterText = processedText.substring(position);
+        processedText = beforeText + `<break time="${time}"/>` + afterText;
+      });
+    }
+
+    // Close prosody if opened
+    if (options.prosody) {
+      ssml += '</prosody>';
+    }
+
+    ssml += '</speak>';
+    return ssml;
+  }
+
+  /**
+   * Clear audio cache
+   */
+  public clearCache(): void {
+    this.audioCache.clear();
+  }
+
+  /**
+   * Get cache statistics
+   */
+  public getCacheStats(): { size: number; totalSize: number; hitRate: number } {
+    const totalSize = Array.from(this.audioCache.values())
+      .reduce((sum, item) => sum + item.buffer.byteLength, 0);
+
+    return {
+      size: this.audioCache.size,
+      totalSize,
+      hitRate: 0 // Would need to track hits/misses for accurate calculation
+    };
+  }
+
+  // Private helper methods
+
+  private generateCacheKey(text: string, options: EnhancedTextToSpeechOptions): string {
+    const keyData = {
+      text: text.substring(0, 100), // Limit text length in key
+      language: options.language,
+      voice: options.voice,
+      gender: options.gender,
+      speed: options.speed,
+      pitch: options.pitch,
+      audioEncoding: options.audioEncoding
+    };
+
+    return Buffer.from(JSON.stringify(keyData)).toString('base64');
+  }
+
+  private getFromCache(key: string): { buffer: ArrayBuffer; metadata: any } | null {
+    const cached = this.audioCache.get(key);
+    if (!cached) return null;
+
+    // Check if cache entry is still valid
+    if (Date.now() - cached.timestamp > this.CACHE_TTL) {
+      this.audioCache.delete(key);
+      return null;
+    }
+
+    return { buffer: cached.buffer, metadata: cached.metadata };
+  }
+
+  private addToCache(key: string, buffer: ArrayBuffer, metadata: any): void {
+    // Remove oldest entries if cache is full
+    if (this.audioCache.size >= this.MAX_CACHE_SIZE) {
+      const oldestKey = Array.from(this.audioCache.keys())[0];
+      this.audioCache.delete(oldestKey);
+    }
+
+    this.audioCache.set(key, {
+      buffer,
+      timestamp: Date.now(),
+      metadata
+    });
+  }
+
+  private cleanCache(): void {
+    const now = Date.now();
+    for (const [key, value] of this.audioCache.entries()) {
+      if (now - value.timestamp > this.CACHE_TTL) {
+        this.audioCache.delete(key);
+      }
+    }
+  }
+
+  private convertToArrayBuffer(audioContent: string | Uint8Array): ArrayBuffer {
+    if (typeof audioContent === 'string') {
+      const buffer = Buffer.from(audioContent, 'base64');
+      return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+    } else {
+      const buffer = audioContent as Uint8Array;
+      return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+    }
+  }
+
+  private estimateAudioDuration(audioBuffer: ArrayBuffer, sampleRate: number, encoding: string): number {
+    // Simplified duration estimation based on buffer size
+    // This is approximate - actual duration would require audio analysis
+    const bytesPerSecond = encoding === 'LINEAR16' ? sampleRate * 2 : sampleRate / 8; // Rough estimate
+    return audioBuffer.byteLength / bytesPerSecond;
+  }
+
+  private getVoiceType(voiceName: string): 'standard' | 'wavenet' | 'neural2' {
+    if (voiceName.includes('Neural2')) return 'neural2';
+    if (voiceName.includes('Wavenet')) return 'wavenet';
+    return 'standard';
+  }
+
+  private getVoiceQuality(voiceName: string): number {
+    const type = this.getVoiceType(voiceName);
+    switch (type) {
+      case 'neural2': return 10;
+      case 'wavenet': return 8;
+      case 'standard': return 6;
+      default: return 5;
+    }
+  }
+
+  private async getVoiceInfo(voiceName: string, language: string): Promise<VoiceInfo | null> {
+    try {
+      const voices = await this.getAvailableVoices(language);
+      return voices.find(v => v.name === voiceName) || null;
+    } catch {
+      return null;
+    }
+  }
+
+  private calculateEstimatedCost(textLength: number, voiceType: 'standard' | 'wavenet' | 'neural2'): number {
+    // Simplified cost calculation based on Google Cloud TTS pricing
+    const baseRate = voiceType === 'neural2' ? 0.000016 : voiceType === 'wavenet' ? 0.000016 : 0.000004;
+    return textLength * baseRate;
+  }
+
+  private getPredefinedOptimalVoice(language: string, gender: 'MALE' | 'FEMALE' | 'NEUTRAL'): string | null {
+    const voiceMap: Record<string, Record<string, string>> = {
+      'en-US': {
+        'MALE': 'en-US-Neural2-J',
+        'FEMALE': 'en-US-Neural2-F',
+        'NEUTRAL': 'en-US-Neural2-F'
+      },
+      'en-GB': {
+        'MALE': 'en-GB-Neural2-B',
+        'FEMALE': 'en-GB-Neural2-A',
+        'NEUTRAL': 'en-GB-Neural2-A'
+      },
+      'hi-IN': {
+        'MALE': 'hi-IN-Neural2-B',
+        'FEMALE': 'hi-IN-Neural2-A',
+        'NEUTRAL': 'hi-IN-Neural2-A'
+      }
+    };
+
+    return voiceMap[language]?.[gender] || null;
+  }
+
+  private getFallbackVoice(language: string, gender: 'MALE' | 'FEMALE' | 'NEUTRAL'): string {
+    // Fallback voices for common languages
+    const fallbacks: Record<string, string> = {
+      'en-US': gender === 'MALE' ? 'en-US-Standard-B' : 'en-US-Standard-C',
+      'en-GB': gender === 'MALE' ? 'en-GB-Standard-B' : 'en-GB-Standard-A',
+      'hi-IN': gender === 'MALE' ? 'hi-IN-Standard-B' : 'hi-IN-Standard-A'
+    };
+
+    return fallbacks[language] || 'en-US-Standard-C';
+  }
+
+  private escapeRegExp(string: string): string {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 }

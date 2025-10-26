@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: enhanced-artisan-buddy
+  namespace: enhanced-artisan-buddy
+  labels:
+    app: enhanced-artisan-buddy
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: enhanced-artisan-buddy
+  template:
+    metadata:
+      labels:
+        app: enhanced-artisan-buddy
+    spec:
+      containers:
+      - name: enhanced-artisan-buddy
+        image: enhanced-artisan-buddy:latest
+        ports:
+        - containerPort: 3000
+          name: http
+        envFrom:
+        - configMapRef:
+            name: enhanced-artisan-buddy-config
+        - secretRef:
+            name: enhanced-artisan-buddy-secrets
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        volumeMounts:
+        - name: gcp-credentials
+          mountPath: /app/credentials
+          readOnly: true
+        - name: logs
+          mountPath: /app/logs
+      volumes:
+      - name: gcp-credentials
+        secret:
+          secretName: gcp-service-account
+      - name: logs
+        emptyDir: {}
+      imagePullSecrets:
+      - name: docker-registry-secret

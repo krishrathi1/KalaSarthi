@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TextToSpeechClient } from '@google-cloud/text-to-speech';
-import { 
-  VOICE_MAPPING, 
-  getBestVoiceForLanguage, 
-  getDefaultVoice, 
+import {
+  VOICE_MAPPING,
+  getBestVoiceForLanguage,
+  getDefaultVoice,
   getFallbackVoice,
-  isLanguageSupported 
+  isLanguageSupported
 } from '@/lib/voice-mapping';
 import { withCache, CACHE_TTL } from '@/lib/performance';
 
@@ -52,14 +52,14 @@ function initializeTTSClient() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { 
-      text, 
-      language = 'en-IN', 
-      voice, 
-      gender = 'FEMALE', 
+    const {
+      text,
+      language = 'en-IN',
+      voice,
+      gender = 'FEMALE',
       quality = 'Neural2',
-      speed = 1.0, 
-      pitch = 0.0, 
+      speed = 1.0,
+      pitch = 0.0,
       volume = 1.0,
       enableTranslation = false,
       sourceLanguage = 'en'
@@ -68,34 +68,34 @@ export async function POST(request: NextRequest) {
     console.log('🎤 TTS Request received:', { text: text.substring(0, 50) + '...', language, voice, gender, quality });
 
     if (!text) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Text is required' 
+      return NextResponse.json({
+        success: false,
+        error: 'Text is required'
       }, { status: 400 });
     }
 
     // Validate language support
     if (!isLanguageSupported(language)) {
-      return NextResponse.json({ 
-        success: false, 
-        error: `Language ${language} is not supported` 
+      return NextResponse.json({
+        success: false,
+        error: `Language ${language} is not supported`
       }, { status: 400 });
     }
 
     // Create cache key for the request
     const cacheKey = `tts-${text}-${language}-${voice}-${gender}-${quality}-${speed}-${pitch}-${volume}-${enableTranslation}`;
-    
+
     // Try to get from cache first
     const result = await withCache(
       cacheKey,
       async () => {
-    const client = initializeTTSClient();
-    if (!client) {
-      console.error('❌ TTS client initialization failed');
-      throw new Error('Google Cloud TTS not available. Please check your credentials.');
-    }
+        const client = initializeTTSClient();
+        if (!client) {
+          console.error('❌ TTS client initialization failed');
+          throw new Error('Google Cloud TTS not available. Please check your credentials.');
+        }
 
-    console.log('✅ TTS client initialized successfully');
+        console.log('✅ TTS client initialized successfully');
 
         // Select optimal voice
         let selectedVoice = voice;
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
             // Use Gemini for translation
             const geminiApiKey = process.env.GEMINI_API_KEY;
             if (geminiApiKey) {
-              const translateResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`, {
+              const translateResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -206,7 +206,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Enhanced TTS API error:', error);
-    
+
     // More specific error messages
     let errorMessage = 'TTS service error';
     if (error instanceof Error) {
@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
         errorMessage = error instanceof Error ? error.message : String(error);
       }
     }
-    
+
     return NextResponse.json({
       success: false,
       error: errorMessage,
@@ -235,9 +235,9 @@ export async function GET() {
   try {
     const client = initializeTTSClient();
     if (!client) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Google Cloud TTS not available' 
+      return NextResponse.json({
+        success: false,
+        error: 'Google Cloud TTS not available'
       }, { status: 503 });
     }
 

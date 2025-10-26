@@ -3,14 +3,17 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: Promise<{ uid: string }> }
+    { params }: { params: { uid: string } }
 ) {
     try {
-        const { uid } = await params;
+        const { uid } = params;
 
         if (!uid) {
             return NextResponse.json(
-                { success: false, error: 'User ID is required' },
+                {
+                    success: false,
+                    error: 'User ID is required'
+                },
                 { status: 400 }
             );
         }
@@ -19,13 +22,19 @@ export async function GET(
 
         if (!user) {
             return NextResponse.json(
-                { success: false, error: 'User not found' },
+                {
+                    success: false,
+                    error: 'User not found'
+                },
                 { status: 404 }
             );
         }
 
         return NextResponse.json(
-            { success: true, data: user },
+            {
+                success: true,
+                data: user
+            },
             { status: 200 }
         );
 
@@ -40,15 +49,18 @@ export async function GET(
 
 export async function PUT(
     request: NextRequest,
-    { params }: { params: Promise<{ uid: string }> }
+    { params }: { params: { uid: string } }
 ) {
     try {
-        const { uid } = await params;
+        const { uid } = params;
         const updateData = await request.json();
 
         if (!uid) {
             return NextResponse.json(
-                { success: false, error: 'User ID is required' },
+                {
+                    success: false,
+                    error: 'User ID is required'
+                },
                 { status: 400 }
             );
         }
@@ -56,8 +68,15 @@ export async function PUT(
         const result = await UserService.updateUser(uid, updateData);
 
         if (result.success) {
+            // Get updated user data
+            const updatedUser = await UserService.getUserByUid(uid);
+
             return NextResponse.json(
-                { success: true, modifiedCount: result.modifiedCount },
+                {
+                    success: true,
+                    data: updatedUser,
+                    modifiedCount: result.modifiedCount
+                },
                 { status: 200 }
             );
         } else {
@@ -78,14 +97,17 @@ export async function PUT(
 
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: Promise<{ uid: string }> }
+    { params }: { params: { uid: string } }
 ) {
     try {
-        const { uid } = await params;
+        const { uid } = params;
 
         if (!uid) {
             return NextResponse.json(
-                { success: false, error: 'User ID is required' },
+                {
+                    success: false,
+                    error: 'User ID is required'
+                },
                 { status: 400 }
             );
         }
@@ -94,7 +116,11 @@ export async function DELETE(
 
         if (result.success) {
             return NextResponse.json(
-                { success: true, deletedCount: result.deletedCount },
+                {
+                    success: true,
+                    message: 'User deleted successfully',
+                    deletedCount: result.deletedCount
+                },
                 { status: 200 }
             );
         } else {

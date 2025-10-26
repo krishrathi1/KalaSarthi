@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: enhanced-artisan-buddy
+  labels:
+    name: enhanced-artisan-buddy
+    app: enhanced-artisan-buddy

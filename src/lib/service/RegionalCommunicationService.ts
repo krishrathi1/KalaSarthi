@@ -217,7 +217,7 @@ export class RegionalCommunicationService {
       const geminiLanguage = this.languageMap.get(language) || 'hi-IN';
       const result = await this.geminiService.speechToText(audioBuffer, {
         language: geminiLanguage,
-        model: 'gemini-pro'
+        model: 'gemini-2.5-flash'
       });
 
       return {

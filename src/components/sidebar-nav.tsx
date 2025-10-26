@@ -64,6 +64,7 @@ export function SidebarNav() {
         '/ai-image-generator',
         '/arth-saarthi',
         '/artisan-buddy',
+        '/enhanced-artisan-buddy',
         '/yojana-mitra',
         '/voice-enrollment',
         '/trust-layer',

@@ -5,16 +5,16 @@ export async function POST(request: NextRequest) {
   try {
     const { imageUrl, story, language = 'hi' } = await request.json();
 
-    console.log('Product details generation request:', { 
-      story: story?.substring(0, 100) + '...', 
-      language, 
-      hasImageUrl: !!imageUrl 
+    console.log('Product details generation request:', {
+      story: story?.substring(0, 100) + '...',
+      language,
+      hasImageUrl: !!imageUrl
     });
 
     if (!story || !imageUrl) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Story and image are required' 
+      return NextResponse.json({
+        success: false,
+        error: 'Story and image are required'
       }, { status: 400 });
     }
 
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     // Detailed prompt for product details generation
     const prompt = `You are a professional product catalog specialist. Analyze the provided product image and artisan story to generate comprehensive product details.
@@ -90,13 +90,13 @@ Return only the JSON object, no additional text.`;
 
     const response = await result.response;
     const text = response.text();
-    
+
     console.log('Gemini response:', text);
 
     try {
       // Try to parse the JSON response
       const productDetails = JSON.parse(text);
-      
+
       return NextResponse.json({
         success: true,
         productDetails,
@@ -104,7 +104,7 @@ Return only the JSON object, no additional text.`;
       });
     } catch (parseError) {
       console.error('Error parsing Gemini response:', parseError);
-      
+
       // Fallback: extract information using text processing
       const fallbackDetails = {
         name: extractProductName(text) || "Handcrafted Product",
@@ -126,7 +126,7 @@ Return only the JSON object, no additional text.`;
 
   } catch (error) {
     console.error('Error generating product details:', error);
-    
+
     return NextResponse.json({
       success: false,
       error: 'Failed to generate product details',
