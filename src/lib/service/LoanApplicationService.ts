@@ -1,6 +1,5 @@
-import LoanApplication, { ILoanApplication } from '../models/LoanApplication';
-import connectDB from '../mongodb';
-import { v4 as uuidv4 } from 'uuid';
+import { ILoanApplication } from '../models/LoanApplication';
+import { FirestoreService, COLLECTIONS, where, orderBy } from '../firestore';
 
 interface ServiceResponse<T = any> {
   success: boolean;
@@ -33,10 +32,10 @@ interface UpdateLoanApplicationRequest {
 export class LoanApplicationService {
   static async createLoanApplication(request: CreateLoanApplicationRequest): Promise<ServiceResponse<ILoanApplication>> {
     try {
-      await connectDB();
-
-      const application = new LoanApplication({
-        applicationId: `LA${Date.now()}${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+      const applicationId = `LA${Date.now()}${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+      
+      const application: ILoanApplication = {
+        applicationId,
         userId: request.userId,
         personalInfo: request.personalInfo,
         businessInfo: request.businessInfo,
@@ -45,13 +44,15 @@ export class LoanApplicationService {
         bankDetails: request.bankDetails,
         status: 'draft',
         createdBy: request.createdBy,
-      });
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-      const savedApplication = await application.save();
+      await FirestoreService.set(COLLECTIONS.LOAN_APPLICATIONS, applicationId, application);
 
       return {
         success: true,
-        data: savedApplication
+        data: application
       };
 
     } catch (error: any) {
@@ -65,9 +66,10 @@ export class LoanApplicationService {
 
   static async getLoanApplicationById(applicationId: string): Promise<ServiceResponse<ILoanApplication>> {
     try {
-      await connectDB();
-
-      const application = await LoanApplication.findOne({ applicationId });
+      const application = await FirestoreService.getById<ILoanApplication>(
+        COLLECTIONS.LOAN_APPLICATIONS,
+        applicationId
+      );
 
       if (!application) {
         return {
@@ -92,10 +94,10 @@ export class LoanApplicationService {
 
   static async getUserLoanApplications(userId: string): Promise<ServiceResponse<ILoanApplication[]>> {
     try {
-      await connectDB();
-
-      const applications = await LoanApplication.find({ userId })
-        .sort({ createdAt: -1 });
+      const applications = await FirestoreService.query<ILoanApplication>(
+        COLLECTIONS.LOAN_APPLICATIONS,
+        [where('userId', '==', userId), orderBy('createdAt', 'desc')]
+      );
 
       return {
         success: true,
@@ -116,9 +118,10 @@ export class LoanApplicationService {
     updates: UpdateLoanApplicationRequest
   ): Promise<ServiceResponse<ILoanApplication>> {
     try {
-      await connectDB();
-
-      const application = await LoanApplication.findOne({ applicationId });
+      const application = await FirestoreService.getById<ILoanApplication>(
+        COLLECTIONS.LOAN_APPLICATIONS,
+        applicationId
+      );
 
       if (!application) {
         return {
@@ -127,24 +130,22 @@ export class LoanApplicationService {
         };
       }
 
-      // Update fields
-      if (updates.status) application.status = updates.status;
-      if (updates.subStatus) application.subStatus = updates.subStatus;
-      if (updates.creditScore !== undefined) application.creditScore = updates.creditScore;
-      if (updates.riskAssessment) application.riskAssessment = updates.riskAssessment;
-      if (updates.bankDetails) application.bankDetails = updates.bankDetails;
-      if (updates.portalApplicationId) application.portalApplicationId = updates.portalApplicationId;
-      if (updates.portalUrl) application.portalUrl = updates.portalUrl;
-      if (updates.rejectionReason) application.rejectionReason = updates.rejectionReason;
-      if (updates.updatedBy) application.updatedBy = updates.updatedBy;
+      // Prepare update data
+      const updateData: Partial<ILoanApplication> = {
+        ...updates,
+        updatedAt: new Date()
+      };
 
-      application.updatedAt = new Date();
+      await FirestoreService.update(COLLECTIONS.LOAN_APPLICATIONS, applicationId, updateData);
 
-      const savedApplication = await application.save();
+      const updatedApplication = await FirestoreService.getById<ILoanApplication>(
+        COLLECTIONS.LOAN_APPLICATIONS,
+        applicationId
+      );
 
       return {
         success: true,
-        data: savedApplication
+        data: updatedApplication!
       };
 
     } catch (error: any) {
@@ -158,9 +159,10 @@ export class LoanApplicationService {
 
   static async submitLoanApplication(applicationId: string, submittedBy: string): Promise<ServiceResponse<ILoanApplication>> {
     try {
-      await connectDB();
-
-      const application = await LoanApplication.findOne({ applicationId });
+      const application = await FirestoreService.getById<ILoanApplication>(
+        COLLECTIONS.LOAN_APPLICATIONS,
+        applicationId
+      );
 
       if (!application) {
         return {
@@ -176,17 +178,24 @@ export class LoanApplicationService {
         };
       }
 
-      application.status = 'submitted';
-      application.submittedAt = new Date();
-      application.trackingNumber = `TRK${Date.now()}${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
-      application.updatedBy = submittedBy;
-      application.updatedAt = new Date();
+      const updateData: Partial<ILoanApplication> = {
+        status: 'submitted',
+        submittedAt: new Date(),
+        trackingNumber: `TRK${Date.now()}${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
+        updatedBy: submittedBy,
+        updatedAt: new Date()
+      };
 
-      const savedApplication = await application.save();
+      await FirestoreService.update(COLLECTIONS.LOAN_APPLICATIONS, applicationId, updateData);
+
+      const updatedApplication = await FirestoreService.getById<ILoanApplication>(
+        COLLECTIONS.LOAN_APPLICATIONS,
+        applicationId
+      );
 
       return {
         success: true,
-        data: savedApplication
+        data: updatedApplication!
       };
 
     } catch (error: any) {
@@ -208,9 +217,10 @@ export class LoanApplicationService {
     addedBy: string
   ): Promise<ServiceResponse<ILoanApplication>> {
     try {
-      await connectDB();
-
-      const application = await LoanApplication.findOne({ applicationId });
+      const application = await FirestoreService.getById<ILoanApplication>(
+        COLLECTIONS.LOAN_APPLICATIONS,
+        applicationId
+      );
 
       if (!application) {
         return {
@@ -219,26 +229,31 @@ export class LoanApplicationService {
         };
       }
 
-      if (!application.documents) {
-        application.documents = [];
-      }
-
-      application.documents.push({
+      const newDocument = {
         type: document.type,
         fileName: document.fileName,
         fileUrl: document.fileUrl,
         uploadedAt: new Date(),
         verified: false,
+      };
+
+      const documents = application.documents || [];
+      documents.push(newDocument);
+
+      await FirestoreService.update(COLLECTIONS.LOAN_APPLICATIONS, applicationId, {
+        documents,
+        updatedBy: addedBy,
+        updatedAt: new Date()
       });
 
-      application.updatedBy = addedBy;
-      application.updatedAt = new Date();
-
-      const savedApplication = await application.save();
+      const updatedApplication = await FirestoreService.getById<ILoanApplication>(
+        COLLECTIONS.LOAN_APPLICATIONS,
+        applicationId
+      );
 
       return {
         success: true,
-        data: savedApplication
+        data: updatedApplication!
       };
 
     } catch (error: any) {
@@ -252,10 +267,10 @@ export class LoanApplicationService {
 
   static async getLoanApplicationsByStatus(status: string): Promise<ServiceResponse<ILoanApplication[]>> {
     try {
-      await connectDB();
-
-      const applications = await LoanApplication.find({ status })
-        .sort({ updatedAt: -1 });
+      const applications = await FirestoreService.query<ILoanApplication>(
+        COLLECTIONS.LOAN_APPLICATIONS,
+        [where('status', '==', status), orderBy('updatedAt', 'desc')]
+      );
 
       return {
         success: true,
@@ -273,30 +288,40 @@ export class LoanApplicationService {
 
   static async getLoanApplicationStats(): Promise<ServiceResponse<any>> {
     try {
-      await connectDB();
+      // Get all applications
+      const allApplications = await FirestoreService.getAll<ILoanApplication>(
+        COLLECTIONS.LOAN_APPLICATIONS
+      );
 
-      const stats = await LoanApplication.aggregate([
-        {
-          $group: {
-            _id: '$status',
-            count: { $sum: 1 },
-            totalAmount: { $sum: '$loanDetails.loanAmount' },
-            averageAmount: { $avg: '$loanDetails.loanAmount' }
-          }
+      // Calculate stats
+      const statusBreakdown: Record<string, { count: number; totalAmount: number; averageAmount: number }> = {};
+      let totalLoanAmount = 0;
+
+      allApplications.forEach(app => {
+        const status = app.status;
+        if (!statusBreakdown[status]) {
+          statusBreakdown[status] = { count: 0, totalAmount: 0, averageAmount: 0 };
         }
-      ]);
+        statusBreakdown[status].count++;
+        statusBreakdown[status].totalAmount += app.loanDetails.loanAmount;
+        totalLoanAmount += app.loanDetails.loanAmount;
+      });
 
-      const totalApplications = await LoanApplication.countDocuments();
-      const totalLoanAmount = await LoanApplication.aggregate([
-        { $group: { _id: null, total: { $sum: '$loanDetails.loanAmount' } } }
-      ]);
+      // Calculate averages
+      Object.keys(statusBreakdown).forEach(status => {
+        statusBreakdown[status].averageAmount = 
+          statusBreakdown[status].totalAmount / statusBreakdown[status].count;
+      });
 
       return {
         success: true,
         data: {
-          totalApplications,
-          totalLoanAmount: totalLoanAmount[0]?.total || 0,
-          statusBreakdown: stats
+          totalApplications: allApplications.length,
+          totalLoanAmount,
+          statusBreakdown: Object.entries(statusBreakdown).map(([status, data]) => ({
+            _id: status,
+            ...data
+          }))
         }
       };
 
@@ -316,9 +341,10 @@ export class LoanApplicationService {
     logMessage?: string
   ): Promise<ServiceResponse<ILoanApplication>> {
     try {
-      await connectDB();
-
-      const application = await LoanApplication.findOne({ applicationId });
+      const application = await FirestoreService.getById<ILoanApplication>(
+        COLLECTIONS.LOAN_APPLICATIONS,
+        applicationId
+      );
 
       if (!application) {
         return {
@@ -327,27 +353,33 @@ export class LoanApplicationService {
         };
       }
 
-      application.rpaSessionId = rpaSessionId;
-      application.automationStatus = status;
+      const updateData: Partial<ILoanApplication> = {
+        rpaSessionId,
+        automationStatus: status,
+        updatedAt: new Date()
+      };
 
       if (logMessage) {
-        if (!application.automationLogs) {
-          application.automationLogs = [];
-        }
-
-        application.automationLogs.push({
+        const automationLogs = application.automationLogs || [];
+        automationLogs.push({
           timestamp: new Date(),
           action: 'automation_update',
           status: status === 'failed' ? 'error' : 'info',
           message: logMessage
         });
+        updateData.automationLogs = automationLogs;
       }
 
-      const savedApplication = await application.save();
+      await FirestoreService.update(COLLECTIONS.LOAN_APPLICATIONS, applicationId, updateData);
+
+      const updatedApplication = await FirestoreService.getById<ILoanApplication>(
+        COLLECTIONS.LOAN_APPLICATIONS,
+        applicationId
+      );
 
       return {
         success: true,
-        data: savedApplication
+        data: updatedApplication!
       };
 
     } catch (error: any) {
@@ -361,21 +393,28 @@ export class LoanApplicationService {
 
   static async searchLoanApplications(searchTerm: string): Promise<ServiceResponse<ILoanApplication[]>> {
     try {
-      await connectDB();
+      // Firestore doesn't support regex search natively
+      // Fetch all applications and filter client-side
+      // For production, consider using Algolia or similar service
+      const allApplications = await FirestoreService.getAll<ILoanApplication>(
+        COLLECTIONS.LOAN_APPLICATIONS
+      );
 
-      const applications = await LoanApplication.find({
-        $or: [
-          { applicationId: { $regex: searchTerm, $options: 'i' } },
-          { 'personalInfo.fullName': { $regex: searchTerm, $options: 'i' } },
-          { 'personalInfo.panNumber': { $regex: searchTerm, $options: 'i' } },
-          { 'businessInfo.businessName': { $regex: searchTerm, $options: 'i' } },
-          { trackingNumber: { $regex: searchTerm, $options: 'i' } }
-        ]
-      }).sort({ createdAt: -1 });
+      const searchLower = searchTerm.toLowerCase();
+      const filteredApplications = allApplications.filter(app =>
+        app.applicationId.toLowerCase().includes(searchLower) ||
+        app.personalInfo.fullName.toLowerCase().includes(searchLower) ||
+        app.personalInfo.panNumber.toLowerCase().includes(searchLower) ||
+        app.businessInfo.businessName.toLowerCase().includes(searchLower) ||
+        app.trackingNumber?.toLowerCase().includes(searchLower)
+      );
+
+      // Sort by createdAt descending
+      filteredApplications.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
       return {
         success: true,
-        data: applications
+        data: filteredApplications
       };
 
     } catch (error: any) {

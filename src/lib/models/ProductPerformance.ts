@@ -1,6 +1,4 @@
-import mongoose, { Document, Model, Schema } from "mongoose";
-
-// Product Performance interface for ranking and analytics
+// Product Performance interface for ranking and analytics (Firestore)
 export interface IProductPerformance {
     performanceId: string;
     productId: string;
@@ -74,13 +72,16 @@ export interface IProductPerformance {
     tags: string[];
 }
 
-// Product Performance document interface
-export interface IProductPerformanceDocument extends IProductPerformance, Document {
-    _id: mongoose.Types.ObjectId;
+// Product Performance document interface (includes Firestore document ID)
+export interface IProductPerformanceDocument extends IProductPerformance {
+    id?: string;
 }
 
-// Product Performance schema
-const productPerformanceSchema = new Schema<IProductPerformanceDocument>(
+// No model export needed for Firestore - use FirestoreService instead
+export default IProductPerformance;
+
+/* Firestore structure notes:
+const productPerformanceSchema = {
     {
         performanceId: {
             type: String,
@@ -376,8 +377,22 @@ productPerformanceSchema.statics.generatePerformanceId = function(
     return `${productId}|${periodType}|${periodKey}`;
 };
 
-// Product Performance model
-const ProductPerformance: Model<IProductPerformanceDocument> =
-    mongoose.models.ProductPerformance || mongoose.model<IProductPerformanceDocument>("ProductPerformance", productPerformanceSchema);
+}
+// Firestore indexes should be created in Firebase Console:
+// - periodType, periodKey (composite)
+// - productId, periodType, periodKey (composite)
+// - category, periodType, periodKey (composite)
+// - artisanId, periodType, periodKey (composite)
+// - revenue (descending), periodType, periodKey (composite)
+// - rankInCategory, category, periodType, periodKey (composite)
+// - rankOverall, periodType, periodKey (composite)
+*/
 
-export default ProductPerformance;
+// Helper function to generate performance ID
+export const generatePerformanceId = (
+    productId: string,
+    periodType: string,
+    periodKey: string
+): string => {
+    return `${productId}|${periodType}|${periodKey}`;
+};

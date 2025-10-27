@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SalesAggregate } from '@/lib/models/SalesAggregate';
-import connectDB from '@/lib/mongodb';
+import { ISalesAggregate } from '@/lib/models/SalesAggregate';
+import { FirestoreService, COLLECTIONS } from '@/lib/firestore';
 
 interface PerformanceQueryParams {
   range?: string; // '7d', '30d', '90d', '1y', 'all'
@@ -66,8 +66,6 @@ interface PerformanceResponse {
 
 export async function GET(request: NextRequest) {
   try {
-    await connectDB();
-
     const { searchParams } = new URL(request.url);
     const params: PerformanceQueryParams = {
       range: searchParams.get('range') || '30d',

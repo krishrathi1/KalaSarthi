@@ -1,6 +1,4 @@
-import { Schema, model, models, Document } from 'mongoose';
-
-export interface ISalesEvent extends Document {
+export interface ISalesEvent {
   // Core identifiers
   orderId: string;
   productId: string;
@@ -46,7 +44,16 @@ export interface ISalesEvent extends Document {
   version: number; // for event versioning
 }
 
-const SalesEventSchema = new Schema<ISalesEvent>({
+// Sales Event document interface (includes Firestore document ID)
+export interface ISalesEventDocument extends ISalesEvent {
+  id?: string;
+}
+
+// No model export needed for Firestore - use FirestoreService instead
+export default ISalesEvent;
+
+/* Firestore structure notes:
+const SalesEventSchema = {
   // Core identifiers
   orderId: { 
     type: String, 
@@ -288,4 +295,35 @@ SalesEventSchema.statics.aggregateByPeriod = function(
   ]);
 };
 
-export const SalesEvent = models.SalesEvent || model<ISalesEvent>('SalesEvent', SalesEventSchema);
+}
+// Firestore indexes should be created in Firebase Console:
+// - artisanId, eventTimestamp (composite, descending)
+// - productId, eventTimestamp (composite, descending)
+// - eventType, eventTimestamp (composite, descending)
+// - channel, eventTimestamp (composite, descending)
+// - productCategory, eventTimestamp (composite, descending)
+// - eventTimestamp, artisanId, eventType (composite)
+*/
+
+// Helper functions for Firestore operations
+export const SalesEventHelpers = {
+  findByArtisan: async (artisanId: string, startDate?: Date, endDate?: Date) => {
+    // Implementation will be in the service layer
+    return [];
+  },
+
+  findByProduct: async (productId: string, startDate?: Date, endDate?: Date) => {
+    // Implementation will be in the service layer
+    return [];
+  },
+
+  aggregateByPeriod: async (
+    artisanId: string, 
+    period: 'day' | 'week' | 'month' | 'year',
+    startDate: Date,
+    endDate: Date
+  ) => {
+    // Implementation will be in the service layer
+    return [];
+  }
+};

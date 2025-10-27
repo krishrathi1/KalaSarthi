@@ -1,6 +1,4 @@
-import mongoose, { Document, Model, Schema } from "mongoose";
-
-// Order interface
+// Order interface for Firestore
 export interface IOrder {
     orderId: string;
     userId: string; // Reference to User uid
@@ -50,13 +48,17 @@ export interface IOrder {
     updatedAt: Date;
 }
 
-// Order document interface (extends Document)
-export interface IOrderDocument extends IOrder, Document {
-    _id: mongoose.Types.ObjectId;
+// Order document interface (includes Firestore document ID)
+export interface IOrderDocument extends IOrder {
+    id?: string;
 }
 
-// Order schema
-const orderSchema = new Schema<IOrderDocument>(
+// No model export needed for Firestore - use FirestoreService instead
+export default IOrder;
+
+/* Firestore structure notes:
+// Order schema equivalent in Firestore
+const orderSchema = {
     {
         orderId: {
             type: String,
@@ -209,21 +211,13 @@ orderSchema.index({ createdAt: -1 });
 orderSchema.index({ "items.artisanId": 1 });
 orderSchema.index({ "items.productId": 1 });
 
-// Pre-save middleware to calculate totals
-orderSchema.pre('save', function(next) {
-    // Calculate subtotal from items
-    const subtotal = this.items.reduce((total, item) => total + item.subtotal, 0);
-    this.orderSummary.subtotal = subtotal;
-    
-    // Calculate total amount
-    const totalAmount = subtotal + this.orderSummary.tax + this.orderSummary.shippingCost - this.orderSummary.discount;
-    this.orderSummary.totalAmount = Math.max(0, totalAmount);
-    
-    next();
-});
-
-// Order model
-const Order: Model<IOrderDocument> =
-    mongoose.models.Order || mongoose.model<IOrderDocument>("Order", orderSchema);
-
-export default Order;
+}
+// Firestore indexes should be created in Firebase Console:
+// - orderId (ascending)
+// - userId (ascending)
+// - status (ascending)
+// - paymentStatus (ascending)
+// - createdAt (descending)
+// - items.artisanId (ascending)
+// - items.productId (ascending)
+*/
