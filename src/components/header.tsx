@@ -35,7 +35,8 @@ import {
 import { useLanguage } from "@/context/language-context";
 import { languages, LanguageCode, t, translateAsync } from "@/lib/i18n";
 import { useState, useEffect } from "react";
-import { GlobalTranslationToggle } from "./global-translation-toggle";
+import { LanguageSelector } from "@/components/translation/LanguageSelector";
+import { useTranslation } from "@/context/TranslationContext";
 import { cn } from '@/lib/utils';
 import { IntelligentVoiceButton } from '@/components/ui/IntelligentVoiceButton';
 import { useAuth } from '@/context/auth-context';
@@ -51,6 +52,7 @@ const foreignLanguages = Object.entries(languages).filter(([_, lang]) => lang.re
 
 export function Header() {
   const { language, setLanguage } = useLanguage();
+  const { currentLanguage, setLanguage: setTranslationLanguage, isEnabled, toggleTranslation } = useTranslation();
   const [open, setOpen] = React.useState(false);
   const [searchValue, setSearchValue] = React.useState('');
   const [translatedTitle, setTranslatedTitle] = useState('');
@@ -236,7 +238,18 @@ export function Header() {
 
         {/* Translation Toggle - Always visible but compact on mobile */}
         <div className="flex-shrink-0">
-          <GlobalTranslationToggle />
+          <button
+            onClick={toggleTranslation}
+            className={cn(
+              'p-2 rounded-md transition-colors',
+              isEnabled 
+                ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            )}
+            title={isEnabled ? 'Disable translation' : 'Enable translation'}
+          >
+            🌐
+          </button>
         </div>
 
         {/* Offline Status - Hidden on mobile */}
@@ -290,95 +303,16 @@ export function Header() {
 
         {/* Language Selector - Responsive width */}
         <div className="hidden md:flex flex-shrink-0">
-          <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                role="combobox"
-                aria-expanded={open}
-                className="w-[120px] lg:w-[180px] justify-between text-xs sm:text-sm"
-              >
-                <span className="truncate">
-                  {language
-                    ? (languages[language as keyof typeof languages]?.name || language)
-                    : "Lang"}
-                </span>
-                <ChevronsUpDown className="ml-1 h-3 w-3 sm:ml-2 sm:h-4 sm:w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[250px] p-0">
-              <Command>
-                <CommandInput
-                  placeholder="Search or type language..."
-                  value={searchValue}
-                  onValueChange={setSearchValue}
-                />
-                <CommandList>
-                  <CommandEmpty>
-                    {searchValue && (
-                      <CommandItem
-                        onSelect={() => {
-                          // Handle custom language input
-                          const customCode = searchValue.toLowerCase();
-                          if (customCode in languages) {
-                            setLanguage(customCode as LanguageCode);
-                          } else {
-                            // For custom, try to map common codes or fallback to en
-                            const mappedCode = mapCustomLanguage(customCode);
-                            setLanguage(mappedCode);
-                          }
-                          setOpen(false);
-                        }}
-                      >
-                        Use "{searchValue}" as custom language
-                      </CommandItem>
-                    )}
-                  </CommandEmpty>
-                  <CommandGroup heading="Indian Languages">
-                    {indianLanguages.map(([code, lang]) => (
-                      <CommandItem
-                        key={code}
-                        value={lang.name}
-                        onSelect={() => {
-                          setLanguage(code as LanguageCode);
-                          setOpen(false);
-                        }}
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            language === code ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        {lang.name}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                  <CommandGroup heading="Foreign Languages">
-                    {foreignLanguages.map(([code, lang]) => (
-                      <CommandItem
-                        key={code}
-                        value={lang.name}
-                        onSelect={() => {
-                          setLanguage(code as LanguageCode);
-                          setOpen(false);
-                        }}
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            language === code ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        {lang.name}
-                      </CommandItem>
-
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
+          <LanguageSelector
+            currentLanguage={currentLanguage}
+            onLanguageChange={(lang) => {
+              setLanguage(lang);
+              setTranslationLanguage(lang);
+            }}
+            className="w-[120px] lg:w-[180px]"
+            showSearch={true}
+            groupByRegion={true}
+          />
         </div>
 
         {/* User Info - Hidden on mobile, visible on larger screens */}

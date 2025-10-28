@@ -457,43 +457,30 @@ export function EnhancedArtisanChat() {
             setLoading(true);
             setIsTyping(true);
 
+            // Simple audio processing for basic STT
+            
+            const userId = (typeof window !== 'undefined' ? localStorage.getItem('demo_profile_id') : null) || user?.uid || 'default_user';
+
+            // Use basic STT API
             const formData = new FormData();
             formData.append('audio', audioBlob, 'recording.wav');
-            formData.append('userId', (typeof window !== 'undefined' ? localStorage.getItem('demo_profile_id') : null) || user?.uid || 'default_user');
-
-            // Try enhanced STT first, fallback to basic STT
-            let sttResponse = await fetch('/api/google-cloud-stt', {
+            formData.append('userId', userId);
+            
+            const sttResponse = await fetch('/api/speech-to-text', {
                 method: 'POST',
                 body: formData,
             });
 
-            // Fallback to basic STT if enhanced fails
-            if (!sttResponse.ok) {
-                sttResponse = await fetch('/api/speech-to-text', {
-                    method: 'POST',
-                    body: formData,
-                });
-            }
-
             if (sttResponse && sttResponse.ok) {
                 const sttData = await sttResponse.json();
 
-                // Handle different STT API response formats
+                // Handle basic STT API response
                 let transcribedText = '';
-                if (sttData.success && sttData.data?.text) {
-                    // Updated STT API format
-                    transcribedText = sttData.data.text;
-                } else if (sttData.success && sttData.data?.transcription) {
-                    // Basic STT API format
+                if (sttData.success && sttData.data?.transcription) {
                     transcribedText = sttData.data.transcription;
-                } else if (sttData.text) {
-                    // Google Cloud STT format
-                    transcribedText = sttData.text;
                 } else if (sttData.transcription) {
-                    // Alternative format
                     transcribedText = sttData.transcription;
                 } else if (typeof sttData === 'string') {
-                    // Direct string response
                     transcribedText = sttData;
                 }
 
@@ -608,77 +595,40 @@ export function EnhancedArtisanChat() {
             let ttsResponse: Response | null = null;
             let lastError: string = '';
 
-            // Try enhanced TTS first
+            // Use basic TTS API
             try {
-                ttsResponse = await fetch('/api/tts/enhanced', {
+                ttsResponse = await fetch('/api/text-to-speech', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
                         text: text,
-                        language: language === 'hi' ? 'hi-IN' : 'en-IN',
-                        userId: (typeof window !== 'undefined' ? localStorage.getItem('demo_profile_id') : null) || user?.uid || 'default_user'
+                        language: language === 'hi' ? 'hi-IN' : 'en-US'
                     }),
                 });
 
                 if (!ttsResponse.ok) {
                     const errorData = await ttsResponse.json();
-                    lastError = errorData.error || 'Enhanced TTS failed';
+                    lastError = errorData.error || 'TTS failed';
                     ttsResponse = null;
                 }
             } catch (error) {
-                console.warn('Enhanced TTS failed:', error);
-                lastError = 'Enhanced TTS unavailable';
+                console.warn('TTS failed:', error);
+                lastError = 'TTS service unavailable';
                 ttsResponse = null;
-            }
-
-            // Fallback to basic TTS if enhanced fails
-            if (!ttsResponse) {
-                try {
-                    ttsResponse = await fetch('/api/text-to-speech', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            text: text,
-                            language: language === 'hi' ? 'hi-IN' : 'en-US'
-                        }),
-                    });
-
-                    if (!ttsResponse.ok) {
-                        const errorData = await ttsResponse.json();
-                        lastError = errorData.error || 'Basic TTS failed';
-                        ttsResponse = null;
-                    }
-                } catch (error) {
-                    console.warn('Basic TTS failed:', error);
-                    lastError = 'All TTS services unavailable';
-                    ttsResponse = null;
-                }
             }
 
             if (ttsResponse && ttsResponse.ok) {
                 const responseData = await ttsResponse.json();
 
-                let audioBlob: Blob;
-
-                if (responseData.success && responseData.audio?.data) {
-                    // Enhanced TTS API response format
-                    const audioBase64 = responseData.audio.data;
-                    const audioBuffer = Uint8Array.from(atob(audioBase64), c => c.charCodeAt(0));
-                    audioBlob = new Blob([audioBuffer], { type: 'audio/mp3' });
-                } else if (responseData.success && responseData.data?.audio) {
+                if (responseData.success && responseData.data?.audio) {
                     // Basic TTS API response format
                     const audioBase64 = responseData.data.audio;
                     const audioBuffer = Uint8Array.from(atob(audioBase64), c => c.charCodeAt(0));
-                    audioBlob = new Blob([audioBuffer], { type: 'audio/wav' });
-                } else {
-                    throw new Error('Invalid TTS response format');
-                }
+                    const audioBlob = new Blob([audioBuffer], { type: 'audio/wav' });
 
-                const audioUrl = URL.createObjectURL(audioBlob);
+                    const audioUrl = URL.createObjectURL(audioBlob);
                 const audio = new Audio(audioUrl);
                 currentAudioRef.current = audio;
 
@@ -705,7 +655,16 @@ export function EnhancedArtisanChat() {
 
                 await audio.play();
             } else {
-                throw new Error(lastError || 'All TTS services unavailable');
+                // TTS failed, just show a message
+                console.warn('TTS service unavailable');
+                toast({
+                    title: language === 'hi' ? 'आवाज़ सेवा' : 'Voice Service',
+                    description: language === 'hi' 
+                        ? 'आवाज़ प्लेबैक उपलब्ध नहीं है।' 
+                        : 'Voice playback not available.',
+                    variant: "default",
+                });
+                return;
             }
         } catch (error) {
             console.error('TTS playback error:', error);

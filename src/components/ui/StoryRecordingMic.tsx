@@ -115,10 +115,16 @@ export function StoryRecordingMic({
       try {
         speechServiceRef.current = GeminiSpeechService.getInstance();
 
-        // Check if speech recognition is supported
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          setIsSupported(false);
-          console.warn('Media devices not supported');
+        // Use comprehensive audio diagnostics
+        const { diagnoseAudioSupport } = await import('@/lib/utils/audioUtils');
+        const diagnostics = await diagnoseAudioSupport();
+        
+        setIsSupported(diagnostics.isSupported);
+        
+        if (!diagnostics.isSupported) {
+          console.warn('Audio recording not supported:', diagnostics.errors);
+        } else {
+          console.log('✅ Audio recording is supported');
         }
 
         // Load available voices
@@ -320,20 +326,14 @@ export function StoryRecordingMic({
       audioChunksRef.current = [];
       setRecordingStartTime(Date.now());
 
-      // Get user media
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 16000
-        }
-      });
+      // Import audio utilities
+      const { requestMicrophoneAccess, createMediaRecorder } = await import('@/lib/utils/audioUtils');
 
-      // Create media recorder
-      mediaRecorderRef.current = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
+      // Get user media with robust error handling
+      const stream = await requestMicrophoneAccess();
+
+      // Create media recorder with optimal settings
+      mediaRecorderRef.current = createMediaRecorder(stream);
 
       mediaRecorderRef.current.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -371,9 +371,14 @@ export function StoryRecordingMic({
     } catch (error) {
       console.error('Failed to start voice recording:', error);
       setIsListening(false);
+      
+      // Import error handling utility
+      const { getAudioErrorMessage } = await import('@/lib/utils/audioUtils');
+      const errorMessage = getAudioErrorMessage(error);
+      
       toast({
-        title: "Microphone Access Denied",
-        description: "Please allow microphone access to record your story.",
+        title: "Recording Failed",
+        description: errorMessage,
         variant: "destructive"
       });
     }

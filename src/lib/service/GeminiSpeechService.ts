@@ -81,7 +81,9 @@ export class GeminiSpeechService {
 
         // Test TTS API availability with timeout
         console.log('Testing TTS API...');
-        const ttsPromise = fetch('/api/google-cloud-tts', {
+        
+        const { fetchApi } = await import('@/lib/utils/url');
+        const ttsPromise = fetchApi('/api/google-cloud-tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: 'test', language: 'en-US' })
@@ -97,7 +99,7 @@ export class GeminiSpeechService {
 
         // Test STT API availability with timeout
         console.log('Testing STT API...');
-        const sttPromise = fetch('/api/google-cloud-stt', {
+        const sttPromise = fetchApi('/api/google-cloud-stt', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ audioData: 'dGVzdA==', language: 'en-US' }) // base64 'test'
@@ -224,7 +226,9 @@ export class GeminiSpeechService {
         // Convert ArrayBuffer to base64 for API transmission
         const audioBase64 = this.arrayBufferToBase64(audioBuffer);
 
-        const response = await fetch('/api/google-cloud-stt', {
+        // Construct absolute URL for server-side requests
+        const { fetchApi } = await import('@/lib/utils/url');
+        const response = await fetchApi('/api/google-cloud-stt', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -542,7 +546,9 @@ Audio data: ${audioBase64}
       try {
         console.log('🎵 Using Enhanced TTS API for:', text.substring(0, 50) + '...');
 
-        const response = await fetch('/api/tts/enhanced', {
+        // Construct absolute URL for server-side requests
+        const { fetchApi } = await import('@/lib/utils/url');
+        const response = await fetchApi('/api/tts/enhanced', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

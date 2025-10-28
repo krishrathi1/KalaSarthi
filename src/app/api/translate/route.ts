@@ -1,169 +1,177 @@
+/**
+ * Translation API Route
+ * Handles text translation with cultural context preservation
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
-import { Translate } from '@google-cloud/translate/build/src/v2';
+import { CulturalContextTranslator } from '@/lib/services/CulturalContextTranslator';
 
-// Simple fallback translations for testing
-const fallbackTranslations: { [key: string]: { [key: string]: { [key: string]: string } } } = {
-  'en': {
-    'hi': {
-      'Hello': 'नमस्ते',
-      'How are you?': 'आप कैसे हैं?',
-      'Thank you': 'धन्यवाद',
-      'Hello, how are you?': 'नमस्ते, आप कैसे हैं?'
-    }
-  },
-  'hi': {
-    'en': {
-      'नमस्ते': 'Hello',
-      'आप कैसे हैं?': 'How are you?',
-      'धन्यवाद': 'Thank you'
-    }
-  }
-};
-
-// Google Cloud Translation API supported language codes mapping
-const googleCloudLanguageMap: { [key: string]: string } = {
-  // Indian Languages - Map to closest supported Google Cloud languages
-  en: 'en',
-  hi: 'hi',
-  ta: 'ta',
-  bn: 'bn',
-  te: 'te',
-  as: 'as', // Assamese is supported
-  gu: 'gu',
-  kn: 'kn',
-  ml: 'ml',
-  pa: 'pa',
-  or: 'or',
-  ur: 'ur',
-
-  // Regional languages - Map to closest supported alternatives
-  mai: 'hi', // Maithili -> Hindi fallback
-  bho: 'hi', // Bhojpuri -> Hindi fallback
-  doi: 'hi', // Dogri -> Hindi fallback
-  kok: 'mr', // Konkani -> Marathi fallback
-  mr: 'mr', // Marathi is supported
-  raj: 'hi', // Rajasthani -> Hindi fallback
-  mni: 'hi', // Manipuri -> Hindi fallback
-  ne: 'ne', // Nepali is supported
-  sa: 'hi', // Sanskrit -> Hindi fallback
-  sat: 'hi', // Santali -> Hindi fallback
-  sd: 'ur', // Sindhi -> Urdu fallback
-
-  // Foreign Languages
-  es: 'es',
-  fr: 'fr',
-  de: 'de',
-  zh: 'zh',
-  ja: 'ja',
-  ar: 'ar',
-  pt: 'pt',
-  ru: 'ru',
-  it: 'it',
-  ko: 'ko',
-  nl: 'nl',
-  sv: 'sv',
-  da: 'da',
-  no: 'no',
-  fi: 'fi',
-  pl: 'pl',
-  tr: 'tr',
-  th: 'th',
-  vi: 'vi',
-};
-
-const translate = new Translate({
-  projectId: process.env.GOOGLE_CLOUD_PROJECT,
-});
-
-// In-memory cache for translations
-const translationCache = new Map<string, string>();
+const translator = CulturalContextTranslator.getInstance();
 
 export async function POST(request: NextRequest) {
   try {
-    const { text, targetLanguage, sourceLanguage = 'en' } = await request.json();
+    const body = await request.json();
+    const {
+      text,
+      sourceLanguage,
+      targetLanguage,
+      craftCategory,
+      userId,
+      preserveCulturalTerms = true
+    } = body;
 
-    // Input validation
-    if (!text || typeof text !== 'string' || text.trim() === '') {
+    // Validate input
+    if (!text || !sourceLanguage || !targetLanguage) {
       return NextResponse.json(
-        { error: 'Missing or invalid text parameter' },
+        { error: 'Text, source language, and target language are required' },
         { status: 400 }
       );
     }
 
-    if (!targetLanguage || typeof targetLanguage !== 'string') {
+    if (text.length > 5000) {
       return NextResponse.json(
-        { error: 'Missing or invalid targetLanguage parameter' },
+        { error: 'Text too long. Maximum 5000 characters allowed.' },
         { status: 400 }
       );
     }
 
-    // Don't translate if source and target are the same
-    if (sourceLanguage === targetLanguage) {
-      return NextResponse.json({
-        translation: text,
-        cached: true
-      });
-    }
+    console.log('🌐 Translation API called:', {
+      textLength: text.length,
+      sourceLanguage,
+      targetLanguage,
+      craftCategory,
+      preserveCulturalTerms,
+      timestamp: new Date().toISOString()
+    });
 
-    const cacheKey = `${text}_${sourceLanguage}_${targetLanguage}`;
+    // Perform translation
+    const result = await translator.translateText({
+      text,
+      sourceLanguage,
+      targetLanguage,
+      craftCategory,
+      userId,
+      preserveCulturalTerms
+    });
 
-    // Check cache first
-    if (translationCache.has(cacheKey)) {
-      return NextResponse.json({
-        translation: translationCache.get(cacheKey),
-        cached: true
-      });
-    }
-
-    // Try Google Cloud Translation first, fallback to simple translation
-    let translation;
-    let usedFallback = false;
-    
-    try {
-      const [googleTranslation] = await translate.translate(text, {
-        from: sourceLanguage,
-        to: targetLanguage,
-      });
-      translation = googleTranslation;
-    } catch (error) {
-      console.warn('Google Cloud Translation failed, using fallback:', error);
-      
-      // Use fallback translation
-      const fallback = fallbackTranslations[sourceLanguage]?.[targetLanguage]?.[text];
-      if (fallback) {
-        translation = fallback;
-        usedFallback = true;
-      } else {
-        // Simple fallback - just return original text with a note
-        translation = `[Translation not available: ${text}]`;
-        usedFallback = true;
-      }
-    }
-
-    // Cache the result
-    translationCache.set(cacheKey, translation);
+    console.log('✅ Translation completed:', {
+      confidence: result.confidence,
+      craftTermsDetected: result.craftTermsDetected.length,
+      culturalNotesCount: result.culturalNotes.length,
+      alternativesCount: result.alternatives.length
+    });
 
     return NextResponse.json({
-      translation,
-      cached: false,
-      fallback: usedFallback
+      success: true,
+      result,
+      timestamp: new Date().toISOString()
     });
 
   } catch (error) {
-    console.error('Translation API error:', error);
+    console.error('❌ Translation API error:', error);
+    
     return NextResponse.json(
-      {
+      { 
         error: 'Translation failed',
-        details: error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );
   }
 }
 
-export async function GET() {
-  return NextResponse.json({
-    message: 'Translation API is running',
-    cacheSize: translationCache.size
-  });
+// Get supported languages and craft categories
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const action = searchParams.get('action');
+
+    switch (action) {
+      case 'languages':
+        return NextResponse.json({
+          supportedPairs: translator.getSupportedLanguagePairs(),
+          timestamp: new Date().toISOString()
+        });
+
+      case 'categories':
+        return NextResponse.json({
+          categories: translator.getCraftCategories(),
+          timestamp: new Date().toISOString()
+        });
+
+      case 'terms':
+        const category = searchParams.get('category');
+        if (category) {
+          const terms = translator.getTermsByCategory(category);
+          return NextResponse.json({
+            category,
+            terms,
+            timestamp: new Date().toISOString()
+          });
+        }
+        return NextResponse.json(
+          { error: 'Category parameter required for terms action' },
+          { status: 400 }
+        );
+
+      case 'stats':
+        return NextResponse.json({
+          cacheStats: translator.getCacheStats(),
+          timestamp: new Date().toISOString()
+        });
+
+      default:
+        return NextResponse.json({
+          status: 'healthy',
+          service: 'cultural-context-translator',
+          supportedLanguages: translator.getSupportedLanguagePairs().length,
+          craftCategories: translator.getCraftCategories().length,
+          timestamp: new Date().toISOString()
+        });
+    }
+
+  } catch (error) {
+    console.error('❌ Translation API GET error:', error);
+    
+    return NextResponse.json(
+      { 
+        error: 'Failed to fetch translation service info',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// Clear translation cache (admin endpoint)
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const action = searchParams.get('action');
+
+    if (action === 'cache') {
+      translator.clearCache();
+      return NextResponse.json({
+        success: true,
+        message: 'Translation cache cleared',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    return NextResponse.json(
+      { error: 'Invalid action. Use ?action=cache to clear cache' },
+      { status: 400 }
+    );
+
+  } catch (error) {
+    console.error('❌ Translation API DELETE error:', error);
+    
+    return NextResponse.json(
+      { 
+        error: 'Failed to clear cache',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
+  }
 }

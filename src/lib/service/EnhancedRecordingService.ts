@@ -222,8 +222,9 @@ export class EnhancedRecordingService {
       
       console.log('📝 Converted audio to base64, length:', audioBase64.length);
 
-      // Use the same API endpoint as universal mic
-      const response = await fetch('/api/google-cloud-stt', {
+      // Use the same API endpoint as universal mic with proper URL resolution
+      const { fetchApi } = await import('@/lib/utils/url');
+      const response = await fetchApi('/api/google-cloud-stt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
