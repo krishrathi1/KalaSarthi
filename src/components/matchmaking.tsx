@@ -93,7 +93,9 @@ export function Matchmaking() {
             {matches.length > 0 ? (
               <ul className="list-disc list-inside space-y-2 p-4 bg-muted/50 rounded-lg text-sm">
                 {matches.map((match, index) => (
-                  <li key={index}>{match}</li>
+                  <li key={index}>
+                    <strong>{match.artisanName}</strong> (Score: {Math.round(match.matchScore * 100)}%) - {match.reason}
+                  </li>
                 ))}
               </ul>
             ) : (

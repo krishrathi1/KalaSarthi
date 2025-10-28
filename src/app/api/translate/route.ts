@@ -1,6 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Translate } from '@google-cloud/translate/build/src/v2';
 
+// Simple fallback translations for testing
+const fallbackTranslations: { [key: string]: { [key: string]: { [key: string]: string } } } = {
+  'en': {
+    'hi': {
+      'Hello': 'नमस्ते',
+      'How are you?': 'आप कैसे हैं?',
+      'Thank you': 'धन्यवाद',
+      'Hello, how are you?': 'नमस्ते, आप कैसे हैं?'
+    }
+  },
+  'hi': {
+    'en': {
+      'नमस्ते': 'Hello',
+      'आप कैसे हैं?': 'How are you?',
+      'धन्यवाद': 'Thank you'
+    }
+  }
+};
+
 // Google Cloud Translation API supported language codes mapping
 const googleCloudLanguageMap: { [key: string]: string } = {
   // Indian Languages - Map to closest supported Google Cloud languages
@@ -96,18 +115,38 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Perform translation
-    const [translation] = await translate.translate(text, {
-      from: sourceLanguage,
-      to: targetLanguage,
-    });
+    // Try Google Cloud Translation first, fallback to simple translation
+    let translation;
+    let usedFallback = false;
+    
+    try {
+      const [googleTranslation] = await translate.translate(text, {
+        from: sourceLanguage,
+        to: targetLanguage,
+      });
+      translation = googleTranslation;
+    } catch (error) {
+      console.warn('Google Cloud Translation failed, using fallback:', error);
+      
+      // Use fallback translation
+      const fallback = fallbackTranslations[sourceLanguage]?.[targetLanguage]?.[text];
+      if (fallback) {
+        translation = fallback;
+        usedFallback = true;
+      } else {
+        // Simple fallback - just return original text with a note
+        translation = `[Translation not available: ${text}]`;
+        usedFallback = true;
+      }
+    }
 
     // Cache the result
     translationCache.set(cacheKey, translation);
 
     return NextResponse.json({
       translation,
-      cached: false
+      cached: false,
+      fallback: usedFallback
     });
 
   } catch (error) {

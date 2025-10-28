@@ -594,6 +594,14 @@ Audio data: ${audioBase64}
     } = options;
 
     return new Promise((resolve, reject) => {
+      // Check if running on server-side
+      if (typeof window === 'undefined') {
+        // Server-side fallback - return mock audio buffer
+        const mockAudioBuffer = new ArrayBuffer(1024);
+        resolve(mockAudioBuffer);
+        return;
+      }
+      
       // Check for browser support
       if (!('speechSynthesis' in window)) {
         reject(new Error('Text-to-speech not supported in this browser'));

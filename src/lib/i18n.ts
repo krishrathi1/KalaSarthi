@@ -985,6 +985,7 @@ export const menuItems: MenuItem[] = [
       or: 'ଟ୍ରେଣ୍ଡ ସ୍ପଟର',
       ur: 'ٹرینڈ سپاٹر',
     },
+<<<<<<< Updated upstream
     icon: Palette,
     path: "/trend-spotter",
   },
@@ -1024,7 +1025,7 @@ export const menuItems: MenuItem[] = [
       ur: 'خریدار کنیکٹ',
     },
     icon: Users,
-    path: "/matchmaking",
+    path: "/buyer-connect",
   },
   {
     label: {
@@ -1302,7 +1303,7 @@ export const features: Feature[] = [
     title: { en: 'Buyer Connect', hi: 'क्रेता कनेक्ट', ta: 'வாங்குபவர் இணைப்பு', bn: 'ক্রেতা সংযোগ', te: 'కొనుగోలుదారు కనెక్ట్' },
     description: { en: "Enables direct buyer-artisan communication across languages, supporting chat and voice.", hi: "चैट और आवाज का समर्थन करते हुए, भाषाओं में प्रत्यक्ष क्रेता-कारीगर संचार को सक्षम बनाता है।", ta: " அரட்டை மற்றும் குரலை ஆதரிக்கும் மொழிகளில் நேரடி வாங்குபவர்-கைவினைஞர் தகவல்தொடர்பை செயல்படுத்துகிறது.", bn: "চ্যাট এবং ভয়েস সমর্থনকারী ভাষা জুড়ে সরাসরি ক্রেতা-শিল্পী যোগাযোগ সক্ষম করে।", te: "చాట్ మరియు వాయిస్‌కు మద్దతు ఇస్తూ భాషల అంతటా ప్రత్యక్ష కొనుగోలుదారు-చేతివృత్తులవారి కమ్యూనికేషన్‌ను ప్రారంభిస్తుంది." },
     icon: Users,
-    path: "/matchmaking",
+    path: "/buyer-connect",
     color: "text-green-500",
   },
   {

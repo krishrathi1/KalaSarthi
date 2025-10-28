@@ -1138,7 +1138,7 @@ export class SimplifiedTrendAPI {
             metadata: {
               totalCount: cached.products.length,
               lastUpdated: new Date(cached.timestamp),
-              dataSource: 'cache',
+              dataSource: 'cached',
               profession
             }
           }

@@ -293,7 +293,7 @@ export async function POST(request: NextRequest) {
       };
       
       const mockProfile = {
-        userId: userId,
+        userId: 'mock-user-id',
         profession: 'pottery',
         experienceLevel: 'intermediate',
         specialties: ['ceramic bowls', 'decorative pottery', 'functional ceramics'],
@@ -405,7 +405,11 @@ export async function POST(request: NextRequest) {
           ]
         },
         profileCompletenessSummary: 'Mock profile data - pottery artisan',
-        querySet: ['ceramic bowls', 'pottery vases', 'handmade ceramics'],
+        querySet: [
+          { query: 'ceramic bowls', rationale: 'High demand kitchen item', category: 'functional', priority: 1 },
+          { query: 'pottery vases', rationale: 'Popular home decor', category: 'decorative', priority: 2 },
+          { query: 'handmade ceramics', rationale: 'Broad category appeal', category: 'general', priority: 3 }
+        ],
         sourceCoverageReport: {
           apisUsed: ['Mock Amazon API', 'Mock Instagram API'],
           scrapedSources: ['Mock Etsy', 'Mock Pinterest'],
@@ -419,7 +423,6 @@ export async function POST(request: NextRequest) {
         },
         globalRankedList: mockProducts.sort((a, b) => b.trend_score - a.trend_score),
         executionTime,
-        error: null,
         dataLineage: {
           profileSource: 'Mock user profile data',
           productSource: 'Mock trending products database',
@@ -427,7 +430,11 @@ export async function POST(request: NextRequest) {
           financialSource: 'Mock financial projections',
           scrapingSources: ['Mock Amazon', 'Mock Etsy', 'Mock Instagram'],
           timestamp: new Date().toISOString(),
-          querySet: ['ceramic bowls', 'pottery vases', 'handmade ceramics'],
+          querySet: [
+            { query: 'ceramic bowls', rationale: 'High demand kitchen item', category: 'functional', priority: 1 },
+            { query: 'pottery vases', rationale: 'Popular home decor', category: 'decorative', priority: 2 },
+            { query: 'handmade ceramics', rationale: 'Broad category appeal', category: 'general', priority: 3 }
+          ],
           metricsUsed: {
             views: 'Mock view analytics',
             sales: 'Mock sales data',

@@ -14,6 +14,46 @@ interface MarketInsightsProps {
   isSimpleMode?: boolean;
 }
 
+// Add default data for other professions
+const DEFAULT_INSIGHTS = {
+  opportunities: [
+    'Handmade products market growing steadily',
+    'Authentic crafts in high demand',
+    'Festival seasons boost sales significantly',
+    'Online platforms expanding artisan reach'
+  ],
+  recommendations: [
+    'Focus on quality and authenticity',
+    'Use traditional techniques and materials',
+    'Create seasonal collections',
+    'Highlight handmade process'
+  ],
+  actionItems: [
+    'Take high-quality product photos',
+    'Write clear, simple product descriptions',
+    'Price competitively within market range',
+    'Create festival-themed collections'
+  ],
+  marketTips: [
+    'Quality materials make a difference',
+    'Traditional techniques add value',
+    'Seasonal items have higher demand',
+    'Customer reviews are very important'
+  ],
+  seasonalAdvice: [
+    'Festival season: Traditional and decorative items',
+    'Wedding season: Gift items and ceremonial pieces',
+    'Daily use: Functional and practical items',
+    'Special occasions: Premium and customized pieces'
+  ],
+  pricingGuidance: [
+    'Small items: ₹100-500',
+    'Medium items: ₹300-1000',
+    'Large items: ₹800-2500',
+    'Premium pieces: ₹1000-5000'
+  ]
+};
+
 // Realistic market insights data for Indian artisans
 const MARKET_INSIGHTS_DATA: Record<ProfessionCategory, {
   opportunities: string[];
@@ -250,47 +290,15 @@ const MARKET_INSIGHTS_DATA: Record<ProfessionCategory, {
       'Functional items: ₹200-800',
       'Premium handmade: ₹500-2000'
     ]
-  }
-};
-
-// Add default data for other professions
-const DEFAULT_INSIGHTS = {
-  opportunities: [
-    'Handmade products market growing steadily',
-    'Authentic crafts in high demand',
-    'Festival seasons boost sales significantly',
-    'Online platforms expanding artisan reach'
-  ],
-  recommendations: [
-    'Focus on quality and authenticity',
-    'Use traditional techniques and materials',
-    'Create seasonal collections',
-    'Highlight handmade process'
-  ],
-  actionItems: [
-    'Take high-quality product photos',
-    'Write clear, simple product descriptions',
-    'Price competitively within market range',
-    'Create festival-themed collections'
-  ],
-  marketTips: [
-    'Quality materials make a difference',
-    'Traditional techniques add value',
-    'Seasonal items have higher demand',
-    'Customer reviews are very important'
-  ],
-  seasonalAdvice: [
-    'Festival season: Traditional and decorative items',
-    'Wedding season: Gift items and ceremonial pieces',
-    'Daily use: Functional and practical items',
-    'Special occasions: Premium and customized pieces'
-  ],
-  pricingGuidance: [
-    'Small items: ₹100-500',
-    'Medium items: ₹300-1000',
-    'Large items: ₹800-2500',
-    'Premium pieces: ₹1000-5000'
-  ]
+  },
+  ceramics: DEFAULT_INSIGHTS,
+  glasswork: DEFAULT_INSIGHTS,
+  leatherwork: DEFAULT_INSIGHTS,
+  painting: DEFAULT_INSIGHTS,
+  sculpture: DEFAULT_INSIGHTS,
+  weaving: DEFAULT_INSIGHTS,
+  embroidery: DEFAULT_INSIGHTS,
+  crafts: DEFAULT_INSIGHTS
 };
 
 export function MarketInsights({ 

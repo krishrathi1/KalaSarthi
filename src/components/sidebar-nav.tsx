@@ -68,7 +68,7 @@ export function SidebarNav() {
         '/yojana-mitra',
         '/voice-enrollment',
         '/trust-layer',
-        '/matchmaking',
+        '/buyer-connect',
         '/multi-marketplace'
       ];
       return publicFriendlyRoutes.some(route => item.path.startsWith(route));

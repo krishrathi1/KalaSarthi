@@ -144,10 +144,10 @@ export function SimplifiedTrendSpotter() {
 
         toast({
           title: newStatus.dataSource === 'api' ? "Live Data Updated" : 
-                 newStatus.dataSource === 'cache' ? "Cached Data Loaded" : "Offline Mode",
+                 newStatus.dataSource === 'cached' ? "Cached Data Loaded" : "Offline Mode",
           description: newStatus.dataSource === 'api' 
             ? "Latest trending products loaded successfully!"
-            : newStatus.dataSource === 'cache'
+            : newStatus.dataSource === 'cached'
             ? "Using cached data for faster loading"
             : "Showing offline data. Connect to internet for live updates.",
           duration: 2000,

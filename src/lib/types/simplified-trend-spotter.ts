@@ -46,7 +46,7 @@ export interface ConnectivityStatus {
   syncStatus?: 'synced' | 'syncing' | 'failed';
 }
 
-export type DataSource = 'api' | 'mock' | 'cache';
+export type DataSource = 'api' | 'mock' | 'cached';
 
 // Artisan profession categories
 export type ProfessionCategory = 

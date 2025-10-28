@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Convert to base64 for response
-    const audioBase64 = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)));
+    const audioBase64 = Buffer.from(audioBuffer).toString('base64');
 
     return NextResponse.json({
       success: true,

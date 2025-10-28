@@ -182,7 +182,7 @@ export class SalesBackfillJob {
     return await Order.find(query)
       .sort({ createdAt: 1, _id: 1 })
       .limit(this.options.chunkSize!)
-      .lean();
+      .lean() as unknown as IOrderDocument[];
   }
 
   /**

@@ -80,7 +80,7 @@ export function TrendCard({
         onClick={handleClick}
         role="button"
         tabIndex={0}
-        aria-label={`View ${product.title} on ${product.platform} - ${formatPrice(product.price)} - ${formatRating(product.rating)} stars`}
+        aria-label={`View ${product.title} on ${product.platform} - ${formatPrice(typeof product.price === 'string' ? parseFloat(product.price) || 0 : product.price)} - ${formatRating(product.rating)} stars`}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();

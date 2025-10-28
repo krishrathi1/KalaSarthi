@@ -145,7 +145,7 @@ export class RealtimeAggregationService {
     return await Order.find(query)
       .sort({ createdAt: 1, _id: 1 })
       .limit(1000) // Safety limit
-      .lean();
+      .lean() as unknown as IOrderDocument[];
   }
 
   /**
