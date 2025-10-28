@@ -5,7 +5,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export interface SpeechToTextOptions {
   language?: string;
-  model?: 'gemini-2.5-flash' | 'gemini-pro-vision';
+  model?: 'gemini-pro' | 'gemini-pro-vision' | 'gemini-2.0-flash-exp' | 'gemini-1.5-pro';
   temperature?: number;
 }
 
@@ -51,7 +51,7 @@ export class GeminiSpeechService {
     try {
       this.genAI = new GoogleGenerativeAI(apiKey);
       // Use the correct model name for Gemini 1.5
-      this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
       console.log('✅ Gemini AI initialized successfully');
 
       // Don't check Google Cloud availability immediately - do it lazily on first use

@@ -1,7 +1,7 @@
-import Order, { IOrder, IOrderDocument } from "../models/Order";
-import Product, { IProductDocument } from "../models/Product";
-import Cart from "../models/Cart";
-import connectDB from "../mongodb";
+import { IOrder, IOrderDocument } from "../models/Order";
+import { IProductDocument } from "../models/Product";
+import { ICart } from "../models/Cart";
+import { FirestoreService, COLLECTIONS, where, orderBy, limit as limitQuery } from "../firestore";
 import { v4 as uuidv4 } from 'uuid';
 import { SalesEventService } from './SalesEventService';
 
@@ -27,10 +27,10 @@ interface CreateOrderRequest {
         quantity: number;
     }>;
     notes?: string;
-    taxRate?: number; // e.g., 0.1 for 10%
+    taxRate?: number;
     shippingCost?: number;
     discount?: number;
-    useCart?: boolean; // If true, use items from user's cart
+    useCart?: boolean;
 }
 
 interface UpdateOrderRequest {
@@ -59,8 +59,6 @@ interface OrderStats {
 export class OrderService {
     static async createOrder(orderData: CreateOrderRequest): Promise<ServiceResponse<IOrderDocument>> {
         try {
-            await connectDB();
-
             const { 
                 userId, 
                 shippingAddress, 
@@ -76,7 +74,13 @@ export class OrderService {
 
             // If useCart is true and no items provided, get items from cart
             if (useCart && (!providedItems || providedItems.length === 0)) {
-                const cart = await Cart.findOne({ userId }).exec();
+                const carts = await FirestoreService.query<ICart>(
+                    COLLECTIONS.CARTS,
+                    [where('userId', '==', userId)]
+                );
+                
+                const cart = carts.length > 0 ? carts[0] : null;
+                
                 if (!cart || cart.items.length === 0) {
                     return {
                         success: false,
@@ -102,7 +106,10 @@ export class OrderService {
             let subtotal = 0;
 
             for (const item of orderItems) {
-                const product = await Product.findOne({ productId: item.productId }).exec();
+                const product = await FirestoreService.getById<IProductDocument>(
+                    COLLECTIONS.PRODUCTS,
+                    item.productId
+                );
                 
                 if (!product) {
                     return {
@@ -148,8 +155,9 @@ export class OrderService {
             const totalAmount = subtotal + tax + shippingCost - discount;
 
             // Create the order
-            const order = new Order({
-                orderId: uuidv4(),
+            const orderId = uuidv4();
+            const order: IOrder = {
+                orderId,
                 userId,
                 items: orderItemsWithDetails,
                 shippingAddress,
@@ -163,56 +171,57 @@ export class OrderService {
                 status: 'pending',
                 paymentStatus: 'pending',
                 notes,
-            });
+                createdAt: new Date(),
+                updatedAt: new Date()
+            };
 
-            const savedOrder = await order.save();
+            await FirestoreService.set(COLLECTIONS.ORDERS, orderId, order);
 
             // Emit sales events for order creation
             try {
                 const salesEventService = SalesEventService.getInstance();
-                await salesEventService.emitOrderCreatedEvents(savedOrder);
+                await salesEventService.emitOrderCreatedEvents(order as IOrderDocument);
             } catch (error) {
                 console.error('Error emitting order created events:', error);
-                // Don't fail the order creation if event emission fails
             }
 
             // Update product inventory
             for (const item of orderItemsWithDetails) {
-                await Product.updateOne(
-                    { productId: item.productId },
-                    {
-                        $inc: { 'inventory.quantity': -item.quantity },
-                        $set: { updatedAt: new Date() }
-                    }
-                ).exec();
-
-                // Check if product should be marked as unavailable
-                const updatedProduct = await Product.findOne({ productId: item.productId }).exec();
-                if (updatedProduct && updatedProduct.inventory.quantity <= 0) {
-                    await Product.updateOne(
-                        { productId: item.productId },
-                        { $set: { 'inventory.isAvailable': false } }
-                    ).exec();
+                const product = await FirestoreService.getById<IProductDocument>(
+                    COLLECTIONS.PRODUCTS,
+                    item.productId
+                );
+                
+                if (product) {
+                    const newQuantity = product.inventory.quantity - item.quantity;
+                    await FirestoreService.update(COLLECTIONS.PRODUCTS, item.productId, {
+                        'inventory.quantity': newQuantity,
+                        'inventory.isAvailable': newQuantity > 0,
+                        updatedAt: new Date()
+                    });
                 }
             }
 
             // Clear cart if items were taken from cart
             if (useCart) {
-                await Cart.updateOne(
-                    { userId },
-                    {
-                        $set: {
-                            items: [],
-                            totalAmount: 0,
-                            totalItems: 0
-                        }
-                    }
-                ).exec();
+                const carts = await FirestoreService.query<ICart>(
+                    COLLECTIONS.CARTS,
+                    [where('userId', '==', userId)]
+                );
+                
+                if (carts.length > 0) {
+                    await FirestoreService.update(COLLECTIONS.CARTS, carts[0].cartId, {
+                        items: [],
+                        totalAmount: 0,
+                        totalItems: 0,
+                        updatedAt: new Date()
+                    });
+                }
             }
 
             return {
                 success: true,
-                data: savedOrder
+                data: order as IOrderDocument
             };
 
         } catch (error: any) {
@@ -226,9 +235,7 @@ export class OrderService {
 
     static async getOrderById(orderId: string): Promise<ServiceResponse<IOrderDocument>> {
         try {
-            await connectDB();
-
-            const order = await Order.findOne({ orderId }).exec();
+            const order = await FirestoreService.getById<IOrder>(COLLECTIONS.ORDERS, orderId);
             
             if (!order) {
                 return {
@@ -239,7 +246,7 @@ export class OrderService {
 
             return {
                 success: true,
-                data: order
+                data: order as IOrderDocument
             };
 
         } catch (error: any) {
@@ -253,21 +260,16 @@ export class OrderService {
 
     static async getUserOrders(userId: string, status?: string): Promise<ServiceResponse<IOrderDocument[]>> {
         try {
-            await connectDB();
-
-            const filter: any = { userId };
+            const constraints = [where('userId', '==', userId), orderBy('createdAt', 'desc')];
             if (status) {
-                filter.status = status;
+                constraints.unshift(where('status', '==', status));
             }
 
-            const orders = await Order
-                .find(filter)
-                .sort({ createdAt: -1 })
-                .exec();
+            const orders = await FirestoreService.query<IOrder>(COLLECTIONS.ORDERS, constraints);
 
             return {
                 success: true,
-                data: orders
+                data: orders as IOrderDocument[]
             };
 
         } catch (error: any) {
@@ -281,21 +283,24 @@ export class OrderService {
 
     static async getArtisanOrders(artisanId: string, status?: string): Promise<ServiceResponse<IOrderDocument[]>> {
         try {
-            await connectDB();
+            // Firestore doesn't support querying array elements directly
+            // We need to fetch all orders and filter client-side
+            const allOrders = await FirestoreService.getAll<IOrder>(COLLECTIONS.ORDERS);
+            
+            let filteredOrders = allOrders.filter(order => 
+                order.items.some(item => item.artisanId === artisanId)
+            );
 
-            const filter: any = { 'items.artisanId': artisanId };
             if (status) {
-                filter.status = status;
+                filteredOrders = filteredOrders.filter(order => order.status === status);
             }
 
-            const orders = await Order
-                .find(filter)
-                .sort({ createdAt: -1 })
-                .exec();
+            // Sort by createdAt descending
+            filteredOrders.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
             return {
                 success: true,
-                data: orders
+                data: filteredOrders as IOrderDocument[]
             };
 
         } catch (error: any) {
@@ -309,10 +314,8 @@ export class OrderService {
 
     static async updateOrder(orderId: string, updateData: UpdateOrderRequest): Promise<ServiceResponse> {
         try {
-            await connectDB();
-
             // Get the order before update to compare status changes
-            const existingOrder = await Order.findOne({ orderId }).exec();
+            const existingOrder = await FirestoreService.getById<IOrder>(COLLECTIONS.ORDERS, orderId);
             if (!existingOrder) {
                 return {
                     success: false,
@@ -334,43 +337,29 @@ export class OrderService {
                 updateFields.cancelledAt = new Date();
             }
 
-            const result = await Order.updateOne(
-                { orderId },
-                { $set: updateFields }
-            ).exec();
-
-            if (result.matchedCount === 0) {
-                return {
-                    success: false,
-                    error: 'Order not found'
-                };
-            }
+            await FirestoreService.update(COLLECTIONS.ORDERS, orderId, updateFields);
 
             // Get updated order for event emission
-            const updatedOrder = await Order.findOne({ orderId }).exec();
+            const updatedOrder = await FirestoreService.getById<IOrder>(COLLECTIONS.ORDERS, orderId);
             if (updatedOrder) {
                 // Emit sales events based on status changes
                 try {
                     const salesEventService = SalesEventService.getInstance();
                     
-                    // Emit payment events
                     if (updateData.paymentStatus === 'paid' && existingOrder.paymentStatus !== 'paid') {
-                        await salesEventService.emitOrderPaidEvents(updatedOrder);
+                        await salesEventService.emitOrderPaidEvents(updatedOrder as IOrderDocument);
                     }
                     
-                    // Emit fulfillment events
                     if (updateData.status === 'delivered' && existingOrder.status !== 'delivered') {
-                        await salesEventService.emitOrderFulfilledEvents(updatedOrder);
+                        await salesEventService.emitOrderFulfilledEvents(updatedOrder as IOrderDocument);
                     }
                     
-                    // Emit cancellation events
                     if (updateData.status === 'cancelled' && existingOrder.status !== 'cancelled') {
-                        await salesEventService.emitOrderCanceledEvents(updatedOrder);
+                        await salesEventService.emitOrderCanceledEvents(updatedOrder as IOrderDocument);
                     }
                     
                 } catch (error) {
                     console.error('Error emitting order update events:', error);
-                    // Don't fail the order update if event emission fails
                 }
             }
 
@@ -390,10 +379,7 @@ export class OrderService {
 
     static async cancelOrder(orderId: string, reason: string, userId?: string): Promise<ServiceResponse> {
         try {
-            await connectDB();
-
-            // Get the order first
-            const order = await Order.findOne({ orderId }).exec();
+            const order = await FirestoreService.getById<IOrder>(COLLECTIONS.ORDERS, orderId);
             if (!order) {
                 return {
                     success: false,
@@ -401,7 +387,6 @@ export class OrderService {
                 };
             }
 
-            // Check if user is authorized to cancel (if userId provided)
             if (userId && order.userId !== userId) {
                 return {
                     success: false,
@@ -409,7 +394,6 @@ export class OrderService {
                 };
             }
 
-            // Check if order can be cancelled
             if (['delivered', 'cancelled'].includes(order.status)) {
                 return {
                     success: false,
@@ -419,42 +403,38 @@ export class OrderService {
 
             // Restore product inventory
             for (const item of order.items) {
-                await Product.updateOne(
-                    { productId: item.productId },
-                    {
-                        $inc: { 'inventory.quantity': item.quantity },
-                        $set: { 
-                            'inventory.isAvailable': true,
-                            updatedAt: new Date()
-                        }
-                    }
-                ).exec();
+                const product = await FirestoreService.getById<IProductDocument>(
+                    COLLECTIONS.PRODUCTS,
+                    item.productId
+                );
+                
+                if (product) {
+                    const newQuantity = product.inventory.quantity + item.quantity;
+                    await FirestoreService.update(COLLECTIONS.PRODUCTS, item.productId, {
+                        'inventory.quantity': newQuantity,
+                        'inventory.isAvailable': true,
+                        updatedAt: new Date()
+                    });
+                }
             }
 
             // Update order status
-            await Order.updateOne(
-                { orderId },
-                {
-                    $set: {
-                        status: 'cancelled',
-                        cancelledAt: new Date(),
-                        cancellationReason: reason,
-                        updatedAt: new Date()
-                    }
-                }
-            ).exec();
+            await FirestoreService.update(COLLECTIONS.ORDERS, orderId, {
+                status: 'cancelled',
+                cancelledAt: new Date(),
+                cancellationReason: reason,
+                updatedAt: new Date()
+            });
 
             // Emit cancellation events
             try {
                 const salesEventService = SalesEventService.getInstance();
-                // Get the updated order from database
-                const updatedOrder = await Order.findOne({ orderId }).exec();
+                const updatedOrder = await FirestoreService.getById<IOrder>(COLLECTIONS.ORDERS, orderId);
                 if (updatedOrder) {
-                    await salesEventService.emitOrderCanceledEvents(updatedOrder);
+                    await salesEventService.emitOrderCanceledEvents(updatedOrder as IOrderDocument);
                 }
             } catch (error) {
                 console.error('Error emitting order cancellation events:', error);
-                // Don't fail the cancellation if event emission fails
             }
 
             return {
@@ -480,30 +460,37 @@ export class OrderService {
         skip?: number;
     } = {}): Promise<ServiceResponse<IOrderDocument[]>> {
         try {
-            await connectDB();
-
             const { status, paymentStatus, startDate, endDate, limit = 50, skip = 0 } = filters;
 
-            const filter: any = {};
+            // Get all orders and filter client-side
+            let allOrders = await FirestoreService.getAll<IOrder>(COLLECTIONS.ORDERS);
             
-            if (status) filter.status = status;
-            if (paymentStatus) filter.paymentStatus = paymentStatus;
+            if (status) {
+                allOrders = allOrders.filter(order => order.status === status);
+            }
+            
+            if (paymentStatus) {
+                allOrders = allOrders.filter(order => order.paymentStatus === paymentStatus);
+            }
+            
             if (startDate || endDate) {
-                filter.createdAt = {};
-                if (startDate) filter.createdAt.$gte = startDate;
-                if (endDate) filter.createdAt.$lte = endDate;
+                allOrders = allOrders.filter(order => {
+                    const orderDate = order.createdAt;
+                    if (startDate && orderDate < startDate) return false;
+                    if (endDate && orderDate > endDate) return false;
+                    return true;
+                });
             }
 
-            const orders = await Order
-                .find(filter)
-                .sort({ createdAt: -1 })
-                .limit(limit)
-                .skip(skip)
-                .exec();
+            // Sort by createdAt descending
+            allOrders.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+            // Apply pagination
+            const paginatedOrders = allOrders.slice(skip, skip + limit);
 
             return {
                 success: true,
-                data: orders
+                data: paginatedOrders as IOrderDocument[]
             };
 
         } catch (error: any) {
@@ -517,45 +504,20 @@ export class OrderService {
 
     static async getOrderStats(): Promise<ServiceResponse<OrderStats>> {
         try {
-            await connectDB();
-
-            const [
-                totalOrders,
-                pendingOrders,
-                confirmedOrders,
-                processingOrders,
-                shippedOrders,
-                deliveredOrders,
-                cancelledOrders,
-                pendingPayments,
-                revenueData
-            ] = await Promise.all([
-                Order.countDocuments().exec(),
-                Order.countDocuments({ status: 'pending' }).exec(),
-                Order.countDocuments({ status: 'confirmed' }).exec(),
-                Order.countDocuments({ status: 'processing' }).exec(),
-                Order.countDocuments({ status: 'shipped' }).exec(),
-                Order.countDocuments({ status: 'delivered' }).exec(),
-                Order.countDocuments({ status: 'cancelled' }).exec(),
-                Order.countDocuments({ paymentStatus: 'pending' }).exec(),
-                Order.aggregate([
-                    { $match: { status: { $ne: 'cancelled' } } },
-                    { $group: { _id: null, totalRevenue: { $sum: '$orderSummary.totalAmount' } } }
-                ]).exec()
-            ]);
-
-            const totalRevenue = revenueData.length > 0 ? revenueData[0].totalRevenue : 0;
+            const allOrders = await FirestoreService.getAll<IOrder>(COLLECTIONS.ORDERS);
 
             const stats: OrderStats = {
-                totalOrders,
-                pendingOrders,
-                confirmedOrders,
-                processingOrders,
-                shippedOrders,
-                deliveredOrders,
-                cancelledOrders,
-                totalRevenue,
-                pendingPayments
+                totalOrders: allOrders.length,
+                pendingOrders: allOrders.filter(o => o.status === 'pending').length,
+                confirmedOrders: allOrders.filter(o => o.status === 'confirmed').length,
+                processingOrders: allOrders.filter(o => o.status === 'processing').length,
+                shippedOrders: allOrders.filter(o => o.status === 'shipped').length,
+                deliveredOrders: allOrders.filter(o => o.status === 'delivered').length,
+                cancelledOrders: allOrders.filter(o => o.status === 'cancelled').length,
+                pendingPayments: allOrders.filter(o => o.paymentStatus === 'pending').length,
+                totalRevenue: allOrders
+                    .filter(o => o.status !== 'cancelled')
+                    .reduce((sum, o) => sum + o.orderSummary.totalAmount, 0)
             };
 
             return {
@@ -574,23 +536,24 @@ export class OrderService {
 
     static async searchOrders(searchTerm: string): Promise<ServiceResponse<IOrderDocument[]>> {
         try {
-            await connectDB();
+            // Firestore doesn't support regex search
+            // Fetch all orders and filter client-side
+            const allOrders = await FirestoreService.getAll<IOrder>(COLLECTIONS.ORDERS);
 
-            const orders = await Order
-                .find({
-                    $or: [
-                        { orderId: { $regex: searchTerm, $options: 'i' } },
-                        { 'shippingAddress.fullName': { $regex: searchTerm, $options: 'i' } },
-                        { 'shippingAddress.phone': { $regex: searchTerm, $options: 'i' } },
-                        { trackingNumber: { $regex: searchTerm, $options: 'i' } }
-                    ]
-                })
-                .sort({ createdAt: -1 })
-                .exec();
+            const searchLower = searchTerm.toLowerCase();
+            const filteredOrders = allOrders.filter(order =>
+                order.orderId.toLowerCase().includes(searchLower) ||
+                order.shippingAddress.fullName.toLowerCase().includes(searchLower) ||
+                order.shippingAddress.phone.includes(searchTerm) ||
+                order.trackingNumber?.toLowerCase().includes(searchLower)
+            );
+
+            // Sort by createdAt descending
+            filteredOrders.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
             return {
                 success: true,
-                data: orders
+                data: filteredOrders as IOrderDocument[]
             };
 
         } catch (error: any) {

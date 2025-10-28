@@ -48,8 +48,7 @@ export async function POST(request: NextRequest) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
     console.log('Gemini model initialized successfully');
 
     // Voice style instructions
@@ -130,7 +129,7 @@ Return only the enhanced story in ${detectedLanguage}, nothing else.`;
       console.log('Starting Gemini API call...', {
         hasImageUrl: !!imageUrl,
         promptLength: prompt.length,
-        model: 'gemini-2.5-flash'
+        model: 'gemini-2.0-flash-exp'
       });
 
       // Retry logic for Gemini API overload/rate limit errors

@@ -1,6 +1,8 @@
-import { SalesEvent, ISalesEvent } from '../models/SalesEvent';
+import { ISalesEvent } from '../models/SalesEvent';
 import { IOrderDocument } from '../models/Order';
 import { IProductDocument } from '../models/Product';
+import { FirestoreService, COLLECTIONS, where, orderBy } from '../firestore';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface SalesEventData {
   orderId: string;
@@ -43,7 +45,8 @@ export class SalesEventService {
     try {
       const netRevenue = eventData.totalAmount - (eventData.discount || 0) - (eventData.tax || 0) - (eventData.commission || 0);
       
-      const salesEvent = new SalesEvent({
+      const eventId = uuidv4();
+      const salesEvent: ISalesEvent = {
         orderId: eventData.orderId,
         productId: eventData.productId,
         artisanId: eventData.artisanId,
@@ -67,10 +70,12 @@ export class SalesEventService {
         customerSegment: eventData.customerSegment,
         seasonality: eventData.seasonality,
         currency: eventData.currency || 'INR',
-        version: 1
-      });
+        version: 1,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
 
-      await salesEvent.save();
+      await FirestoreService.set(COLLECTIONS.SALES_EVENTS, eventId, salesEvent);
       console.log(`Sales event emitted: ${eventData.eventType} for order ${eventData.orderId}`);
       
     } catch (error) {
@@ -319,7 +324,10 @@ export class SalesEventService {
    */
   async getOrderEvents(orderId: string): Promise<ISalesEvent[]> {
     try {
-      return await SalesEvent.find({ orderId }).sort({ eventTimestamp: 1 }).exec();
+      return await FirestoreService.query<ISalesEvent>(
+        COLLECTIONS.SALES_EVENTS,
+        [where('orderId', '==', orderId), orderBy('eventTimestamp', 'asc')]
+      );
     } catch (error) {
       console.error('Error fetching order events:', error);
       return [];
@@ -336,19 +344,31 @@ export class SalesEventService {
     eventTypes?: string[]
   ): Promise<ISalesEvent[]> {
     try {
-      const query: any = { artisanId };
+      // Firestore doesn't support complex queries with multiple conditions
+      // Fetch all events for artisan and filter client-side
+      const allEvents = await FirestoreService.query<ISalesEvent>(
+        COLLECTIONS.SALES_EVENTS,
+        [where('artisanId', '==', artisanId), orderBy('eventTimestamp', 'desc')]
+      );
+      
+      let filteredEvents = allEvents;
       
       if (startDate || endDate) {
-        query.eventTimestamp = {};
-        if (startDate) query.eventTimestamp.$gte = startDate;
-        if (endDate) query.eventTimestamp.$lte = endDate;
+        filteredEvents = filteredEvents.filter(event => {
+          const eventDate = event.eventTimestamp;
+          if (startDate && eventDate < startDate) return false;
+          if (endDate && eventDate > endDate) return false;
+          return true;
+        });
       }
       
       if (eventTypes && eventTypes.length > 0) {
-        query.eventType = { $in: eventTypes };
+        filteredEvents = filteredEvents.filter(event => 
+          eventTypes.includes(event.eventType)
+        );
       }
       
-      return await SalesEvent.find(query).sort({ eventTimestamp: -1 }).exec();
+      return filteredEvents;
     } catch (error) {
       console.error('Error fetching artisan events:', error);
       return [];

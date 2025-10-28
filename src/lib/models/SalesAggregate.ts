@@ -1,6 +1,4 @@
-import { Schema, model, models, Document } from 'mongoose';
-
-export interface ISalesAggregate extends Document {
+export interface ISalesAggregate {
   // Aggregation identifiers
   artisanId: string;
   productId?: string; // null for artisan-level aggregates
@@ -65,7 +63,16 @@ export interface ISalesAggregate extends Document {
   updatedAt: Date;
 }
 
-const SalesAggregateSchema = new Schema<ISalesAggregate>({
+// Sales Aggregate document interface (includes Firestore document ID)
+export interface ISalesAggregateDocument extends ISalesAggregate {
+  id?: string;
+}
+
+// No model export needed for Firestore - use FirestoreService instead
+export default ISalesAggregate;
+
+/* Firestore structure notes:
+const SalesAggregateSchema = {
   // Aggregation identifiers
   artisanId: { 
     type: String, 
@@ -395,4 +402,66 @@ SalesAggregateSchema.statics.upsertAggregate = async function(aggregateData: Par
   );
 };
 
-export const SalesAggregate = models.SalesAggregate || model<ISalesAggregate>('SalesAggregate', SalesAggregateSchema);
+}
+// Firestore indexes should be created in Firebase Console:
+// - artisanId, period, periodStart (composite)
+// - artisanId, productId, period, periodStart (composite)
+// - artisanId, channel, period, periodStart (composite)
+// - artisanId, productId, channel, period, periodKey (composite, unique)
+// - periodStart, periodEnd (composite)
+*/
+
+// Helper functions for Firestore operations
+export const SalesAggregateHelpers = {
+  findTimeSeries: async (
+    artisanId: string,
+    period: 'daily' | 'weekly' | 'monthly' | 'yearly',
+    startDate: Date,
+    endDate: Date,
+    options?: {
+      productId?: string;
+      channel?: string;
+      productCategory?: string;
+    }
+  ) => {
+    // Implementation will be in the service layer
+    return [];
+  },
+
+  findLatest: async (
+    artisanId: string,
+    period: 'daily' | 'weekly' | 'monthly' | 'yearly',
+    limit: number = 10
+  ) => {
+    // Implementation will be in the service layer
+    return [];
+  },
+
+  calculateGrowth: (
+    current: ISalesAggregate,
+    previous: ISalesAggregate
+  ) => {
+    const revenueGrowth = previous.totalRevenue > 0 
+      ? ((current.totalRevenue - previous.totalRevenue) / previous.totalRevenue) * 100
+      : 0;
+      
+    const orderGrowth = previous.totalOrders > 0
+      ? ((current.totalOrders - previous.totalOrders) / previous.totalOrders) * 100
+      : 0;
+      
+    const aovGrowth = previous.averageOrderValue > 0
+      ? ((current.averageOrderValue - previous.averageOrderValue) / previous.averageOrderValue) * 100
+      : 0;
+      
+    return {
+      revenueGrowth: Math.round(revenueGrowth * 100) / 100,
+      orderGrowth: Math.round(orderGrowth * 100) / 100,
+      aovGrowth: Math.round(aovGrowth * 100) / 100
+    };
+  },
+
+  upsertAggregate: async (aggregateData: Partial<ISalesAggregate>) => {
+    // Implementation will be in the service layer
+    return null;
+  }
+};

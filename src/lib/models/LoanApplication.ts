@@ -1,6 +1,4 @@
-import mongoose, { Document, Model, Schema } from "mongoose";
-
-export interface ILoanApplication extends Document {
+export interface ILoanApplication {
   applicationId: string;
   userId: string;
 
@@ -104,7 +102,16 @@ export interface ILoanApplication extends Document {
   updatedBy?: string;
 }
 
-const LoanApplicationSchema = new Schema<ILoanApplication>(
+// Loan Application document interface (includes Firestore document ID)
+export interface ILoanApplicationDocument extends ILoanApplication {
+  id?: string;
+}
+
+// No model export needed for Firestore - use FirestoreService instead
+export default ILoanApplication;
+
+/* Firestore structure notes:
+const LoanApplicationSchema = {
   {
     applicationId: {
       type: String,
@@ -227,95 +234,13 @@ const LoanApplicationSchema = new Schema<ILoanApplication>(
   }
 );
 
-// Indexes
-LoanApplicationSchema.index({ applicationId: 1 });
-LoanApplicationSchema.index({ userId: 1 });
-LoanApplicationSchema.index({ status: 1 });
-LoanApplicationSchema.index({ 'personalInfo.panNumber': 1 });
-LoanApplicationSchema.index({ 'businessInfo.gstNumber': 1 });
-LoanApplicationSchema.index({ submittedAt: -1 });
-LoanApplicationSchema.index({ createdAt: -1 });
-
-// Pre-save middleware
-LoanApplicationSchema.pre('save', function(next) {
-  // Auto-generate application ID if not provided
-  if (!this.applicationId) {
-    this.applicationId = `LA${Date.now()}${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-  }
-
-  // Auto-generate tracking number when submitted
-  if (this.status === 'submitted' && !this.trackingNumber) {
-    this.trackingNumber = `TRK${Date.now()}${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
-  }
-
-  // Set timestamps based on status
-  if (this.status === 'submitted' && !this.submittedAt) {
-    this.submittedAt = new Date();
-  }
-  if (this.status === 'approved' && !this.approvedAt) {
-    this.approvedAt = new Date();
-  }
-  if (this.status === 'disbursed' && !this.disbursedAt) {
-    this.disbursedAt = new Date();
-  }
-  if (this.status === 'rejected' && !this.rejectedAt) {
-    this.rejectedAt = new Date();
-  }
-
-  next();
-});
-
-// Static methods
-LoanApplicationSchema.statics.findByApplicationId = function(applicationId: string) {
-  return this.findOne({ applicationId });
-};
-
-LoanApplicationSchema.statics.findByUserId = function(userId: string) {
-  return this.find({ userId }).sort({ createdAt: -1 });
-};
-
-LoanApplicationSchema.statics.findByStatus = function(status: string) {
-  return this.find({ status }).sort({ updatedAt: -1 });
-};
-
-LoanApplicationSchema.statics.getApplicationStats = function() {
-  return this.aggregate([
-    {
-      $group: {
-        _id: '$status',
-        count: { $sum: 1 },
-        totalAmount: { $sum: '$loanDetails.loanAmount' },
-      }
-    }
-  ]);
-};
-
-// Instance methods
-LoanApplicationSchema.methods.addAutomationLog = function(action: string, status: 'success' | 'error' | 'info', message: string) {
-  if (!this.automationLogs) {
-    this.automationLogs = [];
-  }
-
-  this.automationLogs.push({
-    timestamp: new Date(),
-    action,
-    status,
-    message
-  });
-
-  return this.save();
-};
-
-LoanApplicationSchema.methods.updateStatus = function(newStatus: ILoanApplication['status'], subStatus?: string, updatedBy?: string) {
-  this.status = newStatus;
-  if (subStatus) this.subStatus = subStatus;
-  if (updatedBy) this.updatedBy = updatedBy;
-  this.updatedAt = new Date();
-
-  return this.save();
-};
-
-const LoanApplication: Model<ILoanApplication> =
-  mongoose.models.LoanApplication || mongoose.model<ILoanApplication>("LoanApplication", LoanApplicationSchema);
-
-export default LoanApplication;
+}
+// Firestore indexes should be created in Firebase Console:
+// - applicationId (ascending)
+// - userId (ascending)
+// - status (ascending)
+// - personalInfo.panNumber (ascending)
+// - businessInfo.gstNumber (ascending)
+// - submittedAt (descending)
+// - createdAt (descending)
+*/

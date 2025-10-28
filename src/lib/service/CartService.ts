@@ -1,6 +1,6 @@
-import Cart, { ICart, ICartDocument } from "@/lib/models/Cart";
-import Product, { IProductDocument } from "@/lib/models/Product";
-import connectDB from "@/lib/mongodb";
+import { ICart, ICartDocument } from "@/lib/models/Cart";
+import { IProductDocument } from "@/lib/models/Product";
+import { FirestoreService, COLLECTIONS, where } from "@/lib/firestore";
 import { v4 as uuidv4 } from 'uuid';
 
 interface ServiceResponse<T = any> {
@@ -21,33 +21,39 @@ interface CartWithProducts extends Omit<ICart, 'items'> {
     }>;
 }
 
-// Cart service class
+// Cart service class for Firestore
 export class CartService {
     static async createCart(userId: string): Promise<ServiceResponse<ICartDocument>> {
         try {
-            await connectDB();
-
             // Check if cart already exists for user
-            const existingCart = await Cart.findOne({ userId }).exec();
-            if (existingCart) {
+            const existingCarts = await FirestoreService.query<ICart>(
+                COLLECTIONS.CARTS,
+                [where('userId', '==', userId)]
+            );
+            
+            if (existingCarts.length > 0) {
                 return {
                     success: true,
-                    data: existingCart
+                    data: existingCarts[0]
                 };
             }
 
-            const cart = new Cart({
-                cartId: uuidv4(),
+            const cartId = uuidv4();
+            const cart: ICart = {
+                cartId,
                 userId,
                 items: [],
                 totalAmount: 0,
-                totalItems: 0
-            });
+                totalItems: 0,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            };
 
-            const savedCart = await cart.save();
+            await FirestoreService.set(COLLECTIONS.CARTS, cartId, cart);
+            
             return {
                 success: true,
-                data: savedCart
+                data: cart
             };
         } catch (error: any) {
             console.error('Error creating cart:', error);
@@ -60,9 +66,12 @@ export class CartService {
 
     static async getUserCart(userId: string): Promise<ServiceResponse<CartWithProducts>> {
         try {
-            await connectDB();
+            const carts = await FirestoreService.query<ICart>(
+                COLLECTIONS.CARTS,
+                [where('userId', '==', userId)]
+            );
 
-            let cart = await Cart.findOne({ userId }).exec();
+            let cart = carts.length > 0 ? carts[0] : null;
 
             // Create cart if it doesn't exist
             if (!cart) {
@@ -73,25 +82,24 @@ export class CartService {
                         error: createResult.error || 'Failed to create cart'
                     };
                 }
-                cart = createResult.data as typeof Cart.prototype;
+                cart = createResult.data;
             }
-
-            // Convert cart to plain object to avoid Mongoose issues
-            const plainCart = cart?.toObject();
 
             // Populate products data and calculate subtotals
             const itemsWithData = await Promise.all(
-                (plainCart?.items ?? []).map(async (item) => {
+                (cart.items || []).map(async (item) => {
                     try {
-                        const product = await Product.findOne({ productId: item.productId }).exec();
+                        const product = await FirestoreService.getById<IProductDocument>(
+                            COLLECTIONS.PRODUCTS,
+                            item.productId
+                        );
                         const subtotal = product ? product.price * item.quantity : 0;
                         return {
                             productId: item.productId,
                             quantity: item.quantity,
                             addedAt: item.addedAt,
                             updatedAt: item.updatedAt,
-                            _id: (item as any)._id?.toString(),
-                            product: product ? product.toObject() : undefined,
+                            product: product || undefined,
                             subtotal
                         };
                     } catch (error) {
@@ -101,7 +109,6 @@ export class CartService {
                             quantity: item.quantity,
                             addedAt: item.addedAt,
                             updatedAt: item.updatedAt,
-                            _id: (item as any)._id?.toString(),
                             product: undefined,
                             subtotal: 0
                         };
@@ -113,27 +120,17 @@ export class CartService {
             const totalAmount = itemsWithData.reduce((total, item) => total + (item.subtotal || 0), 0);
 
             // Update cart totals if they don't match
-            if (cart && cart.totalAmount !== totalAmount) {
-                await Cart.updateOne(
-                    { userId },
-                    {
-                        $set: {
-                            totalAmount,
-                            totalItems: plainCart?.items.reduce((total, item) => total + item.quantity, 0)
-                        }
-                    }
-                ).exec();
+            if (cart.totalAmount !== totalAmount) {
+                await FirestoreService.update(COLLECTIONS.CARTS, cart.cartId, {
+                    totalAmount,
+                    totalItems: cart.items.reduce((total, item) => total + item.quantity, 0)
+                });
             }
 
             const cartWithProducts: CartWithProducts = {
-                ...plainCart,
-                cartId: plainCart?.cartId || '',
-                userId: plainCart?.userId || '',
-                items: itemsWithData || [],
-                totalAmount: plainCart?.totalAmount || 0,
-                totalItems: plainCart?.totalItems || 0,
-                createdAt: plainCart?.createdAt || new Date(),
-                updatedAt: plainCart?.updatedAt || new Date()
+                ...cart,
+                items: itemsWithData,
+                totalAmount
             };
 
             return {
@@ -151,10 +148,8 @@ export class CartService {
 
     static async addToCart(userId: string, productId: string, quantity: number = 1): Promise<ServiceResponse> {
         try {
-            await connectDB();
-
             // Verify product exists and is available
-            const product = await Product.findOne({ productId }).exec();
+            const product = await FirestoreService.getById<IProductDocument>(COLLECTIONS.PRODUCTS, productId);
             if (!product) {
                 return {
                     success: false,
@@ -176,7 +171,12 @@ export class CartService {
                 };
             }
 
-            let cart = await Cart.findOne({ userId }).exec();
+            const carts = await FirestoreService.query<ICart>(
+                COLLECTIONS.CARTS,
+                [where('userId', '==', userId)]
+            );
+
+            let cart = carts.length > 0 ? carts[0] : null;
 
             // Create cart if it doesn't exist
             if (!cart) {
@@ -187,15 +187,13 @@ export class CartService {
                         error: createResult.error || 'Failed to create cart'
                     };
                 }
-                cart = createResult.data as typeof Cart.prototype;
+                cart = createResult.data;
             }
 
             // Check if product already in cart
-            const existingItemIndex = cart && cart.items
-                ? cart.items.findIndex(item => item.productId === productId)
-                : -1;
+            const existingItemIndex = cart.items.findIndex(item => item.productId === productId);
 
-            if (cart && existingItemIndex >= 0) {
+            if (existingItemIndex >= 0) {
                 // Update existing item quantity
                 const newQuantity = cart.items[existingItemIndex].quantity + quantity;
 
@@ -208,7 +206,7 @@ export class CartService {
 
                 cart.items[existingItemIndex].quantity = newQuantity;
                 cart.items[existingItemIndex].updatedAt = new Date();
-            } else if (cart) {
+            } else {
                 // Add new item to cart
                 cart.items.push({
                     productId,
@@ -219,10 +217,7 @@ export class CartService {
             }
 
             // Recalculate totals
-            if (cart) {
-                await this.recalculateCartTotals(cart);
-                await cart.save();
-            }
+            await this.recalculateAndSaveCart(cart);
 
             return {
                 success: true,
@@ -239,14 +234,12 @@ export class CartService {
 
     static async updateCartItem(userId: string, productId: string, quantity: number): Promise<ServiceResponse> {
         try {
-            await connectDB();
-
             if (quantity < 1) {
                 return this.removeFromCart(userId, productId);
             }
 
             // Verify product availability
-            const product = await Product.findOne({ productId }).exec();
+            const product = await FirestoreService.getById<IProductDocument>(COLLECTIONS.PRODUCTS, productId);
             if (!product) {
                 return {
                     success: false,
@@ -261,7 +254,12 @@ export class CartService {
                 };
             }
 
-            const cart = await Cart.findOne({ userId }).exec();
+            const carts = await FirestoreService.query<ICart>(
+                COLLECTIONS.CARTS,
+                [where('userId', '==', userId)]
+            );
+
+            const cart = carts.length > 0 ? carts[0] : null;
             if (!cart) {
                 return {
                     success: false,
@@ -280,8 +278,7 @@ export class CartService {
             cart.items[itemIndex].quantity = quantity;
             cart.items[itemIndex].updatedAt = new Date();
 
-            await this.recalculateCartTotals(cart);
-            await cart.save();
+            await this.recalculateAndSaveCart(cart);
 
             return {
                 success: true,
@@ -298,9 +295,12 @@ export class CartService {
 
     static async removeFromCart(userId: string, productId: string): Promise<ServiceResponse> {
         try {
-            await connectDB();
+            const carts = await FirestoreService.query<ICart>(
+                COLLECTIONS.CARTS,
+                [where('userId', '==', userId)]
+            );
 
-            const cart = await Cart.findOne({ userId }).exec();
+            const cart = carts.length > 0 ? carts[0] : null;
             if (!cart) {
                 return {
                     success: false,
@@ -318,8 +318,7 @@ export class CartService {
                 };
             }
 
-            await this.recalculateCartTotals(cart);
-            await cart.save();
+            await this.recalculateAndSaveCart(cart);
 
             return {
                 success: true,
@@ -336,18 +335,19 @@ export class CartService {
 
     static async clearCart(userId: string): Promise<ServiceResponse> {
         try {
-            await connectDB();
+            const carts = await FirestoreService.query<ICart>(
+                COLLECTIONS.CARTS,
+                [where('userId', '==', userId)]
+            );
 
-            await Cart.updateOne(
-                { userId },
-                {
-                    $set: {
-                        items: [],
-                        totalAmount: 0,
-                        totalItems: 0
-                    }
-                }
-            ).exec();
+            if (carts.length > 0) {
+                await FirestoreService.update(COLLECTIONS.CARTS, carts[0].cartId, {
+                    items: [],
+                    totalAmount: 0,
+                    totalItems: 0,
+                    updatedAt: new Date()
+                });
+            }
 
             return {
                 success: true,
@@ -364,10 +364,12 @@ export class CartService {
 
     static async getCartCount(userId: string): Promise<ServiceResponse<number>> {
         try {
-            await connectDB();
+            const carts = await FirestoreService.query<ICart>(
+                COLLECTIONS.CARTS,
+                [where('userId', '==', userId)]
+            );
 
-            const cart = await Cart.findOne({ userId }).exec();
-            const count = cart ? cart.totalItems : 0;
+            const count = carts.length > 0 ? carts[0].totalItems : 0;
 
             return {
                 success: true,
@@ -384,8 +386,6 @@ export class CartService {
 
     static async getCartTotal(userId: string): Promise<ServiceResponse<number>> {
         try {
-            await connectDB();
-
             const cartResult = await this.getUserCart(userId);
             if (!cartResult.success) {
                 return {
@@ -407,20 +407,26 @@ export class CartService {
         }
     }
 
-    private static async recalculateCartTotals(cart: ICartDocument): Promise<void> {
-        const items = cart.items;
+    private static async recalculateAndSaveCart(cart: ICart): Promise<void> {
         let totalAmount = 0;
         let totalItems = 0;
 
-        for (const item of items) {
-            const product = await Product.findOne({ productId: item.productId }).exec();
+        for (const item of cart.items) {
+            const product = await FirestoreService.getById<IProductDocument>(
+                COLLECTIONS.PRODUCTS,
+                item.productId
+            );
             if (product) {
                 totalAmount += product.price * item.quantity;
             }
             totalItems += item.quantity;
         }
 
-        cart.totalAmount = totalAmount;
-        cart.totalItems = totalItems;
+        await FirestoreService.update(COLLECTIONS.CARTS, cart.cartId, {
+            items: cart.items,
+            totalAmount,
+            totalItems,
+            updatedAt: new Date()
+        });
     }
 }

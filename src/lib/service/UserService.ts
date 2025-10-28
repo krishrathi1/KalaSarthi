@@ -1,5 +1,5 @@
-import User, { IUser, IUserDocument } from "../models/User";
-import connectDB from "../mongodb";
+import { IUser, IUserDocument } from "../models/User";
+import { FirestoreService, COLLECTIONS, where, orderBy, limit as limitQuery } from "../firestore";
 
 interface ServiceResponse<T = any> {
     success: boolean;
@@ -19,23 +19,27 @@ interface DeleteUserResponse extends ServiceResponse {
     deletedCount?: number;
 }
 
-// User service class
+// User service class for Firestore
 export class UserService {
     static async createUser(userData: Partial<IUser>): Promise<CreateUserResponse> {
         try {
-            await connectDB();
-
-            const user = new User({
+            const user: IUser = {
                 ...userData,
+                uid: userData.uid!,
+                name: userData.name!,
+                phone: userData.phone!,
+                role: userData.role!,
+                artisticProfession: userData.artisticProfession || '',
                 createdAt: new Date(),
                 updatedAt: new Date()
-            });
+            } as IUser;
 
-            const savedUser = await user.save();
+            await FirestoreService.set(COLLECTIONS.USERS, user.uid, user);
+            
             return {
                 success: true,
-                data: savedUser,
-                insertedId: savedUser.uid.toString()
+                data: user,
+                insertedId: user.uid
             };
         } catch (error: any) {
             console.error('Error creating user:', error);
@@ -46,10 +50,9 @@ export class UserService {
         }
     }
 
-    static async getUserByUid(uid: string): Promise<IUserDocument | null> {
+    static async getUserByUid(uid: string): Promise<IUser | null> {
         try {
-            await connectDB();
-            const user = await User.findOne({ uid }).exec();
+            const user = await FirestoreService.getById<IUser>(COLLECTIONS.USERS, uid);
             return user;
         } catch (error) {
             console.error('Error fetching user:', error);
@@ -57,45 +60,42 @@ export class UserService {
         }
     }
 
-    static async getUserByPhone(phone: string): Promise<IUserDocument | null> {
+    static async getUserByPhone(phone: string): Promise<IUser | null> {
         try {
-            await connectDB();
-            const user = await User.findOne({ phone }).exec();
-            return user;
+            const users = await FirestoreService.query<IUser>(
+                COLLECTIONS.USERS,
+                [where('phone', '==', phone), limitQuery(1)]
+            );
+            return users.length > 0 ? users[0] : null;
         } catch (error) {
             console.error('Error fetching user by phone:', error);
             return null;
         }
     }
 
-    static async getUserByEmail(email: string): Promise<IUserDocument | null> {
+    static async getUserByEmail(email: string): Promise<IUser | null> {
         try {
-            await connectDB();
-            const user = await User.findOne({ email }).exec();
-            return user;
+            const users = await FirestoreService.query<IUser>(
+                COLLECTIONS.USERS,
+                [where('email', '==', email), limitQuery(1)]
+            );
+            return users.length > 0 ? users[0] : null;
         } catch (error) {
             console.error('Error fetching user by email:', error);
             return null;
         }
     }
 
-    static async updateUser(uid: string, updateData: Partial<IUser>): Promise<UpdateUserResponse> {
+    static async updateUser(uid: string, updates: Partial<IUser>): Promise<UpdateUserResponse> {
         try {
-            await connectDB();
-
-            const result = await User.updateOne(
-                { uid },
-                {
-                    $set: {
-                        ...updateData,
-                        updatedAt: new Date()
-                    }
-                }
-            ).exec();
+            await FirestoreService.update(COLLECTIONS.USERS, uid, {
+                ...updates,
+                updatedAt: new Date()
+            });
 
             return {
                 success: true,
-                modifiedCount: result.modifiedCount
+                modifiedCount: 1
             };
         } catch (error: any) {
             console.error('Error updating user:', error);
@@ -108,11 +108,10 @@ export class UserService {
 
     static async deleteUser(uid: string): Promise<DeleteUserResponse> {
         try {
-            await connectDB();
-            const result = await User.deleteOne({ uid }).exec();
+            await FirestoreService.delete(COLLECTIONS.USERS, uid);
             return {
                 success: true,
-                deletedCount: result.deletedCount
+                deletedCount: 1
             };
         } catch (error: any) {
             console.error('Error deleting user:', error);
@@ -123,13 +122,18 @@ export class UserService {
         }
     }
 
-    static async getAllArtisans(filter: Partial<IUser> = {}): Promise<IUserDocument[]> {
+    static async getAllArtisans(): Promise<IUser[]> {
         try {
-            await connectDB();
-            const artisans = await User
-                .find({ role: 'artisan', ...filter })
-                .sort({ createdAt: -1 })
-                .exec();
+            const constraints = [
+                where('role', '==', 'artisan'),
+                orderBy('createdAt', 'desc')
+            ];
+
+            const artisans = await FirestoreService.query<IUser>(
+                COLLECTIONS.USERS,
+                constraints
+            );
+
             return artisans;
         } catch (error) {
             console.error('Error fetching artisans:', error);
@@ -137,20 +141,22 @@ export class UserService {
         }
     }
 
-    static async searchArtisans(searchTerm: string): Promise<IUserDocument[]> {
+    static async searchArtisans(searchTerm: string): Promise<IUser[]> {
         try {
-            await connectDB();
-            const artisans = await User
-                .find({
-                    role: 'artisan',
-                    $or: [
-                        { name: { $regex: searchTerm, $options: 'i' } },
-                        { artisticProfession: { $regex: searchTerm, $options: 'i' } },
-                        { description: { $regex: searchTerm, $options: 'i' } }
-                    ]
-                })
-                .exec();
-            return artisans;
+            // Firestore doesn't support full-text search natively
+            // We'll fetch all artisans and filter client-side
+            // For production, consider using Algolia or similar service
+            const artisans = await FirestoreService.query<IUser>(
+                COLLECTIONS.USERS,
+                [where('role', '==', 'artisan')]
+            );
+
+            const searchLower = searchTerm.toLowerCase();
+            return artisans.filter(artisan => 
+                artisan.name.toLowerCase().includes(searchLower) ||
+                artisan.artisticProfession?.toLowerCase().includes(searchLower) ||
+                artisan.description?.toLowerCase().includes(searchLower)
+            );
         } catch (error) {
             console.error('Error searching artisans:', error);
             return [];
@@ -159,10 +165,9 @@ export class UserService {
 
     static async getUserStats(): Promise<{ totalUsers: number; artisans: number; buyers: number }> {
         try {
-            await connectDB();
-            const totalUsers = await User.countDocuments().exec();
-            const artisans = await User.countDocuments({ role: 'artisan' }).exec();
-            const buyers = await User.countDocuments({ role: 'buyer' }).exec();
+            const totalUsers = await FirestoreService.count(COLLECTIONS.USERS);
+            const artisans = await FirestoreService.count(COLLECTIONS.USERS, [where('role', '==', 'artisan')]);
+            const buyers = await FirestoreService.count(COLLECTIONS.USERS, [where('role', '==', 'buyer')]);
 
             return { totalUsers, artisans, buyers };
         } catch (error) {
@@ -171,14 +176,17 @@ export class UserService {
         }
     }
 
-    static async getRecentArtisans(limit: number = 10): Promise<IUserDocument[]> {
+    static async getRecentArtisans(limitCount: number = 10): Promise<IUser[]> {
         try {
-            await connectDB();
-            const artisans = await User
-                .find({ role: 'artisan' })
-                .sort({ createdAt: -1 })
-                .limit(limit)
-                .exec();
+            const artisans = await FirestoreService.query<IUser>(
+                COLLECTIONS.USERS,
+                [
+                    where('role', '==', 'artisan'),
+                    orderBy('createdAt', 'desc'),
+                    limitQuery(limitCount)
+                ]
+            );
+
             return artisans;
         } catch (error) {
             console.error('Error fetching recent artisans:', error);

@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SalesAggregate } from '@/lib/models/SalesAggregate';
-import connectDB from '@/lib/mongodb';
+import { ISalesAggregate } from '@/lib/models/SalesAggregate';
+import { FirestoreService, COLLECTIONS, where } from '@/lib/firestore';
 
 export async function GET(request: NextRequest) {
   try {
-    await connectDB();
-
     const { searchParams } = new URL(request.url);
     const artisanId = searchParams.get('artisanId');
     const horizon = parseInt(searchParams.get('horizon') || '30'); // days
@@ -25,12 +23,18 @@ export async function GET(request: NextRequest) {
 
     let historicalData: any[] = [];
     try {
-      historicalData = await SalesAggregate.find({
-        artisanId: effectiveArtisanId,
-        periodStart: { $gte: startDate },
-        periodEnd: { $lte: endDate },
-        ...(productId && { productId })
-      }).sort({ periodStart: 1 }).lean();
+      // Fetch all aggregates and filter client-side
+      let allAggregates = await FirestoreService.getAll<ISalesAggregate>(COLLECTIONS.SALES_AGGREGATES);
+      
+      historicalData = allAggregates.filter(agg => {
+        if (agg.artisanId !== effectiveArtisanId) return false;
+        if (agg.periodStart < startDate || agg.periodEnd > endDate) return false;
+        if (productId && agg.productId !== productId) return false;
+        return true;
+      });
+      
+      // Sort by periodStart ascending
+      historicalData.sort((a, b) => a.periodStart.getTime() - b.periodStart.getTime());
     } catch (error) {
       console.log('📊 No historical data found, using mock data');
     }

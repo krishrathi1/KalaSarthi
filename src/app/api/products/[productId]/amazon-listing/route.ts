@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb';
-import Product from '@/lib/models/Product';
+import { FirestoreService, COLLECTIONS } from '@/lib/firestore';
+import { IProduct } from '@/lib/models/Product';
 
 export async function PUT(
   request: NextRequest,
@@ -19,9 +19,7 @@ export async function PUT(
   }
 
   try {
-    await dbConnect();
-
-    const product = await Product.findOne({ productId: productId });
+    const product = await FirestoreService.getById<IProduct>(COLLECTIONS.PRODUCTS, productId);
 
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });

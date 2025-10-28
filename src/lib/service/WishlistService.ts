@@ -1,6 +1,6 @@
-import Wishlist, { IWishlist, IWishlistDocument } from "../models/Wishlist";
-import Product, { IProductDocument } from "../models/Product";
-import connectDB from "../mongodb";
+import { IWishlist, IWishlistDocument } from "../models/Wishlist";
+import { IProductDocument } from "../models/Product";
+import { FirestoreService, COLLECTIONS, where } from "../firestore";
 import { v4 as uuidv4 } from 'uuid';
 
 interface ServiceResponse<T = any> {
@@ -15,38 +15,44 @@ interface WishlistWithProducts {
     products: Array<{
         productId: string;
         addedAt: Date;
-        product?: any; // Use any to avoid strict typing issues
+        product?: any;
         _id?: string;
     }>;
     createdAt: Date;
     updatedAt: Date;
 }
 
-// Wishlist service class
+// Wishlist service class for Firestore
 export class WishlistService {
     static async createWishlist(userId: string): Promise<ServiceResponse<IWishlistDocument>> {
         try {
-            await connectDB();
-
             // Check if wishlist already exists for user
-            const existingWishlist = await Wishlist.findOne({ userId }).exec();
-            if (existingWishlist) {
+            const existingWishlists = await FirestoreService.query<IWishlist>(
+                COLLECTIONS.WISHLISTS,
+                [where('userId', '==', userId)]
+            );
+
+            if (existingWishlists.length > 0) {
                 return {
                     success: true,
-                    data: existingWishlist
+                    data: existingWishlists[0]
                 };
             }
 
-            const wishlist = new Wishlist({
-                wishlistId: uuidv4(),
+            const wishlistId = uuidv4();
+            const wishlist: IWishlist = {
+                wishlistId,
                 userId,
-                products: []
-            });
+                products: [],
+                createdAt: new Date(),
+                updatedAt: new Date()
+            };
 
-            const savedWishlist = await wishlist.save();
+            await FirestoreService.set(COLLECTIONS.WISHLISTS, wishlistId, wishlist);
+
             return {
                 success: true,
-                data: savedWishlist
+                data: wishlist
             };
         } catch (error: any) {
             console.error('Error creating wishlist:', error);
@@ -59,39 +65,40 @@ export class WishlistService {
 
     static async getUserWishlist(userId: string): Promise<ServiceResponse<WishlistWithProducts>> {
         try {
-            await connectDB();
+            const wishlists = await FirestoreService.query<IWishlist>(
+                COLLECTIONS.WISHLISTS,
+                [where('userId', '==', userId)]
+            );
 
-            let wishlist = await Wishlist.findOne({ userId }).exec();
-            
+            let wishlist = wishlists.length > 0 ? wishlists[0] : null;
+
             // Create wishlist if it doesn't exist
             if (!wishlist) {
                 const createResult = await this.createWishlist(userId);
                 if (!createResult.success) {
-                    return createResult;
+                    return createResult as any;
                 }
-                wishlist = createResult.data as typeof Wishlist.prototype;
+                wishlist = createResult.data!;
             }
-
-            // Convert wishlist to plain object to avoid Mongoose issues
-            const plainWishlist = wishlist!.toObject();
 
             // Populate products data
             const productsWithData = await Promise.all(
-                (plainWishlist?.products ?? []).map(async (item) => {
+                (wishlist.products || []).map(async (item) => {
                     try {
-                        const product = await Product.findOne({ productId: item.productId }).exec();
+                        const product = await FirestoreService.getById<IProductDocument>(
+                            COLLECTIONS.PRODUCTS,
+                            item.productId
+                        );
                         return {
                             productId: item.productId,
                             addedAt: item.addedAt,
-                            _id: (item as any)._id?.toString(),
-                            product: product ? product.toObject() : undefined
+                            product: product || undefined
                         };
                     } catch (error) {
                         console.error(`Error fetching product ${item.productId}:`, error);
                         return {
                             productId: item.productId,
                             addedAt: item.addedAt,
-                            _id: (item as any)._id?.toString(),
                             product: undefined
                         };
                     }
@@ -99,10 +106,10 @@ export class WishlistService {
             );
 
             const wishlistWithProducts: WishlistWithProducts = {
-                wishlistId: plainWishlist.wishlistId,
-                userId: plainWishlist.userId,
-                createdAt: plainWishlist.createdAt,
-                updatedAt: plainWishlist.updatedAt,
+                wishlistId: wishlist.wishlistId,
+                userId: wishlist.userId,
+                createdAt: wishlist.createdAt,
+                updatedAt: wishlist.updatedAt,
                 products: productsWithData
             };
 
@@ -121,10 +128,8 @@ export class WishlistService {
 
     static async addToWishlist(userId: string, productId: string): Promise<ServiceResponse> {
         try {
-            await connectDB();
-
             // Verify product exists
-            const product = await Product.findOne({ productId }).exec();
+            const product = await FirestoreService.getById<IProductDocument>(COLLECTIONS.PRODUCTS, productId);
             if (!product) {
                 return {
                     success: false,
@@ -132,19 +137,24 @@ export class WishlistService {
                 };
             }
 
-            let wishlist = await Wishlist.findOne({ userId }).exec();
-            
+            const wishlists = await FirestoreService.query<IWishlist>(
+                COLLECTIONS.WISHLISTS,
+                [where('userId', '==', userId)]
+            );
+
+            let wishlist = wishlists.length > 0 ? wishlists[0] : null;
+
             // Create wishlist if it doesn't exist
             if (!wishlist) {
                 const createResult = await this.createWishlist(userId);
                 if (!createResult.success) {
                     return createResult;
                 }
-                wishlist = createResult.data as typeof Wishlist.prototype;
+                wishlist = createResult.data!;
             }
 
             // Check if product already in wishlist
-            const existingProduct = wishlist?.products.find(
+            const existingProduct = wishlist.products.find(
                 item => item.productId === productId
             );
 
@@ -156,12 +166,15 @@ export class WishlistService {
             }
 
             // Add product to wishlist
-            wishlist?.products.push({
+            wishlist.products.push({
                 productId,
                 addedAt: new Date()
             });
 
-            await wishlist?.save();
+            await FirestoreService.update(COLLECTIONS.WISHLISTS, wishlist.wishlistId, {
+                products: wishlist.products,
+                updatedAt: new Date()
+            });
 
             return {
                 success: true,
@@ -178,23 +191,33 @@ export class WishlistService {
 
     static async removeFromWishlist(userId: string, productId: string): Promise<ServiceResponse> {
         try {
-            await connectDB();
+            const wishlists = await FirestoreService.query<IWishlist>(
+                COLLECTIONS.WISHLISTS,
+                [where('userId', '==', userId)]
+            );
 
-            const result = await Wishlist.updateOne(
-                { userId },
-                {
-                    $pull: {
-                        products: { productId }
-                    }
-                }
-            ).exec();
+            if (wishlists.length === 0) {
+                return {
+                    success: false,
+                    error: 'Wishlist not found'
+                };
+            }
 
-            if (result.modifiedCount === 0) {
+            const wishlist = wishlists[0];
+            const originalLength = wishlist.products.length;
+            wishlist.products = wishlist.products.filter(item => item.productId !== productId);
+
+            if (wishlist.products.length === originalLength) {
                 return {
                     success: false,
                     error: 'Product not found in wishlist'
                 };
             }
+
+            await FirestoreService.update(COLLECTIONS.WISHLISTS, wishlist.wishlistId, {
+                products: wishlist.products,
+                updatedAt: new Date()
+            });
 
             return {
                 success: true,
@@ -211,16 +234,24 @@ export class WishlistService {
 
     static async isInWishlist(userId: string, productId: string): Promise<ServiceResponse<boolean>> {
         try {
-            await connectDB();
+            const wishlists = await FirestoreService.query<IWishlist>(
+                COLLECTIONS.WISHLISTS,
+                [where('userId', '==', userId)]
+            );
 
-            const wishlist = await Wishlist.findOne({
-                userId,
-                'products.productId': productId
-            }).exec();
+            if (wishlists.length === 0) {
+                return {
+                    success: true,
+                    data: false
+                };
+            }
+
+            const wishlist = wishlists[0];
+            const isInWishlist = wishlist.products.some(item => item.productId === productId);
 
             return {
                 success: true,
-                data: !!wishlist
+                data: isInWishlist
             };
         } catch (error: any) {
             console.error('Error checking wishlist:', error);
@@ -233,12 +264,17 @@ export class WishlistService {
 
     static async clearWishlist(userId: string): Promise<ServiceResponse> {
         try {
-            await connectDB();
+            const wishlists = await FirestoreService.query<IWishlist>(
+                COLLECTIONS.WISHLISTS,
+                [where('userId', '==', userId)]
+            );
 
-            await Wishlist.updateOne(
-                { userId },
-                { $set: { products: [] } }
-            ).exec();
+            if (wishlists.length > 0) {
+                await FirestoreService.update(COLLECTIONS.WISHLISTS, wishlists[0].wishlistId, {
+                    products: [],
+                    updatedAt: new Date()
+                });
+            }
 
             return {
                 success: true,
@@ -255,10 +291,12 @@ export class WishlistService {
 
     static async getWishlistCount(userId: string): Promise<ServiceResponse<number>> {
         try {
-            await connectDB();
+            const wishlists = await FirestoreService.query<IWishlist>(
+                COLLECTIONS.WISHLISTS,
+                [where('userId', '==', userId)]
+            );
 
-            const wishlist = await Wishlist.findOne({ userId }).exec();
-            const count = wishlist ? wishlist.products.length : 0;
+            const count = wishlists.length > 0 ? wishlists[0].products.length : 0;
 
             return {
                 success: true,

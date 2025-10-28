@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SalesAggregate } from '@/lib/models/SalesAggregate';
-import connectDB from '@/lib/mongodb';
+import { ISalesAggregate } from '@/lib/models/SalesAggregate';
+import { FirestoreService, COLLECTIONS, where } from '@/lib/firestore';
 import { SecurityMiddleware } from '@/lib/middleware/security';
 
 interface SalesQueryParams {
@@ -52,8 +52,6 @@ interface SalesResponse {
 
 export async function GET(request: NextRequest) {
   try {
-    await connectDB();
-
     const { searchParams } = new URL(request.url);
     const params: SalesQueryParams = {
       range: searchParams.get('range') || '30d',
@@ -71,22 +69,22 @@ export async function GET(request: NextRequest) {
     // Calculate date range based on range parameter
     const { startDate, endDate } = calculateDateRange(params.range || '30d', params.startDate, params.endDate);
 
-    // Build query filters
-    const queryFilters: any = {
-      period: params.resolution,
-      periodStart: { $gte: startDate },
-      periodEnd: { $lte: endDate },
-    };
+    // Fetch all sales aggregates and filter client-side
+    let aggregates = await FirestoreService.getAll<ISalesAggregate>(COLLECTIONS.SALES_AGGREGATES);
 
-    if (params.productId) queryFilters.productId = params.productId;
-    if (params.artisanId) queryFilters.artisanId = params.artisanId;
-    if (params.channel) queryFilters.channel = params.channel;
-    if (params.category) queryFilters.productCategory = params.category;
+    // Apply filters
+    aggregates = aggregates.filter(agg => {
+      if (agg.period !== params.resolution) return false;
+      if (agg.periodStart < startDate || agg.periodEnd > endDate) return false;
+      if (params.productId && agg.productId !== params.productId) return false;
+      if (params.artisanId && agg.artisanId !== params.artisanId) return false;
+      if (params.channel && agg.channel !== params.channel) return false;
+      if (params.category && agg.productCategory !== params.category) return false;
+      return true;
+    });
 
-    // Fetch sales aggregates
-    const aggregates = await SalesAggregate.find(queryFilters)
-      .sort({ periodStart: 1 })
-      .lean();
+    // Sort by periodStart ascending
+    aggregates.sort((a, b) => a.periodStart.getTime() - b.periodStart.getTime());
 
     let transformedData: any[];
 

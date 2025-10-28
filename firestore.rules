@@ -1,0 +1,161 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isArtisan() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'artisan';
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Anyone can read user profiles (for browsing artisans)
+      allow read: if true;
+      
+      // Users can create their own profile
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Users can update their own profile
+      allow update: if isOwner(userId);
+      
+      // Only admins can delete users
+      allow delete: if isAdmin();
+    }
+    
+    // Products collection
+    match /products/{productId} {
+      // Anyone can read products (public catalog)
+      allow read: if true;
+      
+      // Authenticated users can create products
+      allow create: if isAuthenticated();
+      
+      // Product owner or admin can update
+      allow update: if isAuthenticated() && (
+        resource.data.artisanId == request.auth.uid || 
+        isAdmin()
+      );
+      
+      // Product owner or admin can delete
+      allow delete: if isAuthenticated() && (
+        resource.data.artisanId == request.auth.uid || 
+        isAdmin()
+      );
+    }
+    
+    // Carts collection
+    match /carts/{cartId} {
+      // Users can only read their own cart
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // Users can create their own cart
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // Users can update their own cart
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // Users can delete their own cart
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+    
+    // Orders collection
+    match /orders/{orderId} {
+      // Users can read their own orders, artisans can read orders containing their products
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        request.auth.uid in resource.data.items[0].artisanId ||
+        isAdmin()
+      );
+      
+      // Authenticated users can create orders
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // Order owner, artisan, or admin can update
+      allow update: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      // Only admins can delete orders
+      allow delete: if isAdmin();
+    }
+    
+    // Wishlists collection
+    match /wishlists/{wishlistId} {
+      // Users can only read their own wishlist
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // Users can create their own wishlist
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // Users can update their own wishlist
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // Users can delete their own wishlist
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+    
+    // Loan Applications collection
+    match /loan_applications/{applicationId} {
+      // Users can read their own applications, admins can read all
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      // Authenticated users can create applications
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // Application owner or admin can update
+      allow update: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      // Only admins can delete applications
+      allow delete: if isAdmin();
+    }
+    
+    // Sales Events collection (read-only for users, write for server)
+    match /sales_events/{eventId} {
+      // Authenticated users can read events
+      allow read: if isAuthenticated();
+      
+      // Only server/admin can write (use Firebase Admin SDK for server writes)
+      allow write: if false;
+    }
+    
+    // Sales Aggregates collection (read-only for users, write for server)
+    match /sales_aggregates/{aggregateId} {
+      // Authenticated users can read aggregates
+      allow read: if isAuthenticated();
+      
+      // Only server/admin can write (use Firebase Admin SDK for server writes)
+      allow write: if false;
+    }
+    
+    // Product Performance collection (read-only for users, write for server)
+    match /product_performance/{performanceId} {
+      // Authenticated users can read performance data
+      allow read: if isAuthenticated();
+      
+      // Only server/admin can write
+      allow write: if false;
+    }
+  }
+}

@@ -1,5 +1,5 @@
-import Product, { IProduct, IProductDocument } from "../models/Product";
-import connectDB from "../mongodb";
+import { IProduct, IProductDocument } from "../models/Product";
+import { FirestoreService, COLLECTIONS, where, orderBy, limit as limitQuery } from "../firestore";
 import { v4 as uuidv4 } from 'uuid';
 
 interface ServiceResponse<T = any> {
@@ -20,15 +20,12 @@ interface DeleteProductResponse extends ServiceResponse {
     deletedCount?: number;
 }
 
-// Product service class
+// Product service class for Firestore
 export class ProductService {
     static async createProduct(productData: Partial<IProduct>): Promise<CreateProductResponse> {
         try {
-            await connectDB();
-
             // Ensure specifications.dimensions is always an object
             if (productData?.specifications?.dimensions && typeof productData.specifications.dimensions === "string") {
-                // Attempt to parse the string into known dimension properties, otherwise skip
                 const dimStr = productData.specifications.dimensions as string;
                 const dims: { length?: number; width?: number; height?: number; weight?: number } = {};
                 const regex = /(\w+):\s*([\d.]+)/g;
@@ -43,18 +40,20 @@ export class ProductService {
                 productData.specifications.dimensions = dims;
             }
 
-            const product = new Product({
+            const productId = productData.productId || uuidv4();
+            const product: IProduct = {
                 ...productData,
-                productId: productData.productId || uuidv4(),
+                productId,
                 createdAt: new Date(),
                 updatedAt: new Date()
-            });
+            } as IProduct;
 
-            const savedProduct = await product.save();
+            await FirestoreService.set(COLLECTIONS.PRODUCTS, productId, product);
+            
             return {
                 success: true,
-                data: savedProduct,
-                insertedId: savedProduct.productId
+                data: product,
+                insertedId: productId
             };
         } catch (error: any) {
             console.error('Error creating product:', error);
@@ -67,8 +66,7 @@ export class ProductService {
 
     static async getProductById(productId: string): Promise<IProductDocument | null> {
         try {
-            await connectDB();
-            const product = await Product.findOne({ productId }).exec();
+            const product = await FirestoreService.getById<IProduct>(COLLECTIONS.PRODUCTS, productId);
             return product;
         } catch (error) {
             console.error('Error fetching product:', error);
@@ -78,15 +76,12 @@ export class ProductService {
 
     static async getProductsByArtisan(artisanId: string, status?: string): Promise<IProductDocument[]> {
         try {
-            await connectDB();
-            const filter: any = { artisanId };
+            const constraints = [where('artisanId', '==', artisanId), orderBy('createdAt', 'desc')];
             if (status) {
-                filter.status = status;
+                constraints.unshift(where('status', '==', status));
             }
-            const products = await Product
-                .find(filter)
-                .sort({ createdAt: -1 })
-                .exec();
+            
+            const products = await FirestoreService.query<IProduct>(COLLECTIONS.PRODUCTS, constraints);
             return products;
         } catch (error) {
             console.error('Error fetching products by artisan:', error);
@@ -96,11 +91,18 @@ export class ProductService {
 
     static async getAllProducts(filter: Partial<IProduct> = {}): Promise<IProductDocument[]> {
         try {
-            await connectDB();
-            const products = await Product
-                .find(filter)
-                .sort({ createdAt: -1 })
-                .exec();
+            if (Object.keys(filter).length === 0) {
+                const products = await FirestoreService.getAll<IProduct>(COLLECTIONS.PRODUCTS);
+                return products.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+            }
+
+            // Build constraints from filter
+            const constraints = Object.entries(filter).map(([key, value]) => 
+                where(key, '==', value)
+            );
+            constraints.push(orderBy('createdAt', 'desc'));
+
+            const products = await FirestoreService.query<IProduct>(COLLECTIONS.PRODUCTS, constraints);
             return products;
         } catch (error) {
             console.error('Error fetching products:', error);
@@ -110,15 +112,17 @@ export class ProductService {
 
     static async getPublishedProducts(category?: string): Promise<IProductDocument[]> {
         try {
-            await connectDB();
-            const filter: any = { status: 'published', 'inventory.isAvailable': true };
+            const constraints = [
+                where('status', '==', 'published'),
+                where('inventory.isAvailable', '==', true),
+                orderBy('createdAt', 'desc')
+            ];
+
             if (category) {
-                filter.category = category;
+                constraints.unshift(where('category', '==', category));
             }
-            const products = await Product
-                .find(filter)
-                .sort({ createdAt: -1 })
-                .exec();
+
+            const products = await FirestoreService.query<IProduct>(COLLECTIONS.PRODUCTS, constraints);
             return products;
         } catch (error) {
             console.error('Error fetching published products:', error);
@@ -128,20 +132,23 @@ export class ProductService {
 
     static async searchProducts(searchTerm: string): Promise<IProductDocument[]> {
         try {
-            await connectDB();
-            const products = await Product
-                .find({
-                    status: 'published',
-                    'inventory.isAvailable': true,
-                    $or: [
-                        { name: { $regex: searchTerm, $options: 'i' } },
-                        { description: { $regex: searchTerm, $options: 'i' } },
-                        { category: { $regex: searchTerm, $options: 'i' } },
-                        { tags: { $in: [new RegExp(searchTerm, 'i')] } }
-                    ]
-                })
-                .exec();
-            return products;
+            // Firestore doesn't support regex search natively
+            // Fetch published products and filter client-side
+            const products = await FirestoreService.query<IProduct>(
+                COLLECTIONS.PRODUCTS,
+                [
+                    where('status', '==', 'published'),
+                    where('inventory.isAvailable', '==', true)
+                ]
+            );
+
+            const searchLower = searchTerm.toLowerCase();
+            return products.filter(product =>
+                product.name.toLowerCase().includes(searchLower) ||
+                product.description.toLowerCase().includes(searchLower) ||
+                product.category.toLowerCase().includes(searchLower) ||
+                product.tags?.some(tag => tag.toLowerCase().includes(searchLower))
+            );
         } catch (error) {
             console.error('Error searching products:', error);
             return [];
@@ -150,21 +157,14 @@ export class ProductService {
 
     static async updateProduct(productId: string, updateData: Partial<IProduct>): Promise<UpdateProductResponse> {
         try {
-            await connectDB();
-
-            const result = await Product.updateOne(
-                { productId },
-                {
-                    $set: {
-                        ...updateData,
-                        updatedAt: new Date()
-                    }
-                }
-            ).exec();
+            await FirestoreService.update(COLLECTIONS.PRODUCTS, productId, {
+                ...updateData,
+                updatedAt: new Date()
+            });
 
             return {
                 success: true,
-                modifiedCount: result.modifiedCount
+                modifiedCount: 1
             };
         } catch (error: any) {
             console.error('Error updating product:', error);
@@ -177,21 +177,14 @@ export class ProductService {
 
     static async updateProductStory(productId: string, story: IProduct['story']): Promise<UpdateProductResponse> {
         try {
-            await connectDB();
-
-            const result = await Product.updateOne(
-                { productId },
-                {
-                    $set: {
-                        story,
-                        updatedAt: new Date()
-                    }
-                }
-            ).exec();
+            await FirestoreService.update(COLLECTIONS.PRODUCTS, productId, {
+                story,
+                updatedAt: new Date()
+            });
 
             return {
                 success: true,
-                modifiedCount: result.modifiedCount
+                modifiedCount: 1
             };
         } catch (error: any) {
             console.error('Error updating product story:', error);
@@ -204,11 +197,10 @@ export class ProductService {
 
     static async deleteProduct(productId: string): Promise<DeleteProductResponse> {
         try {
-            await connectDB();
-            const result = await Product.deleteOne({ productId }).exec();
+            await FirestoreService.delete(COLLECTIONS.PRODUCTS, productId);
             return {
                 success: true,
-                deletedCount: result.deletedCount
+                deletedCount: 1
             };
         } catch (error: any) {
             console.error('Error deleting product:', error);
@@ -226,19 +218,16 @@ export class ProductService {
         categories: Record<string, number>;
     }> {
         try {
-            await connectDB();
-            const totalProducts = await Product.countDocuments().exec();
-            const publishedProducts = await Product.countDocuments({ status: 'published' }).exec();
-            const draftProducts = await Product.countDocuments({ status: 'draft' }).exec();
+            const allProducts = await FirestoreService.getAll<IProduct>(COLLECTIONS.PRODUCTS);
+            
+            const totalProducts = allProducts.length;
+            const publishedProducts = allProducts.filter(p => p.status === 'published').length;
+            const draftProducts = allProducts.filter(p => p.status === 'draft').length;
 
             // Get category statistics
-            const categoryStats = await Product.aggregate([
-                { $group: { _id: '$category', count: { $sum: 1 } } }
-            ]).exec();
-
             const categories: Record<string, number> = {};
-            categoryStats.forEach(stat => {
-                categories[stat._id] = stat.count;
+            allProducts.forEach(product => {
+                categories[product.category] = (categories[product.category] || 0) + 1;
             });
 
             return { totalProducts, publishedProducts, draftProducts, categories };
@@ -248,17 +237,17 @@ export class ProductService {
         }
     }
 
-    static async getFeaturedProducts(limit: number = 10): Promise<IProductDocument[]> {
+    static async getFeaturedProducts(limitCount: number = 10): Promise<IProductDocument[]> {
         try {
-            await connectDB();
-            const products = await Product
-                .find({ 
-                    status: 'published', 
-                    'inventory.isAvailable': true 
-                })
-                .sort({ createdAt: -1 })
-                .limit(limit)
-                .exec();
+            const products = await FirestoreService.query<IProduct>(
+                COLLECTIONS.PRODUCTS,
+                [
+                    where('status', '==', 'published'),
+                    where('inventory.isAvailable', '==', true),
+                    orderBy('createdAt', 'desc'),
+                    limitQuery(limitCount)
+                ]
+            );
             return products;
         } catch (error) {
             console.error('Error fetching featured products:', error);

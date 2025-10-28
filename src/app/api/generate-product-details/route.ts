@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
 
     // Detailed prompt for product details generation
     const prompt = `You are a professional product catalog specialist. Analyze the provided product image and artisan story to generate comprehensive product details.
