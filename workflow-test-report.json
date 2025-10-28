@@ -1,0 +1,34 @@
+{
+  "summary": {
+    "totalWorkflows": 6,
+    "passedWorkflows": 5,
+    "failedWorkflows": 1,
+    "successRate": "83.3%",
+    "timestamp": "2025-10-27T10:00:50.268Z"
+  },
+  "workflows": [
+    {
+      "name": "Buyer Connect Workflow",
+      "success": true
+    },
+    {
+      "name": "Trend Spotter Workflow",
+      "success": true
+    },
+    {
+      "name": "Artisan Buddy Workflow"
+    },
+    {
+      "name": "E-commerce Workflow",
+      "success": true
+    },
+    {
+      "name": "Finance Workflow",
+      "success": true
+    },
+    {
+      "name": "Translation Workflow",
+      "success": true
+    }
+  ]
+}

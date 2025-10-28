@@ -54,4 +54,7 @@ google_credentials.json
 firebase-debug.log
 firestore-debug.log
 
+# Kiro AI assistant files (keep local only)
+.kiro/
+
 cloudbuild.yamlkey.json
