@@ -43,7 +43,8 @@ import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/hooks/use-cart';
 import { useWishlist } from '@/hooks/use-wishlist';
-import { SimpleOfflineStatus } from './simple-offline-status';
+
+
 
 
 // Group languages by region
@@ -56,6 +57,7 @@ export function Header() {
   const [open, setOpen] = React.useState(false);
   const [searchValue, setSearchValue] = React.useState('');
   const [translatedTitle, setTranslatedTitle] = useState('');
+  const [translatedLanguageName, setTranslatedLanguageName] = useState('');
   const { user, userProfile, loading, logout, isArtisan, isBuyer } = useAuth();
   const router = useRouter();
 
@@ -109,11 +111,26 @@ export function Header() {
         } else {
           setTranslatedTitle('User');
         }
+
+        // Translate language name
+        const originalLanguageName = languages[language as keyof typeof languages]?.name || language;
+        if (language === 'en') {
+          setTranslatedLanguageName(originalLanguageName);
+        } else {
+          try {
+            const translatedLangName = await translateAsync(originalLanguageName, language);
+            setTranslatedLanguageName(translatedLangName);
+          } catch (error) {
+            console.error('Language name translation failed:', error);
+            setTranslatedLanguageName(originalLanguageName);
+          }
+        }
       } catch (error) {
         console.error('Header translation loading failed:', error);
         // Fallback to static translation
         const roleKey = getRoleTitle();
         setTranslatedTitle(t(roleKey, language) || 'User');
+        setTranslatedLanguageName(languages[language as keyof typeof languages]?.name || language);
       }
     };
 
@@ -208,7 +225,6 @@ export function Header() {
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-8">
         <SidebarTrigger className="md:hidden" />
         <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
-          <GlobalTranslationToggle />
           <div className="animate-pulse">
             <div className="h-8 w-8 bg-gray-300 rounded-full"></div>
           </div>
@@ -222,7 +238,6 @@ export function Header() {
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-8">
         <SidebarTrigger className="md:hidden" />
         <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
-          <GlobalTranslationToggle />
           <Button variant="outline" onClick={() => router.push('/auth')}>
             Sign In
           </Button>
@@ -242,8 +257,8 @@ export function Header() {
             onClick={toggleTranslation}
             className={cn(
               'p-2 rounded-md transition-colors',
-              isEnabled 
-                ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
+              isEnabled
+                ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             )}
             title={isEnabled ? 'Disable translation' : 'Enable translation'}
@@ -252,8 +267,7 @@ export function Header() {
           </button>
         </div>
 
-        {/* Offline Status - Hidden on mobile */}
-        <SimpleOfflineStatus className="hidden lg:flex" />
+
 
         {/* Trending Indicator - Hidden on mobile */}
         <div className="hidden md:flex flex-shrink-0">
@@ -360,7 +374,7 @@ export function Header() {
                       <span className="mr-2">🌐</span>
                       <span>
                         Language: {language
-                          ? (languages[language as keyof typeof languages]?.name || language)
+                          ? (translatedLanguageName || languages[language as keyof typeof languages]?.name || language)
                           : "Select"}
                       </span>
                     </Button>

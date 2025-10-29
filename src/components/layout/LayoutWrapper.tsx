@@ -14,7 +14,7 @@ interface LayoutWrapperProps {
 
 export default function LayoutWrapper({ children }: LayoutWrapperProps) {
   const pathname = usePathname();
-  
+
   // Routes that should not show the sidebar and header (like auth pages)
   const authRoutes = ['/auth'];
   const isAuthRoute = authRoutes.some(route => pathname === route || pathname.startsWith(route + '/'));
@@ -44,7 +44,7 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
   // For all other routes, wrap with AuthGuard and show sidebar/header
   return (
     <AuthGuard>
-      <UnifiedTranslationWrapper autoTranslate={true} showStatus={true}>
+      <UnifiedTranslationWrapper autoTranslate={false} showStatus={false}>
         <SidebarProvider>
           <Sidebar>
             <SidebarNav />

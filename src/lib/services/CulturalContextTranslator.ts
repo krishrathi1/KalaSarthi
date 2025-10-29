@@ -3,13 +3,31 @@
  * Handles craft-specific translations with cultural preservation
  */
 
-import { TranslationServiceClient } from '@google-cloud/translate';
 import { TranslationCache } from './TranslationCache';
 
-const translateClient = new TranslationServiceClient({
-  keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-  projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
-});
+// Initialize Google Cloud Translation client only if credentials are available
+let translateClient: any = null;
+try {
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS && process.env.GOOGLE_CLOUD_PROJECT_ID) {
+    console.log('🔧 Initializing Google Cloud Translation client with:', {
+      keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+      projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+    });
+    const { TranslationServiceClient } = require('@google-cloud/translate');
+    translateClient = new TranslationServiceClient({
+      keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+      projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+    });
+    console.log('✅ Google Cloud Translation client initialized successfully');
+  } else {
+    console.warn('❌ Missing Google Cloud credentials or project ID:', {
+      hasCredentials: !!process.env.GOOGLE_APPLICATION_CREDENTIALS,
+      hasProjectId: !!process.env.GOOGLE_CLOUD_PROJECT_ID,
+    });
+  }
+} catch (error) {
+  console.warn('Google Cloud Translation client initialization failed, using fallback service:', error);
+}
 
 export interface TranslationRequest {
   text: string;
@@ -78,7 +96,7 @@ export class CulturalContextTranslator {
         request.targetLanguage,
         request.context || 'craft'
       );
-      
+
       if (cachedResult) {
         return {
           translatedText: cachedResult.translatedText,
@@ -154,13 +172,13 @@ export class CulturalContextTranslator {
 
     } catch (error) {
       console.error('Cultural translation error:', error);
-      
+
       // Check if it's a Google Cloud API permission error
       if (error instanceof Error && error.message.includes('PERMISSION_DENIED')) {
         console.warn('Google Cloud Translation API not enabled, using fallback mock service');
         return this.createMockTranslationResult(request);
       }
-      
+
       throw new Error(`Translation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -341,7 +359,7 @@ export class CulturalContextTranslator {
       const regex = new RegExp(`\\b${term}\\b`, 'gi');
       if (regex.test(text)) {
         foundTerms.push(term);
-        
+
         // Mark terms that should be preserved
         if (data.preserveOriginal) {
           processedText = processedText.replace(regex, `[PRESERVE:${term}]`);
@@ -368,6 +386,17 @@ export class CulturalContextTranslator {
     text: string,
     request: TranslationRequest
   ): Promise<any> {
+    // If Google Cloud client is not available, use mock translation
+    if (!translateClient) {
+      console.warn('Google Cloud Translation client not available, using mock translation');
+      return {
+        translations: [{
+          translatedText: `[${request.targetLanguage.toUpperCase()}] ${text}`,
+          detectedSourceLanguage: request.sourceLanguage
+        }]
+      };
+    }
+
     // Build glossary for craft terms
     const glossaryTerms = this.buildGlossaryForLanguagePair(
       request.sourceLanguage,
@@ -392,20 +421,31 @@ export class CulturalContextTranslator {
     } catch (error) {
       // Fallback to basic translation if glossary fails
       console.warn('Glossary translation failed, using basic translation:', error);
-      const basicRequest = {
-        parent: this.projectPath,
-        contents: [text],
-        mimeType: 'text/plain',
-        sourceLanguageCode: request.sourceLanguage,
-        targetLanguageCode: request.targetLanguage
-      };
-      const [response] = await translateClient.translateText(basicRequest);
-      return response;
+      try {
+        const basicRequest = {
+          parent: this.projectPath,
+          contents: [text],
+          mimeType: 'text/plain',
+          sourceLanguageCode: request.sourceLanguage,
+          targetLanguageCode: request.targetLanguage
+        };
+        const [response] = await translateClient.translateText(basicRequest);
+        return response;
+      } catch (basicError) {
+        // Final fallback to mock translation
+        console.warn('Basic translation also failed, using mock translation:', basicError);
+        return {
+          translations: [{
+            translatedText: `[${request.targetLanguage.toUpperCase()}] ${text}`,
+            detectedSourceLanguage: request.sourceLanguage
+          }]
+        };
+      }
     }
   }
 
-  private buildGlossaryForLanguagePair(sourceLanguage: string, targetLanguage: string): Array<{term: string, translation: string}> {
-    const glossaryTerms: Array<{term: string, translation: string}> = [];
+  private buildGlossaryForLanguagePair(sourceLanguage: string, targetLanguage: string): Array<{ term: string, translation: string }> {
+    const glossaryTerms: Array<{ term: string, translation: string }> = [];
 
     for (const [term, data] of Object.entries(this.craftTerminology)) {
       const sourceTranslation = data.translations[sourceLanguage];
@@ -438,7 +478,15 @@ export class CulturalContextTranslator {
     targetLanguage: string,
     preserveCulturalTerms?: boolean
   ): TranslationResult {
-    let translatedText = translationResponse.translations?.[0]?.translatedText || '';
+    // Handle different response formats
+    let translatedText = '';
+    if (translationResponse?.translations && Array.isArray(translationResponse.translations) && translationResponse.translations.length > 0) {
+      translatedText = translationResponse.translations[0]?.translatedText || originalText;
+    } else {
+      // Fallback to original text if translation failed
+      translatedText = originalText;
+    }
+
     const culturalNotes: TranslationResult['culturalNotes'] = [];
     const glossaryTermsUsed: string[] = [];
 
@@ -448,17 +496,17 @@ export class CulturalContextTranslator {
     while ((match = preserveRegex.exec(translatedText)) !== null) {
       const originalTerm = match[1];
       const termData = this.craftTerminology[originalTerm];
-      
+
       if (termData) {
         let replacementTerm = originalTerm;
-        
+
         // Use target language translation if available and not preserving original
         if (!preserveCulturalTerms && termData.translations[targetLanguage]) {
           replacementTerm = termData.translations[targetLanguage];
         }
 
         translatedText = translatedText.replace(match[0], replacementTerm);
-        
+
         culturalNotes.push({
           originalTerm,
           translatedTerm: replacementTerm,
@@ -585,7 +633,7 @@ export class CulturalContextTranslator {
         if (targetTranslation) {
           translatedText = translatedText.replace(regex, targetTranslation);
           glossaryTermsUsed.push(term);
-          
+
           culturalNotes.push({
             originalTerm: term,
             translatedTerm: targetTranslation,
@@ -649,9 +697,9 @@ export class CulturalContextTranslator {
   }
 
   // Method to get supported language pairs
-  getSupportedLanguagePairs(): Array<{source: string, target: string}> {
+  getSupportedLanguagePairs(): Array<{ source: string, target: string }> {
     const languages = ['en', 'hi', 'bn', 'ta', 'te', 'gu', 'kn', 'ml', 'mr', 'pa'];
-    const pairs: Array<{source: string, target: string}> = [];
+    const pairs: Array<{ source: string, target: string }> = [];
 
     for (const source of languages) {
       for (const target of languages) {
@@ -682,7 +730,31 @@ export class CulturalContextTranslator {
   // Method to get craft terminology for a specific category
   getCraftTerminologyByCategory(category: CraftTerminology[string]['category']): CraftTerminology {
     const filtered: CraftTerminology = {};
-    
+
+    for (const [term, data] of Object.entries(this.craftTerminology)) {
+      if (data.category === category) {
+        filtered[term] = data;
+      }
+    }
+
+    return filtered;
+  }
+
+  // Method to get all craft categories
+  getCraftCategories(): string[] {
+    const categories = new Set<string>();
+
+    for (const [term, data] of Object.entries(this.craftTerminology)) {
+      categories.add(data.category);
+    }
+
+    return Array.from(categories);
+  }
+
+  // Method to get terms by category
+  getTermsByCategory(category: string): CraftTerminology {
+    const filtered: CraftTerminology = {};
+
     for (const [term, data] of Object.entries(this.craftTerminology)) {
       if (data.category === category) {
         filtered[term] = data;

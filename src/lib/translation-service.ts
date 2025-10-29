@@ -94,8 +94,10 @@ class TranslationService {
       const mappedTargetLanguage = googleCloudLanguageMap[targetLanguage] || 'en';
       const mappedSourceLanguage = googleCloudLanguageMap[sourceLanguage] || 'en';
 
-      // Use full URL for server-side API calls
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+      // Use correct URL for API calls - check if we're in browser or server
+      const baseUrl = typeof window !== 'undefined'
+        ? window.location.origin
+        : (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:9003');
       const apiUrl = `${baseUrl}/api/translate`;
 
       const response = await fetch(apiUrl, {
@@ -105,8 +107,10 @@ class TranslationService {
         },
         body: JSON.stringify({
           text,
-          targetLanguage: mappedTargetLanguage,
           sourceLanguage: mappedSourceLanguage,
+          targetLanguage: mappedTargetLanguage,
+          craftCategory: 'general',
+          preserveCulturalTerms: true
         }),
       });
 
@@ -130,7 +134,8 @@ class TranslationService {
         throw new Error(data.error);
       }
 
-      const translation = data.translation;
+      // Handle new API response format
+      const translation = data.success ? data.result.translatedText : data.translation;
 
       // Cache the result
       this.cache.set(cacheKey, translation);

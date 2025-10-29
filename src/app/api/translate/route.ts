@@ -56,9 +56,9 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Translation completed:', {
       confidence: result.confidence,
-      craftTermsDetected: result.craftTermsDetected.length,
-      culturalNotesCount: result.culturalNotes.length,
-      alternativesCount: result.alternatives.length
+      culturalNotesCount: result.culturalNotes?.length || 0,
+      alternativesCount: result.alternatives?.length || 0,
+      glossaryTermsUsed: result.glossaryTermsUsed?.length || 0
     });
 
     return NextResponse.json({
@@ -69,9 +69,9 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ Translation API error:', error);
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Translation failed',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
@@ -132,9 +132,9 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ Translation API GET error:', error);
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to fetch translation service info',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
@@ -165,9 +165,9 @@ export async function DELETE(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ Translation API DELETE error:', error);
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to clear cache',
         details: error instanceof Error ? error.message : 'Unknown error'
       },

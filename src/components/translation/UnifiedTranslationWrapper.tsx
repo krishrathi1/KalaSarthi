@@ -27,7 +27,7 @@ export function UnifiedTranslationWrapper({
 }: UnifiedTranslationWrapperProps) {
   const { currentLanguage, setLanguage, isEnabled, toggleTranslation } = useTranslation();
   const { language: contextLanguage, setLanguage: setContextLanguage } = useLanguage();
-  
+
   // Use page translation hook
   const { translatePage, restoreOriginalText, translatedCount } = usePageTranslation({
     enabled: autoTranslate,
@@ -53,19 +53,19 @@ export function UnifiedTranslationWrapper({
     setContextLanguage(newLanguage);
   };
 
-  // Auto-enable translation for non-English languages
-  useEffect(() => {
-    if (currentLanguage !== 'en' && !isEnabled) {
-      toggleTranslation();
-    } else if (currentLanguage === 'en' && isEnabled) {
-      toggleTranslation();
-    }
-  }, [currentLanguage, isEnabled, toggleTranslation]);
+  // Auto-enable translation for non-English languages - DISABLED
+  // useEffect(() => {
+  //   if (currentLanguage !== 'en' && !isEnabled) {
+  //     toggleTranslation();
+  //   } else if (currentLanguage === 'en' && isEnabled) {
+  //     toggleTranslation();
+  //   }
+  // }, [currentLanguage, isEnabled, toggleTranslation]);
 
   return (
     <>
       {children}
-      
+
       {/* Translation Status - Fixed position */}
       {showStatus && (
         <div className="fixed bottom-4 right-4 z-50 max-w-sm">

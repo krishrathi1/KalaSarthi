@@ -5,9 +5,9 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, ChevronDown, Globe, Search } from 'lucide-react';
-import { LanguageCode, languages } from '@/lib/i18n';
+import { LanguageCode, languages, translateAsync } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 interface LanguageSelectorProps {
@@ -27,6 +27,7 @@ export function LanguageSelector({
 }: LanguageSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [translatedLanguageName, setTranslatedLanguageName] = useState('');
 
   // Filter languages based on search query
   const filteredLanguages = Object.entries(languages).filter(([code, lang]) => {
@@ -41,14 +42,38 @@ export function LanguageSelector({
   // Group languages by region if enabled
   const groupedLanguages = groupByRegion
     ? filteredLanguages.reduce((groups, [code, lang]) => {
-        const region = lang.region || 'other';
-        if (!groups[region]) groups[region] = [];
-        groups[region].push([code, lang]);
-        return groups;
-      }, {} as Record<string, [string, typeof languages[keyof typeof languages]][]>)
+      const region = lang.region || 'other';
+      if (!groups[region]) groups[region] = [];
+      groups[region].push([code, lang]);
+      return groups;
+    }, {} as Record<string, [string, typeof languages[keyof typeof languages]][]>)
     : { all: filteredLanguages };
 
-  const currentLanguageName = languages[currentLanguage]?.name || currentLanguage;
+  // Translate the current language name
+  useEffect(() => {
+    const translateLanguageName = async () => {
+      const originalName = languages[currentLanguage]?.name || currentLanguage;
+
+      // If current language is English, show original name
+      if (currentLanguage === 'en') {
+        setTranslatedLanguageName(originalName);
+        return;
+      }
+
+      try {
+        // Translate the language name to the current language
+        const translated = await translateAsync(originalName, currentLanguage);
+        setTranslatedLanguageName(translated);
+      } catch (error) {
+        console.error('Failed to translate language name:', error);
+        setTranslatedLanguageName(originalName);
+      }
+    };
+
+    translateLanguageName();
+  }, [currentLanguage]);
+
+  const currentLanguageName = translatedLanguageName || languages[currentLanguage]?.name || currentLanguage;
 
   const handleLanguageSelect = (languageCode: LanguageCode) => {
     onLanguageChange(languageCode);
@@ -106,9 +131,9 @@ export function LanguageSelector({
                 {/* Region Header */}
                 {groupByRegion && Object.keys(groupedLanguages).length > 1 && (
                   <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200">
-                    {region === 'indian' ? 'Indian Languages' : 
-                     region === 'foreign' ? 'International Languages' : 
-                     'Other Languages'}
+                    {region === 'indian' ? 'Indian Languages' :
+                      region === 'foreign' ? 'International Languages' :
+                        'Other Languages'}
                   </div>
                 )}
 

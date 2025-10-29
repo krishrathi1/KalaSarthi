@@ -91,14 +91,14 @@ class LanguageDetector {
     // Check each language pattern
     for (const [lang, patterns] of Object.entries(this.LANGUAGE_PATTERNS)) {
       let score = 0;
-      
+
       for (const pattern of patterns) {
         const matches = cleanText.match(pattern);
         if (matches) {
           score += matches.length * (pattern.source.includes('\\u') ? 3 : 1); // Unicode patterns get higher weight
         }
       }
-      
+
       // Normalize score by text length
       scores[lang] = score / cleanText.length;
     }
@@ -230,7 +230,7 @@ class UnifiedTranslationCache implements TranslationCache {
 
   clear(): void {
     this.memoryCache.clear();
-    
+
     if (typeof window !== 'undefined') {
       try {
         const keys = Object.keys(localStorage);
@@ -269,7 +269,7 @@ const GOOGLE_LANGUAGE_MAP: Record<LanguageCode, string> = {
   ur: 'ur',
   mr: 'mr',
   ne: 'ne',
-  
+
   // Regional languages with fallbacks
   mai: 'hi', // Maithili -> Hindi
   bho: 'hi', // Bhojpuri -> Hindi
@@ -280,7 +280,7 @@ const GOOGLE_LANGUAGE_MAP: Record<LanguageCode, string> = {
   sa: 'hi',  // Sanskrit -> Hindi
   sat: 'hi', // Santali -> Hindi
   sd: 'ur',  // Sindhi -> Urdu
-  
+
   // International Languages
   es: 'es', fr: 'fr', de: 'de', zh: 'zh', ja: 'ja',
   ar: 'ar', pt: 'pt', ru: 'ru', it: 'it', ko: 'ko',
@@ -329,7 +329,7 @@ export class UnifiedTranslationService {
       ...override,
       createdAt: Date.now()
     };
-    
+
     this.customOverrides.set(key, fullOverride);
     this.saveCustomOverrides();
   }
@@ -358,7 +358,7 @@ export class UnifiedTranslationService {
       ...feedback,
       timestamp: Date.now()
     };
-    
+
     this.qualityFeedback.set(feedback.translationId, fullFeedback);
     this.saveQualityFeedback();
   }
@@ -376,9 +376,9 @@ export class UnifiedTranslationService {
   getAverageQuality(sourceLanguage: LanguageCode, targetLanguage: LanguageCode): number {
     const relevantFeedback = Array.from(this.qualityFeedback.values())
       .filter(f => f.translationId.includes(`${sourceLanguage}_${targetLanguage}`));
-    
+
     if (relevantFeedback.length === 0) return 0;
-    
+
     const totalRating = relevantFeedback.reduce((sum, f) => sum + f.rating, 0);
     return totalRating / relevantFeedback.length;
   }
@@ -435,7 +435,7 @@ export class UnifiedTranslationService {
     // Check for custom override first
     const overrideKey = this.getOverrideKey(text, actualSourceLanguage, targetLanguage);
     const customOverride = this.customOverrides.get(overrideKey);
-    
+
     if (customOverride) {
       return {
         translatedText: customOverride.translatedText,
@@ -454,7 +454,7 @@ export class UnifiedTranslationService {
     // Check cache first
     const cacheKey = this.getCacheKey(text, actualSourceLanguage, targetLanguage);
     const cached = this.cache.get(cacheKey);
-    
+
     if (cached) {
       const qualityScore = QualityScorer.calculateQualityScore(text, cached, 0.95);
       return {
@@ -525,7 +525,7 @@ export class UnifiedTranslationService {
 
     } catch (error) {
       console.error('Translation failed:', error);
-      
+
       // Return original text on error
       return {
         translatedText: text,
@@ -603,7 +603,7 @@ export class UnifiedTranslationService {
       // Check for custom override
       const overrideKey = this.getOverrideKey(text, actualSourceLanguage, targetLanguage);
       const customOverride = this.customOverrides.get(overrideKey);
-      
+
       if (customOverride) {
         results[index] = {
           translatedText: customOverride.translatedText,
@@ -622,7 +622,7 @@ export class UnifiedTranslationService {
       // Check cache
       const cacheKey = this.getCacheKey(text, actualSourceLanguage, targetLanguage);
       const cached = this.cache.get(cacheKey);
-      
+
       if (cached) {
         const qualityScore = QualityScorer.calculateQualityScore(text, cached, 0.95);
         results[index] = {
@@ -661,7 +661,7 @@ export class UnifiedTranslationService {
 
         // Call batch translation API
         const { fetchApi } = await import('@/lib/utils/url');
-        const response = await fetchApi('/api/translate', {
+        const response = await fetchApi('/api/bulk-translate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -683,13 +683,13 @@ export class UnifiedTranslationService {
           throw new Error(data.error);
         }
 
-        // Process batch results
-        const batchResults = data.results || [];
-        
+        // Process batch results from bulk-translate API
+        const batchResults = data.translations || [];
+
         textsToTranslate.forEach((originalText, batchIndex) => {
           const batchResult = batchResults[batchIndex];
-          const translatedText = batchResult?.translatedText || originalText;
-          const confidence = batchResult?.confidence || 0.95;
+          const translatedText = batchResult?.translated || originalText;
+          const confidence = batchResult?.success ? 0.95 : 0.5;
           const qualityScore = QualityScorer.calculateQualityScore(originalText, translatedText, confidence);
 
           // Cache the result
@@ -714,7 +714,7 @@ export class UnifiedTranslationService {
 
       } catch (error) {
         console.error('Batch translation failed:', error);
-        
+
         // Fallback: return original texts for failed translations
         textsToTranslate.forEach(originalText => {
           const indices = textIndexMap.get(originalText) || [];
