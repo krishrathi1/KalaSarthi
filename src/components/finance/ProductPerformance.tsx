@@ -2,118 +2,88 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { TrendingUp, TrendingDown, Package, Star, AlertTriangle, Crown } from 'lucide-react';
-import { cn } from '@/lib/utils';
-
-interface ProductData {
-  productId: string;
-  productName: string;
-  category: string;
-  revenue: number;
-  units: number;
-  averagePrice: number;
-  growth: number;
-  rank: number;
-  margin?: number;
-  rating?: number;
-}
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { TrendingUp, TrendingDown, Package, Star, AlertCircle } from 'lucide-react';
 
 interface ProductPerformanceProps {
-  artisanId?: string;
-  timeRange?: 'week' | 'month' | 'quarter' | 'year';
+  timeRange: 'week' | 'month' | 'quarter' | 'year';
   className?: string;
 }
 
-const chartConfig = {
-  revenue: {
-    label: 'Revenue',
-    color: 'hsl(var(--chart-1))',
-  },
-  units: {
-    label: 'Units Sold',
-    color: 'hsl(var(--chart-2))',
-  },
-  margin: {
-    label: 'Margin',
-    color: 'hsl(var(--chart-3))',
-  },
-};
+interface ProductData {
+  id: string;
+  name: string;
+  category: string;
+  revenue: number;
+  units: number;
+  orders: number;
+  margin: number;
+  growth: number;
+  rank: number;
+}
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
-export function ProductPerformance({ artisanId, timeRange = 'month', className }: ProductPerformanceProps) {
+export default function ProductPerformance({ timeRange, className = '' }: ProductPerformanceProps) {
   const [productData, setProductData] = useState<ProductData[]>([]);
+  const [sortBy, setSortBy] = useState<'revenue' | 'units' | 'growth' | 'margin'>('revenue');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedTimeRange, setSelectedTimeRange] = useState(timeRange);
-  const [sortBy, setSortBy] = useState<'revenue' | 'units' | 'growth' | 'margin'>('revenue');
-  const [viewType, setViewType] = useState<'table' | 'chart' | 'pie'>('table');
 
   useEffect(() => {
     fetchProductData();
-  }, [artisanId, selectedTimeRange, sortBy]);
+  }, [timeRange, sortBy]);
 
   const fetchProductData = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Construct API URL
-      const params = new URLSearchParams();
-      if (artisanId) params.append('artisanId', artisanId);
-      params.append('range', selectedTimeRange);
-      params.append('sort', sortBy);
-      params.append('limit', '20');
+      // Mock data for demonstration
+      const mockData = generateMockProductData();
+      setProductData(mockData);
 
-      const response = await fetch(`/api/finance/products/performance?${params}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch product performance data');
-      }
-
-      const data = await response.json();
-      
-      if (data.success) {
-        setProductData(data.data.products || []);
-      } else {
-        throw new Error(data.error || 'Failed to fetch product performance data');
-      }
     } catch (err) {
-      console.error('Error fetching product data:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      
-      // Set mock data for development
-      setProductData(generateMockProductData());
+      setError(err instanceof Error ? err.message : 'Failed to fetch product data');
     } finally {
       setLoading(false);
     }
   };
 
   const generateMockProductData = (): ProductData[] => {
-    const categories = ['Textiles', 'Jewelry', 'Pottery', 'Woodwork', 'Metalcraft'];
     const products = [
-      'Handwoven Silk Saree', 'Silver Earrings', 'Clay Vase', 'Wooden Bowl', 'Brass Lamp',
-      'Cotton Kurta', 'Gold Necklace', 'Ceramic Plate', 'Teak Table', 'Copper Pot',
-      'Embroidered Dupatta', 'Pearl Bracelet', 'Terracotta Figurine', 'Bamboo Basket', 'Iron Sculpture',
-      'Block Print Fabric', 'Diamond Ring', 'Glazed Mug', 'Carved Frame', 'Steel Utensils'
+      { name: 'Handcrafted Teak Dining Table', category: 'Furniture' },
+      { name: 'Carved Wooden Door Set', category: 'Doors' },
+      { name: 'Traditional Wall Art', category: 'Decorative' },
+      { name: 'Wooden Storage Chest', category: 'Furniture' },
+      { name: 'Decorative Mirror Frame', category: 'Decorative' },
+      { name: 'Custom Kitchen Cabinet', category: 'Furniture' },
+      { name: 'Ornate Room Divider', category: 'Decorative' },
+      { name: 'Handmade Jewelry Box', category: 'Accessories' },
     ];
 
-    return products.map((name, index) => ({
-      productId: `prod_${index + 1}`,
-      productName: name,
-      category: categories[index % categories.length],
-      revenue: Math.floor(Math.random() * 50000) + 5000,
-      units: Math.floor(Math.random() * 200) + 10,
-      averagePrice: Math.floor(Math.random() * 2000) + 500,
-      growth: (Math.random() - 0.5) * 50, // -25% to +25%
-      rank: index + 1,
-      margin: Math.random() * 30 + 10, // 10% to 40%
-      rating: Math.random() * 2 + 3, // 3 to 5 stars
-    })).sort((a, b) => {
+    return products.map((product, index) => {
+      const baseRevenue = 50000 - (index * 5000) + (Math.random() * 10000);
+      const units = Math.round(baseRevenue / (2000 + Math.random() * 3000));
+      const orders = Math.round(units * (0.7 + Math.random() * 0.3));
+      const margin = 0.15 + Math.random() * 0.25; // 15-40% margin
+      const growth = (Math.random() - 0.5) * 40; // -20% to +20% growth
+
+      return {
+        id: `product_${index + 1}`,
+        name: product.name,
+        category: product.category,
+        revenue: Math.round(baseRevenue),
+        units,
+        orders,
+        margin: Math.round(margin * 100) / 100,
+        growth: Math.round(growth * 10) / 10,
+        rank: index + 1
+      };
+    }).sort((a, b) => {
       switch (sortBy) {
         case 'revenue':
           return b.revenue - a.revenue;
@@ -122,145 +92,46 @@ export function ProductPerformance({ artisanId, timeRange = 'month', className }
         case 'growth':
           return b.growth - a.growth;
         case 'margin':
-          return (b.margin || 0) - (a.margin || 0);
+          return b.margin - a.margin;
         default:
           return b.revenue - a.revenue;
       }
-    });
+    }).map((product, index) => ({ ...product, rank: index + 1 }));
   };
 
-  const formatCurrency = (value: number) => {
+  const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(value);
+    }).format(amount);
   };
 
-  const formatGrowth = (growth: number) => {
-    const isPositive = growth >= 0;
-    return (
-      <div className={cn('flex items-center gap-1', isPositive ? 'text-green-600' : 'text-red-600')}>
-        {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-        <span className="text-xs font-medium">
-          {isPositive ? '+' : ''}{growth.toFixed(1)}%
-        </span>
-      </div>
-    );
+  const formatPercentage = (value: number) => {
+    return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
   };
 
-  const getRankBadge = (rank: number) => {
-    if (rank === 1) return <Crown className="h-4 w-4 text-yellow-500" />;
-    if (rank <= 3) return <Star className="h-4 w-4 text-blue-500" />;
-    if (rank <= 10) return <Package className="h-4 w-4 text-green-500" />;
-    return <AlertTriangle className="h-4 w-4 text-gray-400" />;
+  const getCategoryData = () => {
+    const categoryMap = new Map<string, { revenue: number, units: number }>();
+    
+    productData.forEach(product => {
+      const existing = categoryMap.get(product.category) || { revenue: 0, units: 0 };
+      categoryMap.set(product.category, {
+        revenue: existing.revenue + product.revenue,
+        units: existing.units + product.units
+      });
+    });
+
+    return Array.from(categoryMap.entries()).map(([category, data]) => ({
+      name: category,
+      value: data.revenue,
+      units: data.units
+    }));
   };
 
-  const renderTable = () => (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-12">Rank</TableHead>
-          <TableHead>Product</TableHead>
-          <TableHead>Category</TableHead>
-          <TableHead className="text-right">Revenue</TableHead>
-          <TableHead className="text-right">Units</TableHead>
-          <TableHead className="text-right">Avg Price</TableHead>
-          <TableHead className="text-right">Growth</TableHead>
-          <TableHead className="text-right">Margin</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {productData.slice(0, 10).map((product) => (
-          <TableRow key={product.productId}>
-            <TableCell>
-              <div className="flex items-center gap-2">
-                {getRankBadge(product.rank)}
-                <span className="font-medium">#{product.rank}</span>
-              </div>
-            </TableCell>
-            <TableCell>
-              <div>
-                <div className="font-medium">{product.productName}</div>
-                <div className="text-xs text-muted-foreground">ID: {product.productId}</div>
-              </div>
-            </TableCell>
-            <TableCell>
-              <Badge variant="secondary">{product.category}</Badge>
-            </TableCell>
-            <TableCell className="text-right font-medium">
-              {formatCurrency(product.revenue)}
-            </TableCell>
-            <TableCell className="text-right">{product.units.toLocaleString()}</TableCell>
-            <TableCell className="text-right">{formatCurrency(product.averagePrice)}</TableCell>
-            <TableCell className="text-right">{formatGrowth(product.growth)}</TableCell>
-            <TableCell className="text-right">
-              {product.margin ? `${product.margin.toFixed(1)}%` : 'N/A'}
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  );
-
-  const renderBarChart = () => (
-    <ChartContainer config={chartConfig} className="h-[400px]">
-      <BarChart data={productData.slice(0, 10)} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis 
-          dataKey="productName" 
-          angle={-45}
-          textAnchor="end"
-          height={100}
-          interval={0}
-          fontSize={10}
-        />
-        <YAxis />
-        <ChartTooltip content={<ChartTooltipContent />} />
-        <Bar dataKey="revenue" fill="var(--color-revenue)" />
-      </BarChart>
-    </ChartContainer>
-  );
-
-  const renderPieChart = () => {
-    const categoryData = productData.reduce((acc, product) => {
-      const existing = acc.find(item => item.category === product.category);
-      if (existing) {
-        existing.revenue += product.revenue;
-        existing.units += product.units;
-      } else {
-        acc.push({
-          category: product.category,
-          revenue: product.revenue,
-          units: product.units,
-        });
-      }
-      return acc;
-    }, [] as { category: string; revenue: number; units: number }[]);
-
-    return (
-      <ChartContainer config={chartConfig} className="h-[400px]">
-        <PieChart>
-          <Pie
-            data={categoryData}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            label={({ category, percent }) => `${category} ${(percent * 100).toFixed(0)}%`}
-            outerRadius={120}
-            fill="#8884d8"
-            dataKey="revenue"
-          >
-            {categoryData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-            ))}
-          </Pie>
-          <ChartTooltip content={<ChartTooltipContent />} />
-        </PieChart>
-      </ChartContainer>
-    );
-  };
+  const topProducts = productData.slice(0, 5);
+  const categoryData = getCategoryData();
 
   if (loading) {
     return (
@@ -270,7 +141,7 @@ export function ProductPerformance({ artisanId, timeRange = 'month', className }
           <CardDescription>Loading product data...</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-[400px] flex items-center justify-center">
+          <div className="h-80 flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         </CardContent>
@@ -278,73 +149,213 @@ export function ProductPerformance({ artisanId, timeRange = 'month', className }
     );
   }
 
-  return (
-    <Card className={className}>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Product Performance</CardTitle>
-            <CardDescription>
-              Top performing products by {sortBy}
-              {error && (
-                <Badge variant="secondary" className="ml-2">
-                  Demo Data
-                </Badge>
-              )}
-            </CardDescription>
+  if (error) {
+    return (
+      <Card className={className}>
+        <CardHeader>
+          <CardTitle>Product Performance</CardTitle>
+          <CardDescription>Error loading data</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-80 flex items-center justify-center text-muted-foreground">
+            <p>{error}</p>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Time Range Selector */}
-            <div className="flex items-center gap-1">
-              {(['week', 'month', 'quarter', 'year'] as const).map((range) => (
-                <Button
-                  key={range}
-                  variant={selectedTimeRange === range ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedTimeRange(range)}
-                >
-                  {range.charAt(0).toUpperCase() + range.slice(1)}
-                </Button>
-              ))}
-            </div>
-            
-            {/* Sort By Selector */}
-            <div className="flex items-center gap-1">
-              {(['revenue', 'units', 'growth', 'margin'] as const).map((sort) => (
-                <Button
-                  key={sort}
-                  variant={sortBy === sort ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSortBy(sort)}
-                >
-                  {sort.charAt(0).toUpperCase() + sort.slice(1)}
-                </Button>
-              ))}
-            </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
-            {/* View Type Selector */}
-            <div className="flex items-center gap-1">
-              {(['table', 'chart', 'pie'] as const).map((view) => (
-                <Button
-                  key={view}
-                  variant={viewType === view ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setViewType(view)}
-                >
-                  {view.charAt(0).toUpperCase() + view.slice(1)}
-                </Button>
-              ))}
-            </div>
-          </div>
+  return (
+    <div className={`space-y-6 ${className}`}>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold">Product Performance</h3>
+          <p className="text-sm text-muted-foreground">
+            Analyze your product sales and performance metrics
+          </p>
         </div>
-      </CardHeader>
-      <CardContent>
-        {viewType === 'table' && renderTable()}
-        {viewType === 'chart' && renderBarChart()}
-        {viewType === 'pie' && renderPieChart()}
-      </CardContent>
-    </Card>
+        <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+          <SelectTrigger className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="revenue">Revenue</SelectItem>
+            <SelectItem value="units">Units Sold</SelectItem>
+            <SelectItem value="growth">Growth Rate</SelectItem>
+            <SelectItem value="margin">Profit Margin</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top Products Bar Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Top Products by {sortBy.charAt(0).toUpperCase() + sortBy.slice(1)}</CardTitle>
+            <CardDescription>Best performing products this {timeRange}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topProducts} layout="horizontal">
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    type="number" 
+                    fontSize={12}
+                    tickFormatter={(value) => 
+                      sortBy === 'revenue' ? `₹${(value / 1000).toFixed(0)}k` :
+                      sortBy === 'margin' ? `${(value * 100).toFixed(0)}%` :
+                      sortBy === 'growth' ? `${value.toFixed(0)}%` :
+                      value.toString()
+                    }
+                  />
+                  <YAxis 
+                    type="category" 
+                    dataKey="name" 
+                    fontSize={10}
+                    width={120}
+                    tickFormatter={(value) => value.length > 15 ? value.substring(0, 15) + '...' : value}
+                  />
+                  <Tooltip 
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload as ProductData;
+                        return (
+                          <div className="bg-background border rounded-lg p-3 shadow-lg">
+                            <p className="font-medium">{data.name}</p>
+                            <p className="text-sm text-muted-foreground">Category: {data.category}</p>
+                            <p className="text-sm text-muted-foreground">Revenue: {formatCurrency(data.revenue)}</p>
+                            <p className="text-sm text-muted-foreground">Units: {data.units}</p>
+                            <p className="text-sm text-muted-foreground">Margin: {(data.margin * 100).toFixed(1)}%</p>
+                            <p className="text-sm text-muted-foreground">Growth: {formatPercentage(data.growth)}</p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Bar 
+                    dataKey={sortBy === 'margin' ? (data: ProductData) => data.margin * 100 : sortBy} 
+                    fill="hsl(var(--primary))" 
+                    radius={[0, 4, 4, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Category Distribution Pie Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Revenue by Category</CardTitle>
+            <CardDescription>Distribution across product categories</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={categoryData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {categoryData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-background border rounded-lg p-3 shadow-lg">
+                            <p className="font-medium">{data.name}</p>
+                            <p className="text-sm text-muted-foreground">Revenue: {formatCurrency(data.value)}</p>
+                            <p className="text-sm text-muted-foreground">Units: {data.units}</p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Product List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>All Products</CardTitle>
+          <CardDescription>Complete product performance breakdown</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {productData.map((product) => (
+              <div key={product.id} className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-center w-8 h-8 bg-primary/10 rounded-full">
+                    <span className="text-sm font-medium">#{product.rank}</span>
+                  </div>
+                  <div>
+                    <h4 className="font-medium">{product.name}</h4>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="outline" className="text-xs">
+                        {product.category}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">
+                        {product.units} units • {product.orders} orders
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-6">
+                  <div className="text-right">
+                    <p className="font-medium">{formatCurrency(product.revenue)}</p>
+                    <p className="text-sm text-muted-foreground">Revenue</p>
+                  </div>
+                  
+                  <div className="text-right">
+                    <p className="font-medium">{(product.margin * 100).toFixed(1)}%</p>
+                    <p className="text-sm text-muted-foreground">Margin</p>
+                  </div>
+                  
+                  <div className="text-right">
+                    <div className="flex items-center gap-1">
+                      {product.growth > 0 ? (
+                        <TrendingUp className="h-4 w-4 text-green-500" />
+                      ) : product.growth < 0 ? (
+                        <TrendingDown className="h-4 w-4 text-red-500" />
+                      ) : (
+                        <Package className="h-4 w-4 text-gray-500" />
+                      )}
+                      <span className={`font-medium ${
+                        product.growth > 0 ? 'text-green-500' : 
+                        product.growth < 0 ? 'text-red-500' : 
+                        'text-gray-500'
+                      }`}>
+                        {formatPercentage(product.growth)}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Growth</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
-
-export default ProductPerformance;

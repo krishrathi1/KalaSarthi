@@ -91,7 +91,7 @@ async function testMainPages() {
     { name: 'Voice Assistant Demo', path: '/voice-assistant-demo' },
     { name: 'Voice Enrollment', path: '/voice-enrollment' },
     { name: 'Auth Page', path: '/auth' },
-    { name: 'Yojana Mitra', path: '/yojana-mitra' }
+    { name: 'Scheme Sahayak', path: '/scheme-sahayak' }
   ];
   
   for (const page of pages) {

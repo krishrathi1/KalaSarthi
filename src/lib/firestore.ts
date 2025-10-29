@@ -37,6 +37,7 @@ export const COLLECTIONS = {
   SALES_EVENTS: 'sales_events',
   SALES_AGGREGATES: 'sales_aggregates',
   PRODUCT_PERFORMANCE: 'product_performance',
+  EXPENSES: 'expenses',
 } as const;
 
 // Helper to convert Firestore timestamp to Date
@@ -100,6 +101,14 @@ export class FirestoreService {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }, { merge });
+  }
+
+  // Get document by ID (alias for getById)
+  static async get<T>(
+    collectionName: string,
+    docId: string
+  ): Promise<T | null> {
+    return this.getById<T>(collectionName, docId);
   }
 
   // Get document by ID

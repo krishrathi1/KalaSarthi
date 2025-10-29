@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { SalesOverview, ProductPerformance, ForecastChart } from '@/components/finance';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { SalesOverview, ProductPerformance, ForecastChart, RealtimeDashboard } from '@/components/finance';
+import { useAuth } from '@/context/auth-context';
 import {
   TrendingUp,
   TrendingDown,
@@ -22,7 +24,10 @@ import {
   CheckCircle,
   FileSpreadsheet,
   Download,
-  ExternalLink
+  ExternalLink,
+  Wifi,
+  WifiOff,
+  RefreshCw
 } from 'lucide-react';
 
 interface SalesData {
@@ -54,6 +59,7 @@ interface DashboardSummary {
 }
 
 export default function FinanceDashboard() {
+  const { userProfile } = useAuth();
   const [timeRange, setTimeRange] = useState('30d');
   const [resolution, setResolution] = useState('daily');
   const [salesData, setSalesData] = useState<SalesData[]>([]);
@@ -67,11 +73,15 @@ export default function FinanceDashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showRealtimeDashboard, setShowRealtimeDashboard] = useState(true);
 
   // Google Sheets integration
   const [exportingToSheets, setExportingToSheets] = useState(false);
   const [sheetsUrl, setSheetsUrl] = useState<string | null>(null);
   const [lastExportDate, setLastExportDate] = useState<string | null>(null);
+
+  // Get artisan ID (use Dev Bulchandani as default for demo)
+  const artisanId = userProfile?.uid || 'dev_bulchandani_001';
 
   useEffect(() => {
     fetchDashboardData();
@@ -243,12 +253,20 @@ export default function FinanceDashboard() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Finance Dashboard</h1>
+          <h1 className="text-3xl font-bold">Enhanced DigitalKhata Dashboard</h1>
           <p className="text-muted-foreground">
-            Monitor your sales performance and financial insights
+            Real-time financial tracking with AI-powered insights
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant={showRealtimeDashboard ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowRealtimeDashboard(!showRealtimeDashboard)}
+          >
+            <Wifi className="h-4 w-4 mr-2" />
+            {showRealtimeDashboard ? 'Real-time View' : 'Enable Real-time'}
+          </Button>
           <Select value={timeRange} onValueChange={setTimeRange}>
             <SelectTrigger className="w-32">
               <SelectValue />
@@ -272,6 +290,11 @@ export default function FinanceDashboard() {
           </Select>
         </div>
       </div>
+
+      {/* Real-time Dashboard */}
+      {showRealtimeDashboard && (
+        <RealtimeDashboard artisanId={artisanId} />
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -341,6 +364,7 @@ export default function FinanceDashboard() {
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="realtime">Real-time Analytics</TabsTrigger>
           <TabsTrigger value="products">Product Performance</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="insights">Insights</TabsTrigger>
@@ -405,6 +429,19 @@ export default function FinanceDashboard() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="realtime" className="space-y-6">
+          {/* Enhanced Real-time Dashboard */}
+          <Alert>
+            <Wifi className="h-4 w-4" />
+            <AlertDescription>
+              This tab shows real-time financial data with live updates from Firestore. 
+              Data is synchronized automatically and cached for offline access.
+            </AlertDescription>
+          </Alert>
+          
+          <RealtimeDashboard artisanId={artisanId} />
         </TabsContent>
 
         <TabsContent value="products" className="space-y-6">

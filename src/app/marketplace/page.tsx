@@ -283,7 +283,7 @@ export default function MarketplacePage() {
             window.location.href = '/finance/dashboard';
             speakFeedback('Opening finance dashboard');
         } else if (lowerCommand.includes('schemes') || lowerCommand.includes('government') || lowerCommand.includes('sarkar')) {
-            window.location.href = '/yojana-mitra';
+            window.location.href = '/scheme-sahayak';
             speakFeedback('Opening government schemes');
         }
     };

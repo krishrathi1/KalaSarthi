@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ISalesAggregate } from '@/lib/models/SalesAggregate';
-import { FirestoreService, COLLECTIONS } from '@/lib/firestore';
+import { FirestoreService, COLLECTIONS, where } from '@/lib/firestore';
 
 interface PerformanceQueryParams {
   range?: string; // '7d', '30d', '90d', '1y', 'all'
@@ -125,11 +125,62 @@ export async function GET(request: NextRequest) {
         sortOrder = { totalRevenue: -1 };
     }
 
-    // Fetch product performance data from SalesAggregate
-    const performanceData = await SalesAggregate.find(queryFilters)
-      .sort(sortOrder)
-      .limit(params.limit || 20)
-      .lean();
+    // Fetch product performance data from Firestore
+    let performanceData: ISalesAggregate[] = [];
+    
+    try {
+      // Use FirestoreService to query sales aggregates
+      const constraints = [
+        // Note: Firestore requires indexes for complex queries
+        // For now, we'll do a simple query and filter client-side
+      ];
+      
+      if (params.artisanId) {
+        constraints.push(where('artisanId', '==', params.artisanId));
+      }
+      
+      // Simple query without complex constraints to avoid index requirements
+      performanceData = await FirestoreService.getAll<ISalesAggregate>(COLLECTIONS.SALES_AGGREGATES);
+      
+      // Apply filters client-side
+      performanceData = performanceData.filter(item => {
+        // Date range filter
+        if (item.periodStart < startDate || item.periodEnd > endDate) return false;
+        
+        // Product-level aggregates only
+        if (!item.productId) return false;
+        
+        // Category filter
+        if (params.category && item.productCategory !== params.category) return false;
+        
+        // Revenue filters
+        if (params.minRevenue !== undefined && item.totalRevenue < params.minRevenue) return false;
+        if (params.maxRevenue !== undefined && item.totalRevenue > params.maxRevenue) return false;
+        
+        return true;
+      });
+      
+      // Sort the data
+      performanceData.sort((a, b) => {
+        switch (params.sort) {
+          case 'worst':
+            return a.totalRevenue - b.totalRevenue;
+          case 'units':
+            return b.totalQuantity - a.totalQuantity;
+          case 'revenue':
+            return b.totalRevenue - a.totalRevenue;
+          default: // 'best'
+            return b.totalRevenue - a.totalRevenue;
+        }
+      });
+      
+      // Limit results
+      performanceData = performanceData.slice(0, params.limit || 20);
+      
+    } catch (firestoreError) {
+      console.warn('⚠️ Firestore query failed, will use mock data:', firestoreError);
+      performanceData = [];
+    }
 
     let transformedData: any[];
 

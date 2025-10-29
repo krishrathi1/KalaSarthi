@@ -1100,7 +1100,7 @@ export const menuItems: MenuItem[] = [
       ur: 'سکیم سہایک',
     },
     icon: ScrollText,
-    path: "/yojana-mitra",
+    path: "/scheme-sahayak",
   },
   {
     label: {
@@ -1323,7 +1323,7 @@ export const features: Feature[] = [
     title: { en: 'Scheme Sahayak', hi: 'स्कीम सहायक', ta: 'திட்டம் சஹாயக்', bn: 'স্কিম সহায়ক', te: 'స్కీమ్ సహాయక్' },
     description: { en: "Keeps you informed of subsidies, training, and schemes you are eligible for.", hi: "आपको सब्सिडी, प्रशिक्षण और योजनाओं के बारे में सूचित रखता है जिनके लिए आप पात्र हैं।", ta: " மானியங்கள், பயிற்சி மற்றும் நீங்கள் தகுதியுள்ள திட்டங்கள் குறித்து உங்களுக்குத் தெரிவிக்கிறது.", bn: "আপনাকে ভর্তুকি, প্রশিক্ষণ এবং স্কিম সম্পর্কে অবহিত রাখে যার জন্য আপনি যোগ্য।", te: "మీరు అర్హులైన సబ్సిడీలు, శిక్షణ మరియు పథకాల గురించి మీకు తెలియజేస్తుంది." },
     icon: ScrollText,
-    path: "/yojana-mitra",
+    path: "/scheme-sahayak",
     color: "text-purple-500",
   },
   {

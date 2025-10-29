@@ -3,10 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { uid: string } }
+    { params }: { params: Promise<{ uid: string }> }
 ) {
     try {
-        const { uid } = params;
+        const { uid } = await params;
 
         if (!uid) {
             return NextResponse.json(
@@ -49,10 +49,10 @@ export async function GET(
 
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { uid: string } }
+    { params }: { params: Promise<{ uid: string }> }
 ) {
     try {
-        const { uid } = params;
+        const { uid } = await params;
         const updateData = await request.json();
 
         if (!uid) {
@@ -97,10 +97,10 @@ export async function PUT(
 
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { uid: string } }
+    { params }: { params: Promise<{ uid: string }> }
 ) {
     try {
-        const { uid } = params;
+        const { uid } = await params;
 
         if (!uid) {
             return NextResponse.json(

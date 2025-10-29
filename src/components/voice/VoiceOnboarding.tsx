@@ -164,7 +164,7 @@ export function VoiceOnboarding() {
         router.push('/finance/dashboard');
         toast({ title: "💰 Voice Navigation", description: "Opening finance dashboard" });
       } else if (lowerCommand.includes('schemes') || lowerCommand.includes('government')) {
-        router.push('/yojana-mitra');
+        router.push('/scheme-sahayak');
         toast({ title: "🏛️ Voice Navigation", description: "Opening government schemes" });
       } else if (lowerCommand.includes('finish') || lowerCommand.includes('complete') || lowerCommand.includes('done')) {
         finishOnboarding();

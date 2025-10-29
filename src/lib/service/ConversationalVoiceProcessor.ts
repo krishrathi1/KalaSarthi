@@ -189,8 +189,8 @@ export class ConversationalVoiceProcessor {
       'inventory': '/dashboard/inventory',
       'trust layer': '/trust-layer',
       'certicraft': '/trust-layer',
-      'govt schemes': '/yojana-mitra',
-      'schemes': '/yojana-mitra',
+      'govt schemes': '/scheme-sahayak',
+      'schemes': '/scheme-sahayak',
       'archived': '/archived',
       'drafts': '/drafts'
     };

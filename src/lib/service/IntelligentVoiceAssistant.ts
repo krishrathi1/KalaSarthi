@@ -214,9 +214,10 @@ Examples:
       'buyer connect': '/matchmaking',
       'trust layer': '/trust-layer',
       'certicraft': '/trust-layer',
-      'govt schemes': '/yojana-mitra',
-      'schemes': '/yojana-mitra',
-      'yojana mitra': '/yojana-mitra',
+      'govt schemes': '/scheme-sahayak',
+      'schemes': '/scheme-sahayak',
+      'yojana mitra': '/scheme-sahayak',
+      'scheme sahayak': '/scheme-sahayak',
       'settings': '/settings',
       'help': '/help'
     };

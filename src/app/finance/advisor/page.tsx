@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useAuth } from '@/context/auth-context';
+import EnhancedFinanceAdvisorService, { EnhancedFinanceAdvisorOutput } from '@/lib/services/EnhancedFinanceAdvisorService';
+import { PredictiveInsightsPanel } from '@/components/finance';
 import { 
   MessageSquare, 
   TrendingUp, 
@@ -22,29 +26,25 @@ import {
   Bot,
   User,
   Send,
-  Loader2
+  Loader2,
+  Wifi,
+  WifiOff,
+  Zap,
+  Clock,
+  Activity
 } from 'lucide-react';
 
 interface FinancialQuery {
   id: string;
   query: string;
   timestamp: Date;
-  response?: FinancialResponse;
+  response?: EnhancedFinancialResponse;
   status: 'pending' | 'processing' | 'completed' | 'error';
+  useRealtimeData: boolean;
 }
 
-interface FinancialResponse {
-  response: string;
-  insights: string[];
-  recommendations: string[];
-  dataPoints: {
-    revenue?: number;
-    units?: number;
-    growth?: number;
-    margin?: number;
-  };
-  nextSteps: string[];
-  confidence: number;
+interface EnhancedFinancialResponse extends EnhancedFinanceAdvisorOutput {
+  // Additional UI-specific properties can be added here
 }
 
 const exampleQueries = [
@@ -59,11 +59,31 @@ const exampleQueries = [
 ];
 
 export default function FinanceAdvisor() {
+  const { userProfile } = useAuth();
   const [query, setQuery] = useState('');
   const [queries, setQueries] = useState<FinancialQuery[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedTimeRange, setSelectedTimeRange] = useState('month');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [useRealtimeData, setUseRealtimeData] = useState(true);
+  const [realtimeInsights, setRealtimeInsights] = useState<any>(null);
+  
+  const artisanId = userProfile?.uid || 'dev_bulchandani_001';
+  const advisorService = EnhancedFinanceAdvisorService.getInstance();
+
+  // Load real-time insights on component mount
+  useEffect(() => {
+    loadRealtimeInsights();
+  }, [artisanId]);
+
+  const loadRealtimeInsights = async () => {
+    try {
+      const insights = await advisorService.getRealtimeFinancialInsights(artisanId);
+      setRealtimeInsights(insights);
+    } catch (error) {
+      console.error('Error loading real-time insights:', error);
+    }
+  };
 
   const handleSubmitQuery = async () => {
     if (!query.trim()) return;
@@ -73,6 +93,7 @@ export default function FinanceAdvisor() {
       query: query.trim(),
       timestamp: new Date(),
       status: 'pending',
+      useRealtimeData,
     };
 
     setQueries(prev => [newQuery, ...prev]);
@@ -80,19 +101,33 @@ export default function FinanceAdvisor() {
     setIsProcessing(true);
 
     try {
-      // Simulate AI processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Update status to processing
+      setQueries(prev => prev.map(q => 
+        q.id === newQuery.id 
+          ? { ...q, status: 'processing' }
+          : q
+      ));
 
-      // Mock response for demonstration
-      const mockResponse: FinancialResponse = generateMockResponse(newQuery.query);
+      // Call enhanced advisor service
+      const response = await advisorService.consultWithRealtimeData({
+        userId: artisanId,
+        query: newQuery.query,
+        context: {
+          artisanId,
+          timeRange: selectedTimeRange as any,
+          category: selectedCategory !== 'all' ? selectedCategory : undefined,
+        },
+        includeRealtimeData: useRealtimeData
+      });
       
       setQueries(prev => prev.map(q => 
         q.id === newQuery.id 
-          ? { ...q, response: mockResponse, status: 'completed' }
+          ? { ...q, response, status: 'completed' }
           : q
       ));
 
     } catch (error) {
+      console.error('Error processing query:', error);
       setQueries(prev => prev.map(q => 
         q.id === newQuery.id 
           ? { ...q, status: 'error' }
@@ -212,24 +247,97 @@ export default function FinanceAdvisor() {
       <div className="text-center space-y-4">
         <div className="flex items-center justify-center space-x-2">
           <Bot className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold">Finance Advisor</h1>
+          <h1 className="text-3xl font-bold">Enhanced Finance Advisor</h1>
         </div>
         <p className="text-muted-foreground max-w-2xl mx-auto">
-          Ask me anything about your finances, sales performance, or business strategy. 
-          I'll analyze your data and provide actionable insights and recommendations.
+          AI-powered financial advisor with real-time Firestore data integration. 
+          Get instant insights, recommendations, and analysis based on your live business data.
         </p>
       </div>
+
+      {/* Real-time Insights Panel */}
+      {realtimeInsights && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5" />
+              Live Business Insights
+            </CardTitle>
+            <CardDescription>
+              Real-time analysis of your current business performance
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Insights */}
+              <div>
+                <h4 className="font-medium text-sm mb-2 flex items-center gap-1">
+                  <Lightbulb className="h-4 w-4 text-yellow-500" />
+                  Key Insights
+                </h4>
+                <ul className="space-y-1">
+                  {realtimeInsights.insights.slice(0, 3).map((insight: string, index: number) => (
+                    <li key={index} className="text-xs text-muted-foreground">• {insight}</li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Recommendations */}
+              <div>
+                <h4 className="font-medium text-sm mb-2 flex items-center gap-1">
+                  <Target className="h-4 w-4 text-green-500" />
+                  Quick Actions
+                </h4>
+                <ul className="space-y-1">
+                  {realtimeInsights.recommendations.slice(0, 3).map((rec: string, index: number) => (
+                    <li key={index} className="text-xs text-muted-foreground">• {rec}</li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Alerts */}
+              <div>
+                <h4 className="font-medium text-sm mb-2 flex items-center gap-1">
+                  <AlertCircle className="h-4 w-4 text-red-500" />
+                  Alerts
+                </h4>
+                <ul className="space-y-1">
+                  {realtimeInsights.alerts.length > 0 ? 
+                    realtimeInsights.alerts.slice(0, 3).map((alert: string, index: number) => (
+                      <li key={index} className="text-xs text-muted-foreground">• {alert}</li>
+                    )) : 
+                    <li className="text-xs text-muted-foreground">• No alerts</li>
+                  }
+                </ul>
+              </div>
+
+              {/* Opportunities */}
+              <div>
+                <h4 className="font-medium text-sm mb-2 flex items-center gap-1">
+                  <TrendingUp className="h-4 w-4 text-blue-500" />
+                  Opportunities
+                </h4>
+                <ul className="space-y-1">
+                  {realtimeInsights.opportunities.slice(0, 3).map((opp: string, index: number) => (
+                    <li key={index} className="text-xs text-muted-foreground">• {opp}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Query Input */}
       <Card>
         <CardHeader>
           <CardTitle>Ask Your Financial Question</CardTitle>
           <CardDescription>
-            Describe what you'd like to know about your business performance
+            Get AI-powered insights with real-time data integration
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-4">
+          <div className="flex gap-4 flex-wrap">
             <Select value={selectedTimeRange} onValueChange={setSelectedTimeRange}>
               <SelectTrigger className="w-32">
                 <SelectValue />
@@ -252,6 +360,14 @@ export default function FinanceAdvisor() {
                 <SelectItem value="jewelry">Jewelry</SelectItem>
               </SelectContent>
             </Select>
+            <Button
+              variant={useRealtimeData ? "default" : "outline"}
+              size="sm"
+              onClick={() => setUseRealtimeData(!useRealtimeData)}
+            >
+              {useRealtimeData ? <Wifi className="h-4 w-4 mr-2" /> : <WifiOff className="h-4 w-4 mr-2" />}
+              {useRealtimeData ? 'Real-time Data' : 'Cached Data'}
+            </Button>
           </div>
           
           <div className="flex gap-2">
@@ -299,6 +415,9 @@ export default function FinanceAdvisor() {
         </CardContent>
       </Card>
 
+      {/* Predictive Insights Panel */}
+      <PredictiveInsightsPanel artisanId={artisanId} />
+
       {/* Query History */}
       <div className="space-y-4">
         <h2 className="text-xl font-semibold">Recent Queries</h2>
@@ -342,17 +461,73 @@ export default function FinanceAdvisor() {
                   {/* AI Response */}
                   {queryItem.status === 'completed' && queryItem.response && (
                     <div className="space-y-4">
-                      <div className="flex items-center space-x-2">
-                        <Bot className="h-4 w-4 text-primary" />
-                        <span className="font-medium">AI Analysis</span>
-                        <Badge className={getConfidenceColor(queryItem.response.confidence)}>
-                          {getConfidenceLabel(queryItem.response.confidence)}
-                        </Badge>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Bot className="h-4 w-4 text-primary" />
+                          <span className="font-medium">Enhanced AI Analysis</span>
+                          <Badge className={getConfidenceColor(queryItem.response.confidence)}>
+                            {getConfidenceLabel(queryItem.response.confidence)}
+                          </Badge>
+                        </div>
+                        {queryItem.useRealtimeData && (
+                          <Badge variant="default" className="flex items-center gap-1">
+                            <Zap className="h-3 w-3" />
+                            Real-time Data
+                          </Badge>
+                        )}
                       </div>
 
                       <div className="bg-muted/20 p-4 rounded-lg">
                         <p>{queryItem.response.response}</p>
                       </div>
+
+                      {/* Real-time Insights */}
+                      {queryItem.response.realtimeInsights && (
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                          <h4 className="font-medium mb-2 flex items-center">
+                            <Activity className="h-4 w-4 text-blue-500 mr-2" />
+                            Live Business Metrics
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                            <div className="text-center">
+                              <p className="text-lg font-bold text-green-600">
+                                ₹{queryItem.response.realtimeInsights.liveMetrics.currentRevenue.toLocaleString()}
+                              </p>
+                              <p className="text-xs text-muted-foreground">Today's Revenue</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-lg font-bold text-blue-600">
+                                {queryItem.response.realtimeInsights.liveMetrics.todayOrders}
+                              </p>
+                              <p className="text-xs text-muted-foreground">Today's Orders</p>
+                            </div>
+                            <div className="text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                {queryItem.response.realtimeInsights.dataFreshness.isLive ? (
+                                  <Wifi className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <WifiOff className="h-4 w-4 text-red-500" />
+                                )}
+                                <span className="text-sm font-medium">
+                                  {queryItem.response.realtimeInsights.dataFreshness.isLive ? 'Live' : 'Cached'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground">Data Status</p>
+                            </div>
+                          </div>
+                          
+                          {queryItem.response.realtimeInsights.liveMetrics.recentTrends.length > 0 && (
+                            <div>
+                              <p className="text-sm font-medium mb-1">Recent Trends:</p>
+                              <ul className="space-y-1">
+                                {queryItem.response.realtimeInsights.liveMetrics.recentTrends.map((trend, index) => (
+                                  <li key={index} className="text-xs text-muted-foreground">• {trend}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {/* Key Insights */}
                       <div>
@@ -386,8 +561,27 @@ export default function FinanceAdvisor() {
                         </ul>
                       </div>
 
+                      {/* Urgent Recommendations */}
+                      {queryItem.response.realtimeInsights?.urgentRecommendations && 
+                       queryItem.response.realtimeInsights.urgentRecommendations.length > 0 && (
+                        <div className="bg-orange-50 p-4 rounded-lg">
+                          <h4 className="font-medium mb-2 flex items-center">
+                            <AlertCircle className="h-4 w-4 text-orange-500 mr-2" />
+                            Urgent Actions Required
+                          </h4>
+                          <ul className="space-y-1">
+                            {queryItem.response.realtimeInsights.urgentRecommendations.map((rec, index) => (
+                              <li key={index} className="flex items-start space-x-2">
+                                <AlertCircle className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                                <span className="text-sm font-medium">{rec}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
                       {/* Data Points */}
-                      {Object.keys(queryItem.response.dataPoints).length > 0 && (
+                      {queryItem.response.dataPoints && Object.keys(queryItem.response.dataPoints).length > 0 && (
                         <div>
                           <h4 className="font-medium mb-2">Key Metrics</h4>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -400,7 +594,7 @@ export default function FinanceAdvisor() {
                                 <p className="text-xs text-muted-foreground">Revenue</p>
                               </div>
                             )}
-                            {queryItem.response.dataPoints.growth && (
+                            {queryItem.response.dataPoints.growth !== undefined && (
                               <div className="text-center p-3 bg-blue-50 rounded-lg">
                                 <TrendingUp className="h-6 w-6 text-blue-500 mx-auto mb-1" />
                                 <p className="text-sm font-medium">
@@ -438,6 +632,20 @@ export default function FinanceAdvisor() {
                           ))}
                         </ul>
                       </div>
+
+                      {/* Data Freshness Info */}
+                      {queryItem.response.realtimeInsights?.dataFreshness && (
+                        <div className="text-xs text-muted-foreground border-t pt-2">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-3 w-3" />
+                            <span>
+                              Data updated: {queryItem.response.realtimeInsights.dataFreshness.lastUpdated.toLocaleString()}
+                            </span>
+                            <span>•</span>
+                            <span>Status: {queryItem.response.realtimeInsights.dataFreshness.cacheStatus}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 

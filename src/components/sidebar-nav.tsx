@@ -65,7 +65,7 @@ export function SidebarNav() {
         '/arth-saarthi',
         '/artisan-buddy',
         '/enhanced-artisan-buddy',
-        '/yojana-mitra',
+        '/scheme-sahayak',
         '/voice-enrollment',
         '/trust-layer',
         '/buyer-connect',

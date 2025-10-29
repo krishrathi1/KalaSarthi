@@ -1,8 +1,12 @@
 // Service Worker for KalaSarthi Offline Support
-const CACHE_NAME = 'kalabandhu-v1.0.0';
-const STATIC_CACHE = 'kalabandhu-static-v1.0.0';
-const DYNAMIC_CACHE = 'kalabandhu-dynamic-v1.0.0';
-const API_CACHE = 'kalabandhu-api-v1.0.0';
+const CACHE_NAME = 'kalabandhu-v1.1.0';
+const STATIC_CACHE = 'kalabandhu-static-v1.1.0';
+const DYNAMIC_CACHE = 'kalabandhu-dynamic-v1.1.0';
+const API_CACHE = 'kalabandhu-api-v1.1.0';
+const SCHEME_CACHE = 'kalabandhu-scheme-v1.1.0';
+
+// Cache duration (7 days for scheme data)
+const SCHEME_CACHE_DURATION = 7 * 24 * 60 * 60 * 1000;
 
 // Files to cache for offline functionality
 const STATIC_FILES = [
@@ -15,6 +19,7 @@ const STATIC_FILES = [
     '/multi-marketplace',
     '/profile',
     '/auth',
+    '/scheme-sahayak',
     '/manifest.json',
     '/offline.html'
 ];
@@ -26,7 +31,9 @@ const API_ENDPOINTS = [
     '/api/products',
     '/api/cart',
     '/api/wishlist',
-    '/api/users'
+    '/api/users',
+    '/api/scheme-sahayak',
+    '/api/enhanced-schemes-v2'
 ];
 
 // Install event - cache static files
@@ -259,7 +266,74 @@ async function doBackgroundSync() {
 }
 
 async function syncOfflineData() {
-    // This would sync any offline changes back to the server
-    // Implementation depends on specific data that needs syncing
-    console.log('Syncing offline data...');
+    // Open IndexedDB to get pending sync items
+    const db = await openDatabase();
+    if (!db) return;
+
+    const transaction = db.transaction(['applications'], 'readonly');
+    const store = transaction.objectStore('applications');
+    const index = store.index('status');
+    const request = index.getAll('pending_sync');
+
+    request.onsuccess = async () => {
+        const pendingApps = request.result || [];
+        
+        for (const app of pendingApps) {
+            try {
+                // Attempt to sync each application
+                const response = await fetch('/api/scheme-sahayak/applications', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(app)
+                });
+
+                if (response.ok) {
+                    // Remove from IndexedDB after successful sync
+                    const deleteTransaction = db.transaction(['applications'], 'readwrite');
+                    const deleteStore = deleteTransaction.objectStore('applications');
+                    deleteStore.delete(app.id);
+                }
+            } catch (error) {
+                console.error('Failed to sync application:', app.id, error);
+            }
+        }
+    };
+}
+
+async function openDatabase() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('scheme-sahayak-offline', 1);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => {
+            console.error('Failed to open database');
+            resolve(null);
+        };
+    });
+}
+
+// Cache scheme data with 7-day expiration
+async function cacheSchemeData(request, response) {
+    const cache = await caches.open(SCHEME_CACHE);
+    const clonedResponse = response.clone();
+    
+    // Add timestamp to response headers
+    const headers = new Headers(clonedResponse.headers);
+    headers.set('sw-cache-timestamp', Date.now().toString());
+    
+    const modifiedResponse = new Response(clonedResponse.body, {
+        status: clonedResponse.status,
+        statusText: clonedResponse.statusText,
+        headers: headers
+    });
+    
+    await cache.put(request, modifiedResponse);
+}
+
+// Check if cached scheme data is still valid (within 7 days)
+async function isSchemeDataValid(response) {
+    const timestamp = response.headers.get('sw-cache-timestamp');
+    if (!timestamp) return false;
+    
+    const age = Date.now() - parseInt(timestamp);
+    return age < SCHEME_CACHE_DURATION;
 }

@@ -106,7 +106,7 @@ export function YojanaMitra() {
   };
 
   return (
-    <Card id="yojana-mitra">
+    <Card id="scheme-sahayak">
       <CardHeader>
         <CardTitle className="font-headline flex items-center gap-2">
           <ScrollText className="size-6 text-primary" />

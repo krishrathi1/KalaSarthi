@@ -16,7 +16,7 @@ export function useRoleBasedAccess() {
     '/dashboard/inventory',
     '/smart-product-creator',
     '/arth-saarthi',
-    '/yojana-mitra',
+    '/scheme-sahayak',
 
     '/voice-enrollment',
     '/trust-layer'
