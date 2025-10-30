@@ -11,6 +11,14 @@ export interface KalaSarthiFeature {
     useCases: string[];
     targetUsers: string[];
     category: string;
+    multilingual?: {
+        [language: string]: {
+            name: string;
+            description: string;
+            useCases: string[];
+            keywords: string[];
+        };
+    };
 }
 
 export interface AINavigationResult {
@@ -34,6 +42,7 @@ export class AIVoiceNavigationService {
     private static instance: AIVoiceNavigationService;
     private features: KalaSarthiFeature[] = [];
     private isInitialized = false;
+    private supportedLanguages = ['en', 'hi', 'bn', 'ta', 'te', 'mr', 'gu', 'kn', 'ml', 'pa'];
 
     private constructor() {
         this.initializeKalaSarthiFeatures();
@@ -62,7 +71,30 @@ export class AIVoiceNavigationService {
                     "Get insights on seasonal demand changes"
                 ],
                 targetUsers: ["Market researchers", "Product developers", "Business strategists", "Artisans looking for opportunities"],
-                category: "analytics"
+                category: "analytics",
+                multilingual: {
+                    "hi": {
+                        name: "ट्रेंड स्पॉटर",
+                        description: "बाजार की प्रवृत्तियों का विश्लेषण और वायरल उत्पादों की पहचान",
+                        useCases: [
+                            "बाजार में ट्रेंडिंग उत्पादों की पहचान करें",
+                            "उपभोक्ता मांग पैटर्न का विश्लेषण करें",
+                            "भविष्य के बाजार रुझानों का पूर्वानुमान लगाएं",
+                            "वायरल उत्पाद के अवसरों की खोज करें"
+                        ],
+                        keywords: ["ट्रेंड", "बाजार", "विश्लेषण", "मांग", "उत्पाद", "लोकप्रिय", "वायरल"]
+                    },
+                    "bn": {
+                        name: "ট্রেন্ড স্পটার",
+                        description: "বাজারের প্রবণতা বিশ্লেষণ এবং ভাইরাল পণ্য সনাক্তকরণ",
+                        useCases: [
+                            "বাজারে ট্রেন্ডিং পণ্য চিহ্নিত করুন",
+                            "ভোক্তা চাহিদার ধরন বিশ্লেষণ করুন",
+                            "ভবিষ্যতের বাজারের প্রবণতা পূর্বাভাস দিন"
+                        ],
+                        keywords: ["ট্রেন্ড", "বাজার", "বিশ্লেষণ", "চাহিদা", "পণ্য", "জনপ্রিয়"]
+                    }
+                }
             },
             {
                 name: "Artisan Buddy",
@@ -78,7 +110,28 @@ export class AIVoiceNavigationService {
                     "Access market insights for craft products"
                 ],
                 targetUsers: ["Traditional artisans", "Craft makers", "Small business owners", "Skill learners"],
-                category: "assistance"
+                category: "assistance",
+                multilingual: {
+                    "hi": {
+                        name: "कारीगर मित्र",
+                        description: "पारंपरिक कारीगरों के लिए व्यक्तिगत मार्गदर्शन और सहायता",
+                        useCases: [
+                            "पारंपरिक शिल्प तकनीकों पर मार्गदर्शन प्राप्त करें",
+                            "कारीगर उद्यमों के लिए व्यावसायिक सलाह प्राप्त करें",
+                            "नए कौशल सीखें और शिल्पकारी में सुधार करें"
+                        ],
+                        keywords: ["कारीगर", "शिल्प", "मदद", "सहायक", "मार्गदर्शन", "सलाह", "कौशल"]
+                    },
+                    "bn": {
+                        name: "কারিগর বন্ধু",
+                        description: "ঐতিহ্যবাহী কারিগরদের জন্য ব্যক্তিগত নির্দেশনা এবং সহায়তা",
+                        useCases: [
+                            "ঐতিহ্যবাহী কারুশিল্প কৌশলে নির্দেশনা পান",
+                            "কারিগর উদ্যোগের জন্য ব্যবসায়িক পরামর্শ নিন"
+                        ],
+                        keywords: ["কারিগর", "শিল্প", "সাহায্য", "গাইড", "পরামর্শ", "দক্ষতা"]
+                    }
+                }
             },
             {
                 name: "Dashboard",
@@ -94,7 +147,28 @@ export class AIVoiceNavigationService {
                     "Quick navigation to all features"
                 ],
                 targetUsers: ["All users", "Business owners", "Platform administrators", "Data analysts"],
-                category: "overview"
+                category: "overview",
+                multilingual: {
+                    "hi": {
+                        name: "डैशबोर्ड",
+                        description: "सभी कलासार्थी गतिविधियों का व्यापक अवलोकन प्रदान करने वाला केंद्रीय नियंत्रण पैनल",
+                        useCases: [
+                            "समग्र प्लेटफॉर्म गतिविधि सारांश देखें",
+                            "प्रदर्शन मेट्रिक्स और आंकड़े जांचें",
+                            "हाल के लेनदेन और ऑर्डर तक पहुंचें"
+                        ],
+                        keywords: ["डैशबोर्ड", "अवलोकन", "मुख्य", "होम", "नियंत्रण", "पैनल", "आंकड़े"]
+                    },
+                    "bn": {
+                        name: "ড্যাশবোর্ড",
+                        description: "সমস্ত কলাসার্থি কার্যক্রমের ব্যাপক ওভারভিউ প্রদানকারী কেন্द্রীয় নিয়ন্ত্রণ প্যানেল",
+                        useCases: [
+                            "সামগ্রিক প্ল্যাটফর্ম কার্যকলাপের সারসংক্ষেপ দেখুন",
+                            "পারফরম্যান্স মেট্রিক্স এবং পরিসংখ্যান পরীক্ষা করুন"
+                        ],
+                        keywords: ["ড্যাশবোর্ড", "ওভারভিউ", "মূল", "হোম", "নিয়ন্ত্রণ", "প্যানেল"]
+                    }
+                }
             },
             {
                 name: "Smart Product Creator",
@@ -206,11 +280,61 @@ export class AIVoiceNavigationService {
                     "Analyze financial performance trends"
                 ],
                 targetUsers: ["Business owners", "Accountants", "Financial managers", "Small entrepreneurs"],
-                category: "finance"
+                category: "finance",
+                multilingual: {
+                    "hi": {
+                        name: "डिजिटल खाता",
+                        description: "डिजिटल लेखांकन और वित्तीय प्रबंधन प्रणाली",
+                        useCases: [
+                            "डिजिटल वित्तीय रिकॉर्ड बनाए रखें",
+                            "दैनिक आय और व्यय को ट्रैक करें",
+                            "वित्तीय रिपोर्ट और स्टेटमेंट जेनरेट करें",
+                            "कैश फ्लो और लाभप्रदता की निगरानी करें"
+                        ],
+                        keywords: ["खाता", "लेखा", "वित्त", "पैसा", "आय", "व्यय", "हिसाब", "किताब"]
+                    },
+                    "bn": {
+                        name: "ডিজিটাল খাতা",
+                        description: "ডিজিটাল হিসাবরক্ষণ এবং আর্থিক ব্যবস্থাপনা সিস্টেম",
+                        useCases: [
+                            "ডিজিটাল আর্থিক রেকর্ড বজায় রাখুন",
+                            "দৈনিক আয় এবং ব্যয় ট্র্যাক করুন",
+                            "আর্থিক প্রতিবেদন তৈরি করুন"
+                        ],
+                        keywords: ["খাতা", "হিসাব", "অর্থ", "টাকা", "আয়", "ব্যয়", "লেখা"]
+                    }
+                }
             }
         ];
 
         this.isInitialized = true;
+    }
+
+    /**
+     * Detect language of the input text
+     */
+    private detectLanguage(text: string): string {
+        // Simple language detection based on character patterns
+        const hindiPattern = /[\u0900-\u097F]/;
+        const bengaliPattern = /[\u0980-\u09FF]/;
+        const tamilPattern = /[\u0B80-\u0BFF]/;
+        const teluguPattern = /[\u0C00-\u0C7F]/;
+        const marathiPattern = /[\u0900-\u097F]/; // Similar to Hindi
+        const gujaratiPattern = /[\u0A80-\u0AFF]/;
+        const kannadaPattern = /[\u0C80-\u0CFF]/;
+        const malayalamPattern = /[\u0D00-\u0D7F]/;
+        const punjabiPattern = /[\u0A00-\u0A7F]/;
+
+        if (hindiPattern.test(text)) return 'hi';
+        if (bengaliPattern.test(text)) return 'bn';
+        if (tamilPattern.test(text)) return 'ta';
+        if (teluguPattern.test(text)) return 'te';
+        if (gujaratiPattern.test(text)) return 'gu';
+        if (kannadaPattern.test(text)) return 'kn';
+        if (malayalamPattern.test(text)) return 'ml';
+        if (punjabiPattern.test(text)) return 'pa';
+
+        return 'en'; // Default to English
     }
 
     /**
@@ -236,8 +360,9 @@ export class AIVoiceNavigationService {
                 };
             }
 
-            // Use AI to analyze the user's intent against feature descriptions
-            const analysisResult = await this.analyzeUserIntentWithAI(voiceInput);
+            // Detect language and analyze user intent
+            const detectedLanguage = this.detectLanguage(voiceInput);
+            const analysisResult = await this.analyzeUserIntentWithAI(voiceInput, detectedLanguage);
 
             if (analysisResult.bestMatch && analysisResult.confidence > 0.3) {
                 const feature = analysisResult.bestMatch;
@@ -251,9 +376,9 @@ export class AIVoiceNavigationService {
                         featureName: feature.name,
                         reasoning: analysisResult.reasoning,
                         matchedConcepts: analysisResult.matchedConcepts,
-                        language: 'en-US'
+                        language: detectedLanguage
                     },
-                    feedback: `Opening ${feature.name} - ${analysisResult.explanation}`,
+                    feedback: `${this.generateMultilingualFeedback(feature, detectedLanguage, 'opening')} - ${analysisResult.explanation}`,
                     executionTime: performance.now() - startTime
                 };
             } else {
@@ -284,7 +409,7 @@ export class AIVoiceNavigationService {
     /**
      * AI-powered analysis of user intent against feature descriptions
      */
-    private async analyzeUserIntentWithAI(userQuery: string): Promise<{
+    private async analyzeUserIntentWithAI(userQuery: string, language: string = 'en'): Promise<{
         bestMatch: KalaSarthiFeature | null;
         confidence: number;
         reasoning: string;
@@ -300,9 +425,9 @@ export class AIVoiceNavigationService {
             matchedConcepts: string[];
         }> = [];
 
-        // Analyze each feature using AI-like processing
+        // Analyze each feature using AI-like processing with multilingual support
         for (const feature of this.features) {
-            const analysis = this.analyzeFeatureMatch(userIntent, feature);
+            const analysis = this.analyzeFeatureMatch(userIntent, feature, language);
             analysisResults.push({
                 feature,
                 score: analysis.score,
@@ -342,9 +467,9 @@ export class AIVoiceNavigationService {
     }
 
     /**
-     * AI-like analysis of how well a user query matches a feature
+     * AI-like analysis of how well a user query matches a feature with multilingual support
      */
-    private analyzeFeatureMatch(userQuery: string, feature: KalaSarthiFeature): {
+    private analyzeFeatureMatch(userQuery: string, feature: KalaSarthiFeature, language: string = 'en'): {
         score: number;
         reasoning: string;
         matchedConcepts: string[];
@@ -353,17 +478,28 @@ export class AIVoiceNavigationService {
         let totalScore = 0;
         let matchReasons: string[] = [];
 
-        // 1. Analyze against feature name (high weight)
-        const nameScore = this.calculateTextSimilarity(userQuery, feature.name.toLowerCase());
-        if (nameScore > 0.3) {
+        // Get multilingual content for the detected language
+        const multilingualContent = feature.multilingual?.[language];
+
+        // 1. Analyze against feature name (high weight) - check both English and local language
+        let nameScore = this.calculateTextSimilarity(userQuery, feature.name.toLowerCase());
+        if (multilingualContent) {
+            const localNameScore = this.calculateTextSimilarity(userQuery, multilingualContent.name.toLowerCase());
+            nameScore = Math.max(nameScore, localNameScore);
+        }
+        if (nameScore > 0.2) { // Lowered threshold for better multilingual matching
             totalScore += nameScore * 0.4; // 40% weight for name match
             matchReasons.push(`name similarity (${(nameScore * 100).toFixed(0)}%)`);
-            matchedConcepts.push(feature.name);
+            matchedConcepts.push(multilingualContent?.name || feature.name);
         }
 
-        // 2. Analyze against description (medium weight)
-        const descScore = this.calculateTextSimilarity(userQuery, feature.description.toLowerCase());
-        if (descScore > 0.2) {
+        // 2. Analyze against description (medium weight) - check both languages
+        let descScore = this.calculateTextSimilarity(userQuery, feature.description.toLowerCase());
+        if (multilingualContent) {
+            const localDescScore = this.calculateTextSimilarity(userQuery, multilingualContent.description.toLowerCase());
+            descScore = Math.max(descScore, localDescScore);
+        }
+        if (descScore > 0.15) { // Lowered threshold
             totalScore += descScore * 0.3; // 30% weight for description match
             matchReasons.push(`description relevance (${(descScore * 100).toFixed(0)}%)`);
         }
@@ -375,19 +511,41 @@ export class AIVoiceNavigationService {
             matchReasons.push(`detailed functionality match (${(detailedScore * 100).toFixed(0)}%)`);
         }
 
-        // 4. Analyze against use cases (low weight but important for intent)
+        // 4. Analyze against use cases (enhanced with multilingual support)
         let useCaseScore = 0;
 
+        // Check English use cases
         for (const useCase of feature.useCases) {
             const caseScore = this.calculateTextSimilarity(userQuery, useCase.toLowerCase());
-            if (caseScore > 0.2) {
+            if (caseScore > 0.15) { // Lowered threshold
                 useCaseScore = Math.max(useCaseScore, caseScore);
                 matchedConcepts.push(useCase);
             }
         }
 
+        // Check multilingual use cases
+        if (multilingualContent?.useCases) {
+            for (const useCase of multilingualContent.useCases) {
+                const caseScore = this.calculateTextSimilarity(userQuery, useCase.toLowerCase());
+                if (caseScore > 0.15) {
+                    useCaseScore = Math.max(useCaseScore, caseScore);
+                    matchedConcepts.push(useCase);
+                }
+            }
+        }
+
+        // Check multilingual keywords
+        if (multilingualContent?.keywords) {
+            for (const keyword of multilingualContent.keywords) {
+                if (userQuery.includes(keyword.toLowerCase())) {
+                    useCaseScore = Math.max(useCaseScore, 0.8); // High score for direct keyword match
+                    matchedConcepts.push(keyword);
+                }
+            }
+        }
+
         if (useCaseScore > 0) {
-            totalScore += useCaseScore * 0.1; // 10% weight for use case match
+            totalScore += useCaseScore * 0.2; // Increased weight for use case match
             matchReasons.push(`use case alignment (${(useCaseScore * 100).toFixed(0)}%)`);
         }
 
@@ -411,35 +569,66 @@ export class AIVoiceNavigationService {
     }
 
     /**
-     * Calculate text similarity using multiple techniques
+     * Calculate text similarity using multiple enhanced techniques
      */
     private calculateTextSimilarity(text1: string, text2: string): number {
-        // Exact phrase match
-        if (text1 === text2) return 1.0;
-        if (text1.includes(text2) || text2.includes(text1)) return 0.8;
+        // Normalize texts
+        const normalizedText1 = text1.toLowerCase().trim();
+        const normalizedText2 = text2.toLowerCase().trim();
 
-        const words1 = text1.split(/\s+/).filter(word => word.length > 2);
-        const words2 = text2.split(/\s+/).filter(word => word.length > 2);
+        // Exact phrase match
+        if (normalizedText1 === normalizedText2) return 1.0;
+
+        // Substring match (higher score for longer matches)
+        if (normalizedText1.includes(normalizedText2)) {
+            return 0.9 * (normalizedText2.length / normalizedText1.length);
+        }
+        if (normalizedText2.includes(normalizedText1)) {
+            return 0.9 * (normalizedText1.length / normalizedText2.length);
+        }
+
+        // Word-based analysis
+        const words1 = normalizedText1.split(/\s+/).filter(word => word.length > 1); // Reduced minimum length
+        const words2 = normalizedText2.split(/\s+/).filter(word => word.length > 1);
 
         if (words1.length === 0 || words2.length === 0) return 0;
 
-        // Word overlap analysis
+        // Enhanced word overlap analysis with position weighting
+        let totalScore = 0;
         let matchedWords = 0;
-        const totalWords = Math.max(words1.length, words2.length);
+        const maxWords = Math.max(words1.length, words2.length);
 
-        for (const word1 of words1) {
-            for (const word2 of words2) {
+        for (let i = 0; i < words1.length; i++) {
+            let bestMatch = 0;
+            for (let j = 0; j < words2.length; j++) {
+                const word1 = words1[i];
+                const word2 = words2[j];
+
                 if (word1 === word2) {
-                    matchedWords += 1;
+                    bestMatch = 1.0;
                     break;
                 } else if (this.areWordsSimilar(word1, word2)) {
-                    matchedWords += 0.7; // Partial credit for similar words
-                    break;
+                    bestMatch = Math.max(bestMatch, 0.8);
+                } else if (word1.includes(word2) || word2.includes(word1)) {
+                    const similarity = Math.min(word1.length, word2.length) / Math.max(word1.length, word2.length);
+                    bestMatch = Math.max(bestMatch, similarity * 0.6);
                 }
+            }
+
+            if (bestMatch > 0) {
+                matchedWords++;
+                totalScore += bestMatch;
             }
         }
 
-        return matchedWords / totalWords;
+        // Calculate final similarity score
+        const wordOverlapScore = totalScore / maxWords;
+
+        // Bonus for high match percentage
+        const matchPercentage = matchedWords / Math.min(words1.length, words2.length);
+        const bonus = matchPercentage > 0.5 ? 0.1 : 0;
+
+        return Math.min(wordOverlapScore + bonus, 1.0);
     }
 
     /**
@@ -474,6 +663,29 @@ export class AIVoiceNavigationService {
     }
 
     /**
+     * Generate multilingual feedback message
+     */
+    private generateMultilingualFeedback(feature: KalaSarthiFeature, language: string, action: 'opening' | 'suggesting'): string {
+        const feedbackTemplates = {
+            opening: {
+                en: `Opening ${feature.name}`,
+                hi: `${feature.multilingual?.hi?.name || feature.name} खोला जा रहा है`,
+                bn: `${feature.multilingual?.bn?.name || feature.name} খোলা হচ্ছে`
+            },
+            suggesting: {
+                en: `Did you mean ${feature.name}?`,
+                hi: `क्या आपका मतलब ${feature.multilingual?.hi?.name || feature.name} था?`,
+                bn: `আপনি কি ${feature.multilingual?.bn?.name || feature.name} বোঝাতে চেয়েছিলেন?`
+            }
+        };
+
+        const template = feedbackTemplates[action][language as keyof typeof feedbackTemplates.opening] ||
+            feedbackTemplates[action].en;
+
+        return template;
+    }
+
+    /**
      * Get alignment score between feature category and user intent
      */
     private getCategoryIntentAlignment(category: string, intentType: string): number {
@@ -492,37 +704,100 @@ export class AIVoiceNavigationService {
     }
 
     /**
-     * Check if two words are semantically similar
+     * Check if two words are semantically similar with multilingual support
      */
     private areWordsSimilar(word1: string, word2: string): boolean {
-        // Semantic word relationships
+        // Enhanced semantic word relationships with multilingual terms
         const semanticGroups = {
-            creation: ['create', 'make', 'build', 'develop', 'generate', 'produce', 'craft', 'design'],
-            analysis: ['analyze', 'check', 'study', 'examine', 'review', 'assess', 'evaluate'],
-            assistance: ['help', 'support', 'guide', 'assist', 'mentor', 'advice', 'aid'],
-            financial: ['money', 'finance', 'accounting', 'budget', 'cash', 'payment', 'income', 'expense'],
-            business: ['business', 'commerce', 'trade', 'market', 'sales', 'profit', 'revenue'],
-            management: ['manage', 'control', 'organize', 'handle', 'maintain', 'operate', 'track']
+            creation: {
+                en: ['create', 'make', 'build', 'develop', 'generate', 'produce', 'craft', 'design', 'new', 'add'],
+                hi: ['बनाना', 'बनाएं', 'तैयार', 'विकसित', 'नया', 'जोड़ना', 'डिजाइन'],
+                bn: ['তৈরি', 'বানান', 'নতুন', 'যোগ', 'ডিজাইন']
+            },
+            analysis: {
+                en: ['analyze', 'check', 'study', 'examine', 'review', 'assess', 'evaluate', 'show', 'see', 'view'],
+                hi: ['विश्लेषण', 'जांच', 'देखना', 'दिखाना', 'समीक्षा'],
+                bn: ['বিশ্লেষণ', 'পরীক্ষা', 'দেখা', 'দেখান']
+            },
+            assistance: {
+                en: ['help', 'support', 'guide', 'assist', 'mentor', 'advice', 'aid'],
+                hi: ['मदद', 'सहायता', 'गाइड', 'सलाह', 'सहारा'],
+                bn: ['সাহায্য', 'সহায়তা', 'গাইড', 'পরামর্শ']
+            },
+            financial: {
+                en: ['money', 'finance', 'accounting', 'budget', 'cash', 'payment', 'income', 'expense', 'khata'],
+                hi: ['पैसा', 'वित्त', 'लेखा', 'खाता', 'आय', 'व्यय', 'हिसाब', 'बजट'],
+                bn: ['টাকা', 'অর্থ', 'হিসাব', 'খাতা', 'আয়', 'ব্যয়']
+            },
+            business: {
+                en: ['business', 'commerce', 'trade', 'market', 'sales', 'profit', 'revenue', 'bazaar'],
+                hi: ['व्यापार', 'बाजार', 'बिक्री', 'लाभ', 'बाज़ार'],
+                bn: ['ব্যবসা', 'বাজার', 'বিক্রয়', 'লাভ']
+            },
+            management: {
+                en: ['manage', 'control', 'organize', 'handle', 'maintain', 'operate', 'track', 'inventory'],
+                hi: ['प्रबंधन', 'नियंत्रण', 'व्यवस्थित', 'संचालन', 'ट्रैक'],
+                bn: ['ব্যবস্থাপনা', 'নিয়ন্ত্রণ', 'সংগঠিত', 'ট্র্যাক']
+            },
+            trending: {
+                en: ['trend', 'trending', 'popular', 'viral', 'hot', 'demand'],
+                hi: ['ट्रेंड', 'लोकप्রিय', 'वायरल', 'मांग', 'चलन'],
+                bn: ['ট্রেন্ড', 'জনপ্রিয়', 'ভাইরাল', 'চাহিদা']
+            }
         };
 
-        // Check if words belong to the same semantic group
+        // Check if words belong to the same semantic group across languages
         for (const group of Object.values(semanticGroups)) {
-            if (group.includes(word1) && group.includes(word2)) {
+            const allWords = Object.values(group).flat();
+            if (allWords.includes(word1) && allWords.includes(word2)) {
                 return true;
             }
         }
 
-        // Check for partial string matches
-        if (word1.length > 4 && word2.length > 4) {
+        // Enhanced partial string matching
+        if (word1.length > 3 && word2.length > 3) {
             const longer = word1.length > word2.length ? word1 : word2;
             const shorter = word1.length <= word2.length ? word1 : word2;
 
-            if (longer.includes(shorter) && shorter.length / longer.length > 0.6) {
+            // Check for substring match with lower threshold
+            if (longer.includes(shorter) && shorter.length / longer.length > 0.5) {
+                return true;
+            }
+
+            // Check for common prefixes/suffixes
+            if (word1.substring(0, 3) === word2.substring(0, 3) &&
+                Math.abs(word1.length - word2.length) <= 2) {
                 return true;
             }
         }
 
+        // Check for phonetic similarity (basic)
+        if (this.arePhoneticallySimilar(word1, word2)) {
+            return true;
+        }
+
         return false;
+    }
+
+    /**
+     * Basic phonetic similarity check
+     */
+    private arePhoneticallySimilar(word1: string, word2: string): boolean {
+        // Simple phonetic patterns for common variations
+        const phoneticPairs = [
+            ['ph', 'f'], ['ck', 'k'], ['c', 'k'], ['z', 's'],
+            ['tion', 'sion'], ['er', 'ar'], ['or', 'ar']
+        ];
+
+        let normalized1 = word1.toLowerCase();
+        let normalized2 = word2.toLowerCase();
+
+        for (const [pattern1, pattern2] of phoneticPairs) {
+            normalized1 = normalized1.replace(new RegExp(pattern1, 'g'), pattern2);
+            normalized2 = normalized2.replace(new RegExp(pattern1, 'g'), pattern2);
+        }
+
+        return normalized1 === normalized2;
     }
 
     /**
