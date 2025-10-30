@@ -398,7 +398,7 @@ export function GlobalVoiceNavigation({
             recognition.lang = languageConfig?.languageCode || state.currentLanguage;
             recognition.continuous = false;
             recognition.interimResults = true; // Enable interim results for better feedback
-            recognition.maxAlternatives = 3;
+            (recognition as ExtendedSpeechRecognition).maxAlternatives = 3;
 
             // Add timeout settings to prevent hanging
             if ('grammars' in recognition) {
@@ -1052,6 +1052,21 @@ declare global {
         AudioContext: any;
         webkitAudioContext: any;
     }
+}
+
+// Extend SpeechRecognition interface
+interface ExtendedSpeechRecognition {
+    maxAlternatives?: number;
+    lang: string;
+    continuous: boolean;
+    interimResults: boolean;
+    start(): void;
+    stop(): void;
+    abort(): void;
+    onstart: ((this: any, ev: Event) => any) | null;
+    onend: ((this: any, ev: Event) => any) | null;
+    onerror: ((this: any, ev: any) => any) | null;
+    onresult: ((this: any, ev: any) => any) | null;
 }
 
 // Types are already exported as interfaces above

@@ -38,7 +38,7 @@ import { useState, useEffect } from "react";
 import { LanguageSelector } from "@/components/translation/LanguageSelector";
 import { useTranslation } from "@/context/TranslationContext";
 import { cn } from '@/lib/utils';
-// IntelligentVoiceButton removed - voice features disabled
+import { GlobalVoiceNavigation } from '@/components/global-voice-navigation';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/hooks/use-cart';
@@ -307,7 +307,14 @@ export function Header() {
           />
         </div>
 
-        {/* Voice Button removed - voice features disabled */}
+        {/* Voice Navigation Microphone */}
+        <div className="flex-shrink-0">
+          <GlobalVoiceNavigation
+            size="sm"
+            position="header"
+            className="h-8 w-8 sm:h-10 sm:w-10"
+          />
+        </div>
 
         {/* Language Selector - Responsive width */}
         <div className="hidden md:flex flex-shrink-0">
