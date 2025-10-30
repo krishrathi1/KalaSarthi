@@ -555,20 +555,7 @@ const translations: Translations = {
     bn: 'ড্যাশবোর্ড',
     te: 'డాష్‌బోర్డ్',
   },
-  artisanBuddy: {
-    en: 'Artisan Buddy',
-    hi: 'कारीगर बडी',
-    ta: 'கைவினைஞர் நண்பன்',
-    bn: 'শিল্পী বন্ধু',
-    te: 'ఆర్టిసాన్ బడ్డీ'
-  },
-  artisanBuddyDesc: {
-    en: "A virtual agent copy of you that answers buyer queries 24/7 when you are offline.",
-    hi: "आपकी एक वर्चुअल एजेंट कॉपी जो आपके ऑफ़लाइन होने पर 24/7 खरीदारों के सवालों का जवाब देती है।",
-    ta: "நீங்கள் ஆஃப்லைனில் இருக்கும்போது 24/7 வாங்குபவர் கேள்விகளுக்கு பதிலளிக்கும் உங்களின் ஒரு மெய்நிகர் முகவர் நகல்.",
-    bn: "আপনার একটি ভার্চুয়াল এজেন্ট অনুলিপি যা আপনি অফলাইনে থাকলে ক্রেতার প্রশ্নের 24/7 উত্তর দেয়।",
-    te: "మీరు ఆఫ్‌లైన్‌లో ఉన్నప్పుడు 24/7 కొనుగోలుదారు ప్రశ్నలకు సమాధానమిచ్చే మీ వర్చువల్ ఏజెంట్ కాపీ.",
-  },
+  // Artisan Buddy removed - use Enhanced Chat instead
   heritageStorytelling: {
     en: 'Heritage Storytelling',
     hi: 'विरासत की कहानी',
@@ -577,11 +564,11 @@ const translations: Translations = {
     te: 'వారసత్వ కథనం',
   },
   heritageStorytellingDesc: {
-    en: "Transforms your photo + voice note into professional, multilingual listings and compelling stories.",
-    hi: "आपकी तस्वीर + वॉयस नोट को पेशेवर, बहुभाषी लिस्टिंग औरน่าสนใจ कहानियों में बदल देता है।",
-    ta: "உங்கள் புகைப்படம் + குரல் குறிப்பை தொழில்முறை, பன்மொழி பட்டியல்கள் மற்றும் அழுத்தமான கதைகளாக மாற்றுகிறது.",
-    bn: "আপনার ছবি + ভয়েস নোটকে পেশাদার, বহুভাষিক তালিকা এবং আকর্ষণীয় গল্পে রূপান্তরিত করে।",
-    te: "మీ ఫోటో + వాయిస్ నోట్‌ను ప్రొఫెషనల్, బహుభాషా జాబితాలు మరియు ఆకర్షణీయమైన కథలుగా మారుస్తుంది.",
+    en: "Transforms your photo and text into professional, multilingual listings and compelling stories.",
+    hi: "आपकी तस्वीर और टेक्स्ट को पेशेवर, बहुभाषी लिस्टिंग और दिलचस्प कहानियों में बदल देता है।",
+    ta: "உங்கள் புகைப்படம் மற்றும் உரையை தொழில்முறை, பன்மொழி பட்டியல்கள் மற்றும் அழுத்தமான கதைகளாக மாற்றுகிறது.",
+    bn: "আপনার ছবি এবং টেক্সটকে পেশাদার, বহুভাষিক তালিকা এবং আকর্ষণীয় গল্পে রূপান্তরিত করে।",
+    te: "మీ ఫోటో మరియు టెక్స్ట్‌ను ప్రొఫెషనల్, బహుభాషా జాబితాలు మరియు ఆకర్షణీయమైన కథలుగా మారుస్తుంది.",
   },
   trendSpotter: {
     en: 'Trend Spotter',
@@ -605,11 +592,11 @@ const translations: Translations = {
     te: 'కొనుగోలుదారు కనెక్ట్',
   },
   buyerConnectDesc: {
-    en: "Enables direct buyer-artisan communication across languages, supporting chat and voice.",
-    hi: "चैट और आवाज का समर्थन करते हुए, भाषाओं में प्रत्यक्ष क्रेता-कारीगर संचार को सक्षम बनाता है।",
-    ta: " அரட்டை மற்றும் குரலை ஆதரிக்கும் மொழிகளில் நேரடி வாங்குபவர்-கைவினைஞர் தகவல்தொடர்பை செயல்படுத்துகிறது.",
-    bn: "চ্যাট এবং ভয়েস সমর্থনকারী ভাষা জুড়ে সরাসরি ক্রেতা-শিল্পী যোগাযোগ সক্ষম করে।",
-    te: "చాట్ మరియు వాయిస్‌కు మద్దతు ఇస్తూ భాషల అంతటా ప్రత్యక్ష కొనుగోలుదారు-చేతివృత్తులవారి కమ్యూనికేషన్‌ను ప్రారంభిస్తుంది.",
+    en: "Enables direct buyer-artisan communication across languages with real-time text translation.",
+    hi: "वास्तविक समय टेक्स्ट अनुवाद के साथ भाषाओं में प्रत्यक्ष क्रेता-कारीगर संचार को सक्षम बनाता है।",
+    ta: "நேரடி உரை மொழிபெயர்ப்புடன் மொழிகளில் நேரடி வாங்குபவர்-கைவினைஞர் தகவல்தொடர்பை செயல்படுத்துகிறது.",
+    bn: "রিয়েল-টাইম টেক্সট অনুবাদ সহ ভাষা জুড়ে সরাসরি ক্রেতা-শিল্পী যোগাযোগ সক্ষম করে।",
+    te: "రియల్-టైమ్ టెక్స్ట్ అనువాదంతో భాషల అంతటా ప్రత్యక్ష కొనుగోలుదారు-చేతివృత్తులవారి కమ్యూనికేషన్‌ను ప్రారంభిస్తుంది.",
   },
   marketBridge: {
     en: 'Global Bazaar',
@@ -912,44 +899,7 @@ export const menuItems: MenuItem[] = [
     icon: LayoutDashboard,
     path: "/dashboard",
   },
-  {
-    label: {
-      en: 'Artisan Buddy',
-      hi: 'कारीगर बडी',
-      ta: 'கைவினைஞர் நண்பன்',
-      bn: 'শিল্পী বন্ধু',
-      te: 'ఆర్టిసాన్ బడ్డీ',
-      gu: 'કલાકાર બડી',
-      mr: 'कला साथी',
-      kn: 'ಕಲಾಕಾರ ಬಡ್ಡಿ',
-      ml: 'കലാകാരൻ ബഡ്ഡി',
-      pa: 'ਕਲਾਕਾਰ ਬੱਡੀ',
-      as: 'কলাকৌশলী বন্ধু',
-      or: 'କଳାକାର ବଡି',
-      ur: 'کارٹسن بددی',
-    },
-    icon: BotMessageSquare,
-    path: "/artisan-buddy",
-  },
-  {
-    label: {
-      en: 'Enhanced Artisan Buddy',
-      hi: 'Enhanced कारीगर बडी',
-      ta: 'மேம்பட்ட கைவினைஞர் நண்பன்',
-      bn: 'উন্নত শিল্পী বন্ধু',
-      te: 'మెరుగైన ఆర్టిసాన్ బడ్డీ',
-      gu: 'સુધારેલ કલાકાર બડી',
-      mr: 'सुधारित कला साथी',
-      kn: 'ಸುಧಾರಿತ ಕಲಾಕಾರ ಬಡ್ಡಿ',
-      ml: 'മെച്ചപ്പെട്ട കലാകാരൻ ബഡ്ഡി',
-      pa: 'ਸੁਧਾਰਿਆ ਕਲਾਕਾਰ ਬੱਡੀ',
-      as: 'উন্নত কলাকৌশলী বন্ধু',
-      or: 'ଉନ୍ନତ କଳାକାର ବଡି',
-      ur: 'بہتر کارٹسن بددی',
-    },
-    icon: BotMessageSquare,
-    path: "/enhanced-artisan-buddy",
-  },
+  // Artisan Buddy and Enhanced Artisan Buddy removed - use Enhanced Chat instead
   {
     label: {
       en: 'Product Creator',
@@ -1221,46 +1171,7 @@ export const menuItems: MenuItem[] = [
     path: "/multi-marketplace",
     hidden: true,
   },
-  {
-    label: {
-      en: 'Voice Demo',
-      hi: 'वॉइस डेमो',
-      ta: 'குரல் டெமோ',
-      bn: 'ভয়েস ডেমো',
-      te: 'వాయిస్ డెమో',
-      gu: 'વોઇસ ડેમો',
-      mr: 'व्हॉइस डेमो',
-      kn: 'ವಾಯಿಸ್ ಡೆಮೋ',
-      ml: 'വോയ്സ് ഡെമോ',
-      pa: 'ਵੌਇਸ ਡੈਮੋ',
-      as: 'ভয়েস ডেমো',
-      or: 'ଭଏସ୍ ଡେମୋ',
-      ur: 'وائس ڈیمو',
-    },
-    icon: Mic,
-    path: "/voice-demo",
-    hidden: true,
-  },
-  {
-    label: {
-      en: 'Voice Enrollment',
-      hi: 'वॉइस नामांकन',
-      ta: 'குரல் பதிவு',
-      bn: 'ভয়েস এনরোলমেন্ট',
-      te: 'వాయిస్ ఎన్రోల్మెంట్',
-      gu: 'વોઇસ એનરોલમેન્ટ',
-      mr: 'व्हॉइस एनरोलमेंट',
-      kn: 'ವಾಯಿಸ್ ಎನ್ರೋಲ್ಮೆಂಟ್',
-      ml: 'വോയ്സ് എൻറോൾമെന്റ്',
-      pa: 'ਵੌਇਸ ਐਨਰੋਲਮੈਂਟ',
-      as: 'ভয়েস এনৰোলমেন্ট',
-      or: 'ଭଏସ୍ ଏନ୍ରୋଲମେଣ୍ଟ',
-      ur: 'وائس اندراج',
-    },
-    icon: UserPlus,
-    path: "/voice-enrollment",
-    hidden: true,
-  },
+  // Voice Demo and Voice Enrollment removed - converted to text-only chat
   {
     label: {
       en: 'Fair Price Engine',
@@ -1340,12 +1251,5 @@ export const features: Feature[] = [
     path: "/ai-image-generator",
     color: "text-purple-500",
   },
-  {
-    title: { en: 'Voice Demo', hi: 'वॉयस डेमो', ta: 'குரல் டெமோ', bn: 'ভয়েস ডেমো', te: 'వాయిస్ డెమో' },
-    description: { en: "Experience high-quality multilingual text-to-speech with intelligent voice selection.", hi: "बुद्धिमान आवाज़ चयन के साथ उच्च-गुणवत्ता वाली बहुभाषी टेक्स्ट-टू-स्पीच का अनुभव करें।", ta: "புத்திசாலி குரல் தேர்வுடன் உயர்-தர பலமொழி உரை-க்குரல் அனுபவிக்கவும்।", bn: "বুদ্ধিমান কণ্ঠ নির্বাচনের সাথে উচ্চ-মানের বহুভাষিক টেক্সট-টু-স্পিচের অভিজ্ঞতা নিন।", te: "తెలివైన వాయిస్ ఎంపికతో అధిక-నాణ్యత బహుభాషా టెక్స్ట్-టు-స్పీచ్ అనుభవించండి." },
-    icon: Volume2,
-    path: "/voice-demo",
-    color: "text-purple-500",
-    hidden: true,
-  },
+  // Voice Demo removed - converted to text-only chat
 ];

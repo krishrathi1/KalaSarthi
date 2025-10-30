@@ -63,9 +63,7 @@ export function SmartProductCreator() {
   const [imageAnalysis, setImageAnalysis] = useState<any>(null);
   const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
 
-  // Audio recording state (now using universal mic)
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+  // Audio recording removed - voice features disabled
   const [transcription, setTranscription] = useState<string>("");
   const [enhancedTranscription, setEnhancedTranscription] = useState<string>("");
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -1255,16 +1253,7 @@ Return only the enhanced story, no additional commentary.`;
     setCameraPreview(null);
   };
 
-  // Universal mic integration - no local recording functions needed
-
-  const playAudio = async () => {
-    if (!audioBlob) {
-      toast({
-        title: "No audio to play",
-        description: "Please record audio first.",
-        variant: "destructive",
-      });
-      return;
+  // Audio playback removed - voice features disabled
     }
 
     // Check if audio element is available
@@ -2071,15 +2060,15 @@ Return only the enhanced story, no additional commentary.`;
       case 'start_recording':
       case 'record':
         if (voiceWorkflowStep === 'audio_recording') {
-          setVoiceFeedback("Use the universal microphone in the header to record your story.");
-          speakVoiceFeedback("Use the universal microphone in the header to record your story.");
+          setVoiceFeedback("Please type your story in the text field.");
+          speakVoiceFeedback("Please type your story in the text field.");
         }
         break;
 
       case 'stop_recording':
         if (voiceWorkflowStep === 'audio_recording') {
-          setVoiceFeedback("Use the universal microphone in the header to record your story.");
-          speakVoiceFeedback("Use the universal microphone in the header to record your story.");
+          setVoiceFeedback("Please type your story in the text field.");
+          speakVoiceFeedback("Please type your story in the text field.");
         }
         break;
 
@@ -2939,7 +2928,7 @@ Return only the enhanced story, no additional commentary.`;
           </div>
         )}
 
-        {/* Universal Mic Integration - No local audio controls needed */}
+        {/* Audio controls removed - voice features disabled */}
       </div>
     );
   };
@@ -4060,7 +4049,7 @@ Return only the enhanced story, no additional commentary.`;
               <div>MediaDevices API: {typeof navigator.mediaDevices !== 'undefined' ? "✅" : "❌"}</div>
               <div>getUserMedia: {typeof navigator.mediaDevices?.getUserMedia === 'function' ? "✅" : "❌"}</div>
               <div>MediaRecorder: {typeof MediaRecorder !== 'undefined' ? "✅" : "❌"}</div>
-              <div>Universal Mic: Use header microphone for recording</div>
+              <div>Voice Recording: Disabled (text-only mode)</div>
               <div>Story Length: {transcription ? transcription.length : 0} characters</div>
               <div>Story Status: {transcription ? "✅ Captured" : "❌ Not captured"}</div>
               <div>Audio Blob: {audioBlob ? `${Math.round(audioBlob.size / 1024)} KB` : "None"}</div>

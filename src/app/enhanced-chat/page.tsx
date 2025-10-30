@@ -147,7 +147,7 @@ export default function EnhancedChatPage() {
                         Enhanced Multilingual Chat
                     </h1>
                     <p className="text-muted-foreground">
-                        Connect with artisans using voice, translation, and AI-powered tools
+                        Connect with artisans using real-time translation and AI-powered tools
                     </p>
                 </div>
 
@@ -156,9 +156,9 @@ export default function EnhancedChatPage() {
                     <Card>
                         <CardContent className="p-4 text-center">
                             <MessageCircle className="h-8 w-8 mx-auto mb-2 text-blue-500" />
-                            <h3 className="font-medium">Voice & Translation</h3>
+                            <h3 className="font-medium">Real-time Translation</h3>
                             <p className="text-sm text-muted-foreground">
-                                Speak in your language, auto-translated for seamless communication
+                                Type in your language, auto-translated for seamless communication
                             </p>
                         </CardContent>
                     </Card>
@@ -248,7 +248,7 @@ export default function EnhancedChatPage() {
                         <h3 className="font-medium text-blue-900 mb-2">🚀 Demo Features</h3>
                         <ul className="text-sm text-blue-700 space-y-1">
                             <li>• Click on a conversation to start chatting</li>
-                            <li>• Use the microphone button for voice input</li>
+                            <li>• Type your message in any language</li>
                             <li>• Artisans can access design tools from the chat interface</li>
                             <li>• AI automatically detects when deals are completed</li>
                             <li>• Order forms are generated automatically for finalized deals</li>
