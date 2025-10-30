@@ -605,7 +605,7 @@ export function StoryRecordingMic({
       setIsGeneratingAudio(true);
       toast({
         title: "Generating Audio",
-        description: "Creating audio story with browser speech synthesis...",
+        description: "Creating audio story with Google Cloud TTS narration...",
       });
 
       // Use GeminiSpeechService for TTS (Enhanced TTS API removed)
@@ -617,7 +617,7 @@ export function StoryRecordingMic({
           pitch: 1.0
         });
 
-        console.log('🎵 Browser TTS successful');
+        console.log('🎵 Google Cloud TTS successful');
         console.log('Audio buffer size:', audioBuffer.byteLength, 'bytes');
 
         // Convert ArrayBuffer to blob
@@ -640,7 +640,7 @@ export function StoryRecordingMic({
 
         toast({
           title: "🎵 Audio Generated!",
-          description: "Your story is ready to play!",
+          description: "Your story has been narrated with Google Cloud TTS voice!",
         });
 
         // Call parent callback with final story, audio, and summary
@@ -1004,17 +1004,7 @@ export function StoryRecordingMic({
 
   return (
     <div className="relative">
-      {/* Debug button for Google Cloud status */}
-      {(process.env.NODE_ENV === 'development' || !speechServiceRef.current?.isGoogleCloudAvailable()) && (
-        <Button
-          onClick={checkGoogleCloudStatus}
-          size="sm"
-          variant="outline"
-          className="absolute -top-10 sm:-top-12 left-0 text-xs px-2 py-1"
-        >
-          🔍 Debug
-        </Button>
-      )}
+
 
       {/* Main recording button */}
       <Button

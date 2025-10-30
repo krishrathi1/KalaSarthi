@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { GeminiImageService } from '@/lib/gemini-image-service';
+import { GoogleCloudService } from '@/lib/google-cloud-service';
 
 const ImageAnalysisInputSchema = z.object({
   imageData: z.string().describe('Base64 encoded image data'),
@@ -128,56 +130,171 @@ function createConsistentStory(transcription: string, imageAnalysis: any): strin
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { imageData, transcription } = body;
+    const formData = await request.formData();
+    const imageFile = formData.get('image') as File;
 
-    if (!imageData) {
+    if (!imageFile) {
       return NextResponse.json(
-        { error: 'Image data is required' },
+        { error: 'Image file is required', success: false },
         { status: 400 }
       );
     }
 
-    // Mock image analysis - in real scenario, this would use AI vision
-    const mockImageAnalysis = {
-      productType: 'Handcrafted Pottery Bowl',
-      category: 'Ceramics',
-      materials: ['Clay', 'Natural pigments'],
-      craftsmanship: ['Hand-thrown', 'Traditional glazing'],
-      colors: ['Earth tones', 'Natural brown'],
-      patterns: ['Traditional motifs'],
-      culturalSignificance: 'Represents traditional pottery techniques',
-      estimatedValue: '₹500 - ₹1500',
-      description: 'A beautiful handcrafted pottery bowl with traditional designs',
-      keywords: ['handmade', 'pottery', 'traditional', 'ceramics'],
-      targetAudience: 'Home decor enthusiasts',
-      occasion: ['Daily use', 'Gifting'],
-      careInstructions: ['Hand wash only', 'Avoid extreme temperatures'],
-      storyElements: {
-        heritage: 'Traditional pottery techniques passed down through generations',
-        artisanJourney: 'Skilled artisan with years of experience',
-        uniqueness: 'Each piece is unique due to hand-crafting',
-        sustainability: 'Made from natural, eco-friendly materials'
-      }
-    };
+    // Validate image format and size
+    const validFormats = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!validFormats.includes(imageFile.type)) {
+      return NextResponse.json(
+        {
+          error: 'Invalid image format. Please use JPEG, PNG, or WebP.',
+          success: false
+        },
+        { status: 400 }
+      );
+    }
 
-    // Handle story weaving
-    const storyResult = await handleStoryWeaving({
-      transcription,
-      imageAnalysis: mockImageAnalysis
-    });
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (imageFile.size > maxSize) {
+      return NextResponse.json(
+        {
+          error: 'Image file too large. Please use an image smaller than 10MB.',
+          success: false
+        },
+        { status: 400 }
+      );
+    }
+
+    // Convert image to base64 for Gemini analysis
+    const imageBuffer = await imageFile.arrayBuffer();
+    const base64Image = Buffer.from(imageBuffer).toString('base64');
+    const imageDataUrl = `data:${imageFile.type};base64,${base64Image}`;
+
+    let analysisResult;
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    // Retry logic with exponential backoff
+    while (retryCount < maxRetries) {
+      try {
+        // Use Gemini for detailed image analysis
+        console.log(`🔍 Attempting image analysis (attempt ${retryCount + 1}/${maxRetries})`);
+
+        const geminiAnalysis = await GeminiImageService.analyzeImageForProduct(imageDataUrl);
+
+        // Parse the Gemini response to extract structured data
+        const structuredAnalysis = await parseGeminiAnalysis(geminiAnalysis, imageDataUrl);
+
+        analysisResult = structuredAnalysis;
+        break;
+
+      } catch (error) {
+        retryCount++;
+        console.error(`❌ Image analysis attempt ${retryCount} failed:`, error);
+
+        if (retryCount >= maxRetries) {
+          // Final fallback - try Google Cloud Vision as backup
+          try {
+            console.log('🔄 Falling back to Google Cloud Vision...');
+            const cloudAnalysis = await GoogleCloudService.analyzeProductImage(Buffer.from(imageBuffer));
+            analysisResult = convertCloudAnalysisToFormat(cloudAnalysis);
+          } catch (cloudError) {
+            console.error('❌ Google Cloud Vision also failed:', cloudError);
+            throw new Error('All image analysis services failed');
+          }
+        } else {
+          // Wait before retry (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+        }
+      }
+    }
+
+    if (!analysisResult) {
+      throw new Error('Failed to analyze image after all retries');
+    }
 
     return NextResponse.json({
       success: true,
-      imageAnalysis: mockImageAnalysis,
-      storyWeaving: storyResult
+      analysis: analysisResult
     });
 
   } catch (error) {
-    console.error('Image analysis error:', error);
+    console.error('❌ Image analysis error:', error);
     return NextResponse.json(
-      { error: 'Failed to analyze image' },
+      {
+        error: error instanceof Error ? error.message : 'Failed to analyze image',
+        success: false
+      },
       { status: 500 }
     );
   }
+}
+
+// Helper function to parse Gemini analysis into structured format
+async function parseGeminiAnalysis(geminiText: string, imageUrl: string) {
+  try {
+    // Use Gemini to structure the analysis
+    const structuredPrompt = `
+    Based on this image analysis: "${geminiText}"
+    
+    Please extract and format the information as a JSON object with these exact fields:
+    {
+      "productType": "specific product name",
+      "category": "broad category",
+      "materials": ["material1", "material2"],
+      "colors": ["color1", "color2"],
+      "description": "detailed description",
+      "culturalElements": ["element1", "element2"],
+      "craftTechniques": ["technique1", "technique2"]
+    }
+    
+    Return only the JSON object, no other text.
+    `;
+
+    const structuredResult = await GeminiImageService.generateStructuredAnalysis(structuredPrompt);
+
+    try {
+      const parsed = JSON.parse(structuredResult);
+      return {
+        productType: parsed.productType || 'Handcrafted Product',
+        category: parsed.category || 'Handicrafts',
+        materials: Array.isArray(parsed.materials) ? parsed.materials : ['Traditional materials'],
+        colors: Array.isArray(parsed.colors) ? parsed.colors : ['Natural colors'],
+        description: parsed.description || geminiText,
+        culturalElements: Array.isArray(parsed.culturalElements) ? parsed.culturalElements : ['Traditional craftsmanship'],
+        craftTechniques: Array.isArray(parsed.craftTechniques) ? parsed.craftTechniques : ['Handmade techniques']
+      };
+    } catch (parseError) {
+      console.warn('⚠️ Failed to parse structured JSON, using fallback format');
+      return createFallbackAnalysis(geminiText);
+    }
+
+  } catch (error) {
+    console.error('❌ Failed to structure analysis:', error);
+    return createFallbackAnalysis(geminiText);
+  }
+}
+
+// Helper function to convert Google Cloud Vision analysis to expected format
+function convertCloudAnalysisToFormat(cloudAnalysis: any) {
+  return {
+    productType: cloudAnalysis.productType || 'Handcrafted Product',
+    category: cloudAnalysis.category || 'Handicrafts',
+    materials: cloudAnalysis.materials || ['Traditional materials'],
+    colors: cloudAnalysis.colors || ['Natural colors'],
+    description: cloudAnalysis.description || 'A beautiful handcrafted product',
+    culturalElements: ['Traditional craftsmanship'],
+    craftTechniques: ['Handmade techniques']
+  };
+}
+
+// Fallback analysis format
+function createFallbackAnalysis(analysisText: string) {
+  return {
+    productType: 'Handcrafted Product',
+    category: 'Handicrafts',
+    materials: ['Traditional materials'],
+    colors: ['Natural colors'],
+    description: analysisText || 'A beautiful handcrafted product showcasing traditional craftsmanship',
+    culturalElements: ['Traditional craftsmanship', 'Cultural heritage'],
+    craftTechniques: ['Handmade techniques', 'Traditional methods']
+  };
 }
