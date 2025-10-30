@@ -64,10 +64,24 @@ export class GeminiSpeechService {
   }
 
   private async checkGoogleCloudAvailability(): Promise<void> {
-    // Google Cloud TTS/STT APIs have been removed as part of TTS/STT cleanup
-    // Set availability to false and skip API checks
-    console.log('🔧 Google Cloud TTS/STT APIs have been removed - using browser APIs only');
-    this.googleCloudAvailable = false;
+    try {
+      // Check if our new Google Cloud TTS service is available
+      console.log('🔧 Checking Google Cloud TTS service availability...');
+
+      const response = await fetch('/api/tts/google-cloud/synthesize');
+      const result = await response.json();
+
+      if (result.success && result.status === 'healthy') {
+        console.log('✅ Google Cloud TTS service is available');
+        this.googleCloudAvailable = true;
+      } else {
+        console.log('❌ Google Cloud TTS service is not healthy');
+        this.googleCloudAvailable = false;
+      }
+    } catch (error) {
+      console.error('❌ Failed to check Google Cloud TTS availability:', error);
+      this.googleCloudAvailable = false;
+    }
   }
 
   public static getInstance(): GeminiSpeechService {
@@ -104,7 +118,7 @@ export class GeminiSpeechService {
   }
 
   /**
-   * Convert speech audio to text using browser APIs (Google Cloud APIs removed)
+   * Convert speech audio to text using Google Cloud STT or browser fallback
    */
   public async speechToText(
     audioBuffer: ArrayBuffer,
@@ -119,8 +133,46 @@ export class GeminiSpeechService {
       hasModel: !!this.model
     });
 
-    // Use browser-based speech recognition directly (Google Cloud APIs removed)
-    console.log('🔄 Using browser-based speech recognition');
+    // Ensure Google Cloud availability is checked
+    await this.ensureGoogleCloudChecked();
+
+    // Try Gemini STT first - MOST RELIABLE!
+    try {
+      console.log('🚀 Using BULLETPROOF Gemini STT service');
+
+      // Create FormData for the audio file
+      const audioBlob = new Blob([audioBuffer], { type: 'audio/webm' });
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.webm');
+      formData.append('language', language);
+
+      const response = await fetch('/api/stt/gemini', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (result.success && result.result?.text) {
+        console.log('✅ GEMINI STT SUCCESSFUL:', result.result.text.substring(0, 50) + '...');
+        return {
+          text: result.result.text,
+          confidence: result.result.confidence || 0.9,
+          language: result.result.language || language,
+          duration: result.result.duration || 0
+        };
+      } else {
+        console.warn('❌ Gemini STT failed:', result.error);
+        throw new Error(result.error || 'Gemini STT failed');
+      }
+
+    } catch (error) {
+      console.error('❌ Gemini STT error, falling back to local processing:', error);
+      // Fall through to local fallback
+    }
+
+    // Fallback to Gemini AI or browser speech recognition
+    console.log('🔄 Falling back to Gemini/browser speech recognition');
     return this.fallbackSpeechToTextGemini(audioBuffer, options);
   }
 
@@ -382,7 +434,7 @@ Audio data: ${audioBase64}
   }
 
   /**
-   * Convert text to speech using browser Web Speech API (Enhanced TTS API removed)
+   * Convert text to speech using Google Cloud TTS or browser fallback
    */
   public async textToSpeech(
     text: string,
@@ -395,9 +447,70 @@ Audio data: ${audioBase64}
       pitch = 0.0
     } = options;
 
-    console.log('🎵 Using Web Speech API for:', text.substring(0, 50) + '...');
+    console.log('🎵 TTS request for:', text.substring(0, 50) + '...');
 
-    // Use Web Speech API directly (Enhanced TTS API removed)
+    // Ensure Google Cloud availability is checked
+    await this.ensureGoogleCloudChecked();
+
+    // Try Google Cloud TTS first if available
+    if (this.googleCloudAvailable) {
+      try {
+        console.log('🔊 Using Google Cloud TTS service');
+
+        const response = await fetch('/api/tts/google-cloud/synthesize', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            text,
+            languageCode: language,
+            // No voice/gender restrictions - use any available voice
+            speakingRate: speed,
+            pitch,
+            audioEncoding: 'LINEAR16'
+          }),
+        });
+
+        // Check response status first
+        if (!response.ok) {
+          console.error('❌ TTS response not OK:', response.status, response.statusText);
+          throw new Error(`TTS service error: ${response.status} ${response.statusText}`);
+        }
+
+        // Check if response is valid JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const responseText = await response.text();
+          console.error('❌ TTS response is not JSON, got:', contentType, responseText.substring(0, 200));
+          throw new Error('TTS service returned invalid response format');
+        }
+
+        const result = await response.json();
+
+        if (result.success && result.audio?.content) {
+          // Convert base64 to ArrayBuffer
+          const binaryString = atob(result.audio.content);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+
+          console.log('✅ Google Cloud TTS successful, audio size:', bytes.length);
+          return bytes.buffer;
+        } else {
+          console.warn('❌ Google Cloud TTS failed:', result.error);
+          throw new Error(result.error || 'Google Cloud TTS failed');
+        }
+
+      } catch (error) {
+        console.error('❌ Google Cloud TTS error, falling back to browser TTS:', error);
+        // Fall through to browser TTS
+      }
+    }
+
+    // Fallback to browser Web Speech API
+    console.log('🔄 Falling back to browser Web Speech API');
     return this.fallbackTextToSpeech(text, { language, voice, speed, pitch });
   }
 
