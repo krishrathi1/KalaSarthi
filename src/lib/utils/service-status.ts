@@ -35,22 +35,23 @@ export interface ServiceCapabilities {
  */
 export async function checkServiceStatus(): Promise<ServiceStatus> {
   try {
-    // Check STT service
-    const sttResponse = await fetch('/api/google-cloud-stt', { method: 'GET' });
-    const sttData = await sttResponse.json();
-    
-    // Check TTS service  
-    const ttsResponse = await fetch('/api/google-cloud-tts', { method: 'GET' });
-    const ttsData = await ttsResponse.json();
+    // TTS/STT APIs have been removed - use fallback mode only
+    console.log('TTS/STT APIs removed - using fallback mode');
 
-    // Check translation service
-    const translationResponse = await fetch('/api/cultural-translate', { method: 'GET' });
-    const translationData = await translationResponse.json();
+    // Check translation service (if it still exists)
+    let translationStatus = 'fallback-mock';
+    try {
+      const translationResponse = await fetch('/api/cultural-translate', { method: 'GET' });
+      const translationData = await translationResponse.json();
+      translationStatus = translationData.status === 'healthy' ? 'google-cloud' : 'fallback-mock';
+    } catch (error) {
+      console.warn('Translation service check failed:', error);
+    }
 
     return {
-      stt: sttData.status === 'healthy' ? 'google-cloud' : 'fallback-mock',
-      tts: ttsData.status === 'healthy' ? 'google-cloud' : 'fallback-mock',
-      translation: translationData.status === 'healthy' ? 'google-cloud' : 'fallback-mock'
+      stt: 'fallback-mock', // TTS/STT APIs removed
+      tts: 'fallback-mock', // TTS/STT APIs removed
+      translation: translationStatus
     };
   } catch (error) {
     console.error('Failed to check service status:', error);
@@ -113,9 +114,9 @@ export function getStatusMessages(status: ServiceStatus, language: 'en' | 'hi' =
   };
 
   const msgs = messages[language];
-  const hasAnyFallback = status.stt === 'fallback-mock' || 
-                        status.tts === 'fallback-mock' || 
-                        status.translation === 'fallback-mock';
+  const hasAnyFallback = status.stt === 'fallback-mock' ||
+    status.tts === 'fallback-mock' ||
+    status.translation === 'fallback-mock';
 
   if (!hasAnyFallback) {
     return {
@@ -124,9 +125,9 @@ export function getStatusMessages(status: ServiceStatus, language: 'en' | 'hi' =
     };
   }
 
-  const allFallback = status.stt === 'fallback-mock' && 
-                     status.tts === 'fallback-mock' && 
-                     status.translation === 'fallback-mock';
+  const allFallback = status.stt === 'fallback-mock' &&
+    status.tts === 'fallback-mock' &&
+    status.translation === 'fallback-mock';
 
   const details = [];
   if (status.stt === 'fallback-mock') details.push(msgs.sttDemo);

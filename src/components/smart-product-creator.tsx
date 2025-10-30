@@ -18,7 +18,7 @@ import { safeFetch, handleFileUploadError } from "@/lib/error-handler";
 import { useAuth } from "@/context/auth-context";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ConversationalVoiceProcessor } from "@/lib/service/ConversationalVoiceProcessor";
+// Voice processor removed - using new voice navigation system
 import { StoryRecordingMic } from "@/components/ui/StoryRecordingMic";
 import { useRouter } from "next/navigation";
 
@@ -63,7 +63,8 @@ export function SmartProductCreator() {
   const [imageAnalysis, setImageAnalysis] = useState<any>(null);
   const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
 
-  // Audio recording removed - voice features disabled
+  // Audio recording and voice features state
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [transcription, setTranscription] = useState<string>("");
   const [enhancedTranscription, setEnhancedTranscription] = useState<string>("");
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -74,6 +75,7 @@ export function SmartProductCreator() {
   const [finalTranscript, setFinalTranscript] = useState<string>("");
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   // Voice command recognition state
   const [isContinuousListening, setIsContinuousListening] = useState(false);
@@ -162,8 +164,7 @@ export function SmartProductCreator() {
   const { toast } = useToast();
   const { userProfile } = useAuth();
 
-  // Initialize conversational voice processor
-  const conversationalProcessor = ConversationalVoiceProcessor.getInstance();
+  // Voice processor removed - using new voice navigation system
 
   // Story enhancement function
   const enhanceStory = async () => {
@@ -1253,9 +1254,8 @@ Return only the enhanced story, no additional commentary.`;
     setCameraPreview(null);
   };
 
-  // Audio playback removed - voice features disabled
-    }
-
+  // Audio playback function
+  const playAudio = async (audioBlob: Blob) => {
     // Check if audio element is available
     if (!audioRef.current) {
       toast({
@@ -2075,7 +2075,7 @@ Return only the enhanced story, no additional commentary.`;
       case 'play_audio':
       case 'play':
         if (voiceWorkflowStep === 'audio_recording' && audioBlob) {
-          playAudio();
+          playAudio(audioBlob);
           setVoiceFeedback("Playing your recorded story...");
           speakVoiceFeedback("Playing your recorded story...");
         }
@@ -4197,4 +4197,3 @@ Return only the enhanced story, no additional commentary.`;
 
     </Card>
   );
-}

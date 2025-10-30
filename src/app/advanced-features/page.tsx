@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { VoiceControl } from '@/components/ui/VoiceControl';
+// Voice control now in header
 import { VoiceStatus } from '@/components/ui/VoiceStatus';
 import { Mic, Volume2, Languages, Database, MessageSquare, Navigation, Play, Square, Upload, Download } from 'lucide-react';
 import { RegionalCommunicationService } from '@/lib/service/RegionalCommunicationService';
@@ -161,8 +161,7 @@ export default function AdvancedFeaturesPage() {
         </div>
       </div>
 
-      {/* Voice Control - Floating */}
-      <VoiceControl variant="floating" showSettings={true} />
+      {/* Voice navigation now available in header */}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-5">
@@ -278,9 +277,9 @@ export default function AdvancedFeaturesPage() {
                     OrderID, ArtisanID, ProductID, TotalAmount, Status, Region, Language...
                   </div>
                   <div className="text-muted-foreground">
-                    • Automated data validation<br/>
-                    • Real-time statistics updates<br/>
-                    • Multi-sheet organization<br/>
+                    • Automated data validation<br />
+                    • Real-time statistics updates<br />
+                    • Multi-sheet organization<br />
                     • Export capabilities
                   </div>
                 </div>
@@ -321,7 +320,7 @@ export default function AdvancedFeaturesPage() {
                 )}
 
                 <div className="text-sm text-muted-foreground">
-                  <strong>Supported Languages:</strong><br/>
+                  <strong>Supported Languages:</strong><br />
                   Hindi (hi), Bengali (bn), Telugu (te), Tamil (ta), Gujarati (gu), Kannada (kn), Malayalam (ml), Punjabi (pa)
                 </div>
               </CardContent>
@@ -361,16 +360,16 @@ export default function AdvancedFeaturesPage() {
                   </div>
 
                   <div className="text-sm text-muted-foreground">
-                    <strong>Pipeline Flow:</strong><br/>
-                    1. Speech-to-Text (Regional Language)<br/>
-                    2. Text Translation (Buyer ↔ Artisan)<br/>
-                    3. Text-to-Speech (Target Language)<br/>
+                    <strong>Pipeline Flow:</strong><br />
+                    1. Speech-to-Text (Regional Language)<br />
+                    2. Text Translation (Buyer ↔ Artisan)<br />
+                    3. Text-to-Speech (Target Language)<br />
                     4. Audio Playback
                   </div>
 
                   {aiResponse && (
                     <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                      <strong>AI Response:</strong><br/>
+                      <strong>AI Response:</strong><br />
                       {aiResponse}
                     </div>
                   )}
@@ -394,19 +393,19 @@ export default function AdvancedFeaturesPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <VoiceControl
-                  variant="default"
-                  size="lg"
-                  showSettings={true}
-                  className="mx-auto"
-                />
+                {/* Voice navigation now available in header */}
+                <div className="text-center p-4 bg-muted rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    Voice navigation is now available in the header microphone button
+                  </p>
+                </div>
 
                 <div className="text-sm text-muted-foreground">
-                  <strong>Supported Commands:</strong><br/>
-                  • "Go to finance dashboard" (English/Hindi)<br/>
-                  • "Show marketplace" (English/Hindi)<br/>
-                  • "मेरी प्रोफाइल देखें" (Hindi)<br/>
-                  • "Search for products" (English)<br/>
+                  <strong>Supported Commands:</strong><br />
+                  • "Go to finance dashboard" (English/Hindi)<br />
+                  • "Show marketplace" (English/Hindi)<br />
+                  • "मेरी प्रोफाइल देखें" (Hindi)<br />
+                  • "Search for products" (English)<br />
                   • "Help me navigate" (English)
                 </div>
               </CardContent>

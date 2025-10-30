@@ -9,8 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Search, Filter, Star, Package, ShoppingBag, Mic, MicOff } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import ProductCard from '@/components/marketplace/ProductCard';
-import { VoiceControl } from '@/components/ui/VoiceControl';
-import { ConversationalVoiceProcessor } from '@/lib/service/ConversationalVoiceProcessor';
+// Voice features removed - using new voice navigation system
 import { useToast } from '@/hooks/use-toast';
 
 export default function MarketplacePage() {
@@ -28,7 +27,7 @@ export default function MarketplacePage() {
     const [isVoiceActive, setIsVoiceActive] = useState(false);
     const [voiceCommand, setVoiceCommand] = useState('');
     const [isProcessingVoice, setIsProcessingVoice] = useState(false);
-    const conversationalProcessor = ConversationalVoiceProcessor.getInstance();
+    // Voice processor removed - using new voice navigation system
     const { toast } = useToast();
 
     // Fetch products on component mount
@@ -393,15 +392,7 @@ export default function MarketplacePage() {
                     </p>
 
                     {/* Voice Control */}
-                    <div className="flex justify-center mb-4">
-                        <div className="w-full max-w-md">
-                            <VoiceControl
-                                variant="inline"
-                                showSettings={true}
-                                autoStart={false}
-                            />
-                        </div>
-                    </div>
+                    {/* Voice navigation now available in header */}
 
                     {/* Voice Status */}
                     {isVoiceActive && (

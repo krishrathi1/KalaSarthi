@@ -13,8 +13,7 @@ import { useRouter } from 'next/navigation';
 import { ProductGrid, ProfileHeader, ProfileInfo } from '@/components/profile';
 import ScrapedProductGrid from '@/components/profile/ScrapedProductGrid';
 import { useToast } from '@/hooks/use-toast';
-import { VoiceControl } from '@/components/ui/VoiceControl';
-import { ConversationalVoiceProcessor } from '@/lib/service/ConversationalVoiceProcessor';
+// Voice features removed - using new voice navigation system
 
 export default function ProfilePage() {
     const { userProfile, loading: authLoading } = useAuth();
@@ -32,7 +31,7 @@ export default function ProfilePage() {
     const [isVoiceActive, setIsVoiceActive] = useState(false);
     const [voiceCommand, setVoiceCommand] = useState('');
     const [isProcessingVoice, setIsProcessingVoice] = useState(false);
-    const conversationalProcessor = ConversationalVoiceProcessor.getInstance();
+    // Voice processor removed - using new voice navigation system
     const { toast } = useToast();
     const router = useRouter();
 
@@ -48,7 +47,7 @@ export default function ProfilePage() {
                 console.log('Fetching products for artisanId:', userProfile.uid);
                 const response = await fetch(`/api/products?artisanId=${userProfile.uid}`);
                 const result = await response.json();
-                
+
                 console.log('API Response:', result);
 
                 if (result.success) {
@@ -86,9 +85,9 @@ export default function ProfilePage() {
 
             if (result.success) {
                 // Update the local products state
-                setProducts(prevProducts => 
-                    prevProducts.map(product => 
-                        product.productId === productId 
+                setProducts(prevProducts =>
+                    prevProducts.map(product =>
+                        product.productId === productId
                             ? { ...product, status: newStatus } as IProductDocument
                             : product
                     )
@@ -144,7 +143,7 @@ export default function ProfilePage() {
 
             if (result.success) {
                 // Remove the product from local state
-                setProducts(prevProducts => 
+                setProducts(prevProducts =>
                     prevProducts.filter(product => product.productId !== productId)
                 );
 
@@ -374,7 +373,7 @@ export default function ProfilePage() {
                     {/* Profile Header Section */}
                     <div className="mb-6 sm:mb-8">
                         <ProfileHeader userProfile={userProfile} />
-                        
+
                         {/* AI Design Generator Button - Only for artisans */}
                         {userProfile.role === 'artisan' && (
                             <div className="mt-4">
@@ -388,15 +387,9 @@ export default function ProfilePage() {
                                 </Button>
                             </div>
                         )}
-                        
-                        {/* Voice Control - Mobile responsive */}
-                        <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-                            <VoiceControl
-                                variant="inline"
-                                showSettings={true}
-                                autoStart={false}
-                            />
 
+                        {/* Voice navigation now available in header */}
+                        <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
                             {/* Voice Status Indicators */}
                             <div className="flex flex-wrap gap-2">
                                 {isVoiceActive && (
@@ -468,8 +461,8 @@ export default function ProfilePage() {
                                         </TabsList>
 
                                         <TabsContent value="published" className="mt-6">
-                                            <ProductGrid 
-                                                products={publishedProducts} 
+                                            <ProductGrid
+                                                products={publishedProducts}
                                                 showActions={true}
                                                 onStatusChange={handleProductStatusChange}
                                                 onEdit={handleEditProduct}
@@ -480,8 +473,8 @@ export default function ProfilePage() {
                                         </TabsContent>
 
                                         <TabsContent value="drafts" className="mt-6">
-                                            <ProductGrid 
-                                                products={draftProducts} 
+                                            <ProductGrid
+                                                products={draftProducts}
                                                 showActions={true}
                                                 isDraft={true}
                                                 onStatusChange={handleProductStatusChange}
@@ -580,20 +573,20 @@ export default function ProfilePage() {
                                                         )}
 
                                                         {(!scrapedProducts.amazon || scrapedProducts.amazon.length === 0) &&
-                                                         (!scrapedProducts.flipkart || scrapedProducts.flipkart.length === 0) &&
-                                                         (!scrapedProducts.meesho || scrapedProducts.meesho.length === 0) && (
-                                                            <div className="text-center py-12">
-                                                                <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                                                                <h3 className="text-lg font-medium mb-2">No Market Data</h3>
-                                                                <p className="text-muted-foreground mb-4">
-                                                                    Search for products to analyze market trends and competitor pricing.
-                                                                </p>
-                                                                <Button onClick={() => fetchScrapedProducts(searchQuery)}>
-                                                                    <Search className="h-4 w-4 mr-2" />
-                                                                    Start Market Research
-                                                                </Button>
-                                                            </div>
-                                                        )}
+                                                            (!scrapedProducts.flipkart || scrapedProducts.flipkart.length === 0) &&
+                                                            (!scrapedProducts.meesho || scrapedProducts.meesho.length === 0) && (
+                                                                <div className="text-center py-12">
+                                                                    <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                                                                    <h3 className="text-lg font-medium mb-2">No Market Data</h3>
+                                                                    <p className="text-muted-foreground mb-4">
+                                                                        Search for products to analyze market trends and competitor pricing.
+                                                                    </p>
+                                                                    <Button onClick={() => fetchScrapedProducts(searchQuery)}>
+                                                                        <Search className="h-4 w-4 mr-2" />
+                                                                        Start Market Research
+                                                                    </Button>
+                                                                </div>
+                                                            )}
                                                     </div>
                                                 )}
                                             </div>

@@ -64,103 +64,9 @@ export class GeminiSpeechService {
   }
 
   private async checkGoogleCloudAvailability(): Promise<void> {
-    // Delay initial check to allow APIs to be ready
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    const maxRetries = 3;
-    const retryDelay = 1000; // 1 second
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`🔍 Checking Google Cloud API availability (attempt ${attempt}/${maxRetries})...`);
-
-        // Add timeout to prevent hanging
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Timeout')), 10000)
-        );
-
-        // Test TTS API availability with timeout
-        console.log('Testing TTS API...');
-        
-        const { fetchApi } = await import('@/lib/utils/url');
-        const ttsPromise = fetchApi('/api/google-cloud-tts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: 'test', language: 'en-US' })
-        });
-
-        const ttsResponse = await Promise.race([ttsPromise, timeoutPromise]) as Response;
-
-        console.log('TTS API response:', {
-          ok: ttsResponse.ok,
-          status: ttsResponse.status,
-          statusText: ttsResponse.statusText
-        });
-
-        // Test STT API availability with timeout
-        console.log('Testing STT API...');
-        const sttPromise = fetchApi('/api/google-cloud-stt', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ audioData: 'dGVzdA==', language: 'en-US' }) // base64 'test'
-        });
-
-        const sttResponse = await Promise.race([sttPromise, timeoutPromise]) as Response;
-
-        console.log('STT API response:', {
-          ok: sttResponse.ok,
-          status: sttResponse.status,
-          statusText: sttResponse.statusText
-        });
-
-        this.googleCloudAvailable = ttsResponse.ok && sttResponse.ok;
-
-        if (this.googleCloudAvailable) {
-          console.log('✅ Google Cloud TTS and STT services available via API routes');
-          console.log('🎵 Natural voice synthesis and advanced speech recognition enabled');
-          return; // Success, exit retry loop
-        } else {
-          console.warn(`❌ Google Cloud services not available (attempt ${attempt}/${maxRetries})`);
-          console.warn('TTS available:', ttsResponse.ok, 'STT available:', sttResponse.ok);
-
-          // Try to get error details
-          if (!ttsResponse.ok) {
-            try {
-              const ttsError = await ttsResponse.text();
-              console.error('TTS API error:', ttsError);
-            } catch (e) {
-              console.error('Could not read TTS error response');
-            }
-          }
-
-          if (!sttResponse.ok) {
-            try {
-              const sttError = await sttResponse.text();
-              console.error('STT API error:', sttError);
-            } catch (e) {
-              console.error('Could not read STT error response');
-            }
-          }
-
-          // If not the last attempt, wait before retrying
-          if (attempt < maxRetries) {
-            console.log(`⏳ Retrying in ${retryDelay}ms...`);
-            await new Promise(resolve => setTimeout(resolve, retryDelay));
-          }
-        }
-      } catch (error) {
-        console.error(`❌ Failed to check Google Cloud availability (attempt ${attempt}/${maxRetries}):`, error);
-
-        // If not the last attempt, wait before retrying
-        if (attempt < maxRetries) {
-          console.log(`⏳ Retrying in ${retryDelay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, retryDelay));
-        }
-      }
-    }
-
-    // If we get here, all attempts failed
-    console.error('❌ All attempts to check Google Cloud availability failed');
+    // Google Cloud TTS/STT APIs have been removed as part of TTS/STT cleanup
+    // Set availability to false and skip API checks
+    console.log('🔧 Google Cloud TTS/STT APIs have been removed - using browser APIs only');
     this.googleCloudAvailable = false;
   }
 
@@ -198,7 +104,7 @@ export class GeminiSpeechService {
   }
 
   /**
-   * Convert speech audio to text using Google Cloud Speech-to-Text via API
+   * Convert speech audio to text using browser APIs (Google Cloud APIs removed)
    */
   public async speechToText(
     audioBuffer: ArrayBuffer,
@@ -206,67 +112,15 @@ export class GeminiSpeechService {
   ): Promise<SpeechResult> {
     const { language = 'en-US' } = options;
 
-    // Ensure Google Cloud availability is checked
-    await this.ensureGoogleCloudChecked();
-
     console.log('🎤 speechToText called:', {
       audioBufferSize: audioBuffer.byteLength,
       language,
-      googleCloudAvailable: this.googleCloudAvailable,
-      googleCloudChecked: this.googleCloudChecked,
       hasGeminiAI: !!this.genAI,
       hasModel: !!this.model
     });
 
-    // Try Google Cloud STT API first
-    if (this.googleCloudAvailable) {
-      try {
-        console.log('🎤 Using Google Cloud STT API for language:', language);
-
-        // Convert ArrayBuffer to base64 for API transmission
-        const audioBase64 = this.arrayBufferToBase64(audioBuffer);
-
-        // Construct absolute URL for server-side requests
-        const { fetchApi } = await import('@/lib/utils/url');
-        const response = await fetchApi('/api/google-cloud-stt', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            audioData: audioBase64,
-            language: 'hi-IN', // Use Hindi as primary language for better detection
-            sampleRate: 48000, // Pass the correct sample rate for WEBM OPUS
-            enableMultilingual: true // Enable multilingual support
-          })
-        });
-
-        console.log('🎤 Google Cloud STT response:', {
-          ok: response.ok,
-          status: response.status,
-          statusText: response.statusText
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          console.log('🌍 STT detected language:', result.detectedLanguage || result.language);
-          return {
-            text: result.text || '',
-            confidence: result.confidence || 0.9,
-            language: result.detectedLanguage || result.language || language,
-            duration: audioBuffer.byteLength / 32000 // 16kHz * 2 bytes per sample
-          };
-        } else {
-          const errorText = await response.text();
-          console.error('❌ Google Cloud STT API error:', errorText);
-        }
-      } catch (error) {
-        console.error('❌ Google Cloud STT API failed:', error);
-      }
-    } else {
-      console.warn('⚠️ Google Cloud STT not available, using fallback. Reason: googleCloudAvailable =', this.googleCloudAvailable);
-    }
-
-    // Fallback to Gemini/Web Speech API
-    console.log('🔄 Falling back to Gemini/Web Speech API');
+    // Use browser-based speech recognition directly (Google Cloud APIs removed)
+    console.log('🔄 Using browser-based speech recognition');
     return this.fallbackSpeechToTextGemini(audioBuffer, options);
   }
 
@@ -528,7 +382,7 @@ Audio data: ${audioBase64}
   }
 
   /**
-   * Convert text to speech using Enhanced TTS API with intelligent voice selection
+   * Convert text to speech using browser Web Speech API (Enhanced TTS API removed)
    */
   public async textToSpeech(
     text: string,
@@ -536,52 +390,14 @@ Audio data: ${audioBase64}
   ): Promise<ArrayBuffer> {
     const {
       language = 'en-US',
-      voice = 'en-US-Neural2-D',
+      voice,
       speed = 1.0,
       pitch = 0.0
     } = options;
 
-    // Try Enhanced TTS API first
-    if (this.googleCloudAvailable) {
-      try {
-        console.log('🎵 Using Enhanced TTS API for:', text.substring(0, 50) + '...');
+    console.log('🎵 Using Web Speech API for:', text.substring(0, 50) + '...');
 
-        // Construct absolute URL for server-side requests
-        const { fetchApi } = await import('@/lib/utils/url');
-        const response = await fetchApi('/api/tts/enhanced', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            text,
-            language,
-            voice,
-            gender: 'FEMALE', // Default to female voice
-            quality: 'Neural2', // Use Neural2 quality
-            speed,
-            pitch,
-            volume: 1.0,
-            enableTranslation: false
-          })
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.audio?.data) {
-            // Convert base64 audio back to ArrayBuffer
-            const audioBuffer = Uint8Array.from(atob(result.audio.data), c => c.charCodeAt(0));
-            console.log('✅ Enhanced TTS synthesis successful');
-            return audioBuffer.buffer.slice(audioBuffer.byteOffset, audioBuffer.byteOffset + audioBuffer.byteLength);
-          }
-        } else {
-          const errorData = await response.json();
-          console.warn('Enhanced TTS API failed:', errorData);
-        }
-      } catch (error) {
-        console.warn('Enhanced TTS API failed, falling back to Web Speech API:', error);
-      }
-    }
-
-    // Fallback to Web Speech API
+    // Use Web Speech API directly (Enhanced TTS API removed)
     return this.fallbackTextToSpeech(text, { language, voice, speed, pitch });
   }
 
@@ -607,7 +423,7 @@ Audio data: ${audioBase64}
         resolve(mockAudioBuffer);
         return;
       }
-      
+
       // Check for browser support
       if (!('speechSynthesis' in window)) {
         reject(new Error('Text-to-speech not supported in this browser'));
@@ -753,32 +569,17 @@ Audio data: ${audioBase64}
   }
 
   /**
-   * Get available voices for text-to-speech
+   * Get available voices for text-to-speech (Web Speech API only)
    */
   public async getAvailableVoices(): Promise<any[]> {
-    // If Google Cloud TTS is available, return predefined Google Cloud voices
-    if (this.googleCloudAvailable) {
-      // Return a list of common Google Cloud Neural2 voices
-      return [
-        { name: 'en-US-Neural2-D', languageCode: 'en-US', ssmlGender: 'MALE' },
-        { name: 'en-US-Neural2-F', languageCode: 'en-US', ssmlGender: 'FEMALE' },
-        { name: 'hi-IN-Neural2-D', languageCode: 'hi-IN', ssmlGender: 'MALE' },
-        { name: 'hi-IN-Neural2-F', languageCode: 'hi-IN', ssmlGender: 'FEMALE' },
-        { name: 'bn-IN-Neural2-D', languageCode: 'bn-IN', ssmlGender: 'MALE' },
-        { name: 'te-IN-Neural2-D', languageCode: 'te-IN', ssmlGender: 'MALE' },
-        { name: 'mr-IN-Neural2-D', languageCode: 'mr-IN', ssmlGender: 'MALE' },
-        { name: 'ta-IN-Neural2-D', languageCode: 'ta-IN', ssmlGender: 'MALE' },
-        { name: 'gu-IN-Neural2-D', languageCode: 'gu-IN', ssmlGender: 'MALE' },
-        { name: 'kn-IN-Neural2-D', languageCode: 'kn-IN', ssmlGender: 'MALE' },
-        { name: 'ml-IN-Neural2-D', languageCode: 'ml-IN', ssmlGender: 'MALE' },
-        { name: 'pa-IN-Neural2-D', languageCode: 'pa-IN', ssmlGender: 'MALE' },
-        { name: 'or-IN-Neural2-D', languageCode: 'or-IN', ssmlGender: 'MALE' },
-        { name: 'as-IN-Neural2-D', languageCode: 'as-IN', ssmlGender: 'MALE' }
-      ];
-    }
-
-    // Fallback to Web Speech API voices
+    // Use Web Speech API voices only (Google Cloud TTS removed)
     return new Promise((resolve) => {
+      if (typeof window === 'undefined') {
+        // Server-side fallback
+        resolve([]);
+        return;
+      }
+
       const voices = speechSynthesis.getVoices();
       if (voices.length > 0) {
         resolve(voices.map(voice => ({

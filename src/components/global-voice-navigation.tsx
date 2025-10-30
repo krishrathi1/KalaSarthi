@@ -28,6 +28,7 @@ import {
     VoiceNavigationPerformanceMonitor
 } from '@/lib/services/VoiceNavigationAnalytics';
 import { SemanticVoiceNavigationService } from '@/lib/services/SemanticVoiceNavigationService';
+import { GeminiSpeechService } from '@/lib/service/GeminiSpeechService';
 
 export interface GlobalVoiceNavigationProps {
     className?: string;
@@ -83,6 +84,9 @@ export function GlobalVoiceNavigation({
     const multilingualServiceRef = useRef<MultilingualVoiceClientService | null>(null);
     const languageSwitcherRef = useRef<VoiceLanguageSwitcherClient | null>(null);
     const performanceOptimizerRef = useRef<VoiceNavigationPerformanceOptimizer | null>(null);
+    const geminiSpeechServiceRef = useRef<GeminiSpeechService | null>(null);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
     const lazyLoaderRef = useRef<VoiceNavigationLazyLoader | null>(null);
     const analyticsRef = useRef<VoiceNavigationAnalytics | null>(null);
     const performanceMonitorRef = useRef<VoiceNavigationPerformanceMonitor | null>(null);
@@ -298,9 +302,41 @@ export function GlobalVoiceNavigation({
         }
     }, [cleanupAudioAnalysis, toast, state.currentLanguage]);
 
-    // Play optimized audio feedback with caching
-    const playOptimizedAudioFeedback = useCallback(async (text: string) => {
+    // Enhanced audio feedback using GeminiSpeechService for better TTS
+    const playEnhancedAudioFeedback = useCallback(async (text: string) => {
         try {
+            // Try GeminiSpeechService first for better quality
+            if (geminiSpeechServiceRef.current) {
+                try {
+                    console.log('🔊 Using Gemini TTS for feedback:', text);
+
+                    const audioBuffer = await geminiSpeechServiceRef.current.textToSpeech(text, {
+                        language: state.currentLanguage,
+                        voice: 'default',
+                        speed: 1.0,
+                        pitch: 1.0
+                    });
+
+                    // Play the audio buffer
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const decodedBuffer = await audioContext.decodeAudioData(audioBuffer.slice(0));
+                    const source = audioContext.createBufferSource();
+                    source.buffer = decodedBuffer;
+                    source.connect(audioContext.destination);
+                    source.start();
+
+                    // Clean up
+                    source.onended = () => {
+                        audioContext.close();
+                    };
+
+                    return; // Success with Gemini TTS
+                } catch (geminiError) {
+                    console.warn('Gemini TTS failed, falling back to browser TTS:', geminiError);
+                }
+            }
+
+            // Fallback to browser TTS
             if (!('speechSynthesis' in window) || !multilingualServiceRef.current) {
                 return;
             }
@@ -349,17 +385,104 @@ export function GlobalVoiceNavigation({
 
             // Cache the audio for future use (simplified approach)
             utterance.onend = () => {
-                // In a real implementation, you would capture and cache the audio buffer
-                // For now, we'll just mark it as processed
-                console.log('Audio feedback completed and could be cached');
+                console.log('Browser TTS feedback completed');
             };
 
             speechSynthesis.speak(utterance);
 
         } catch (error) {
-            console.error('Audio feedback error:', error);
+            console.error('Enhanced audio feedback error:', error);
         }
     }, [state.currentLanguage]);
+
+    // Legacy audio feedback function (keeping for compatibility)
+    const playOptimizedAudioFeedback = playEnhancedAudioFeedback;
+
+    // Enhanced voice recording using GeminiSpeechService for better STT
+    const startEnhancedVoiceRecording = useCallback(async (stream: MediaStream) => {
+        if (!geminiSpeechServiceRef.current) {
+            console.warn('GeminiSpeechService not available, falling back to browser STT');
+            return startSpeechRecognition(stream);
+        }
+
+        try {
+            setState(prev => ({ ...prev, isListening: true, isProcessing: false, error: undefined }));
+
+            // Create MediaRecorder for high-quality audio capture
+            const mediaRecorder = new MediaRecorder(stream, {
+                mimeType: 'audio/webm;codecs=opus'
+            });
+
+            mediaRecorderRef.current = mediaRecorder;
+            audioChunksRef.current = [];
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunksRef.current.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = async () => {
+                try {
+                    setState(prev => ({ ...prev, isListening: false, isProcessing: true }));
+
+                    // Create audio blob and convert to ArrayBuffer
+                    const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                    const arrayBuffer = await audioBlob.arrayBuffer();
+
+                    // Use GeminiSpeechService for enhanced STT
+                    const result = await geminiSpeechServiceRef.current!.speechToText(arrayBuffer, {
+                        language: state.currentLanguage
+                    });
+
+                    console.log('🎤 Enhanced STT Result:', result);
+
+                    // Process the recognized text
+                    await processVoiceInput(result.text);
+
+                } catch (error) {
+                    console.error('Enhanced STT failed:', error);
+                    setState(prev => ({
+                        ...prev,
+                        isListening: false,
+                        isProcessing: false,
+                        error: 'Speech recognition failed. Please try again.'
+                    }));
+
+                    toast({
+                        title: "Speech Recognition Failed",
+                        description: "Could not process your voice command. Please try again.",
+                        variant: "destructive"
+                    });
+                } finally {
+                    // Cleanup
+                    mediaRecorderRef.current = null;
+                    audioChunksRef.current = [];
+                }
+            };
+
+            // Start recording
+            mediaRecorder.start();
+
+            // Auto-stop after 8 seconds
+            setTimeout(() => {
+                if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+                    mediaRecorderRef.current.stop();
+                }
+            }, 8000);
+
+            toast({
+                title: "🎤 Enhanced Voice Recognition",
+                description: "Speak your navigation command now (using Gemini AI)",
+                duration: 2000
+            });
+
+        } catch (error) {
+            console.error('Enhanced voice recording failed:', error);
+            // Fallback to browser STT
+            return startSpeechRecognition(stream);
+        }
+    }, [state.currentLanguage, processVoiceInput, toast]);
 
     // Start speech recognition with multilingual support
     const startSpeechRecognition = useCallback(async (stream: MediaStream) => {
@@ -612,6 +735,7 @@ export function GlobalVoiceNavigation({
                 analyticsRef.current = VoiceNavigationAnalytics.getInstance();
                 performanceMonitorRef.current = VoiceNavigationPerformanceMonitor.getInstance();
                 semanticServiceRef.current = SemanticVoiceNavigationService.getInstance();
+                geminiSpeechServiceRef.current = GeminiSpeechService.getInstance();
 
                 // Start analytics session
                 sessionIdRef.current = analyticsRef.current.startSession(
@@ -776,8 +900,8 @@ export function GlobalVoiceNavigation({
                         description: "Listening for navigation commands. Say 'go to dashboard' or 'open profile'.",
                     });
 
-                    // Start actual voice recognition processing
-                    await startSpeechRecognition(stream);
+                    // Start enhanced voice recognition processing with Gemini AI
+                    await startEnhancedVoiceRecording(stream);
 
                 } catch (micError) {
                     setState(prev => ({
