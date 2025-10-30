@@ -761,7 +761,22 @@ export class EnhancedSchemeService {
   }
 
   private async getMockSchemes(): Promise<GovernmentScheme[]> {
-    // Enhanced mock data with comprehensive scheme information
+    // DEPRECATED: This method now uses dynamic AI-powered scheme discovery
+    // Import and use DynamicSchemeService for real-time government schemes
+    try {
+      const { DynamicSchemeService } = await import('./scheme-sahayak/DynamicSchemeService');
+      const dynamicService = new DynamicSchemeService();
+      const result = await dynamicService.fetchLatestSchemes();
+      
+      if (result.schemes.length > 0) {
+        console.log(`✅ Loaded ${result.schemes.length} schemes dynamically using AI`);
+        return result.schemes;
+      }
+    } catch (error) {
+      console.warn('⚠️ Dynamic scheme loading failed, falling back to static data:', error);
+    }
+    
+    // Fallback to minimal static data only if dynamic loading fails
     return [
       {
         id: 'mudra_shishu',

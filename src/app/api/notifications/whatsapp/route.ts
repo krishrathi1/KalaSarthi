@@ -61,9 +61,22 @@ export async function POST(request: NextRequest) {
       ? `${message}\n\n🔗 Apply here: ${schemeUrl}`
       : message;
 
+    // Ensure phone number is in correct format (+91XXXXXXXXXX)
+    const formattedPhoneNumber = phoneNumber.startsWith('+') 
+      ? phoneNumber 
+      : phoneNumber.startsWith('91') 
+        ? `+${phoneNumber}`
+        : `+91${phoneNumber.replace(/^0/, '')}`;
+
+    console.log('📱 Sending WhatsApp message:', {
+      from: `whatsapp:${twilioWhatsAppNumber}`,
+      to: `whatsapp:${formattedPhoneNumber}`,
+      messageLength: fullMessage.length
+    });
+
     const result = await client.messages.create({
       from: `whatsapp:${twilioWhatsAppNumber}`,
-      to: `whatsapp:${phoneNumber}`,
+      to: `whatsapp:${formattedPhoneNumber}`,
       body: fullMessage
     });
 
@@ -80,6 +93,49 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('WhatsApp notification error:', error);
+    
+    // Handle specific Twilio errors
+    if (error.code) {
+      switch (error.code) {
+        case 63007:
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: 'WhatsApp channel not configured. Please set up WhatsApp Sandbox in Twilio Console.',
+              code: error.code,
+              solution: 'Go to Twilio Console > Messaging > Try it out > Send a WhatsApp message. Use sandbox number +14155238886 and activate with "join <keyword>"'
+            },
+            { status: 400 }
+          );
+        case 21211:
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: 'Invalid phone number format. Use +91XXXXXXXXXX format.',
+              code: error.code
+            },
+            { status: 400 }
+          );
+        case 21614:
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: 'WhatsApp number not verified with Twilio. Add to verified caller IDs.',
+              code: error.code
+            },
+            { status: 400 }
+          );
+        default:
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: `Twilio error: ${error.message}`,
+              code: error.code
+            },
+            { status: 500 }
+          );
+      }
+    }
     
     return NextResponse.json(
       {
