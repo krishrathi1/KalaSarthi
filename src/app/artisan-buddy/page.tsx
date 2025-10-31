@@ -21,7 +21,9 @@ import {
   History,
   Star,
   Heart,
-  Share2
+  Share2,
+  Pause,
+  Play
 } from 'lucide-react';
 
 interface Message {
@@ -51,6 +53,7 @@ export default function ArtisanBuddyPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
@@ -140,6 +143,7 @@ export default function ArtisanBuddyPage() {
         try {
           console.log('🔊 Starting BULLETPROOF TTS for response');
           setIsSpeaking(true);
+          setIsPaused(false);
 
           // Use reliable browser TTS (most compatible)
           speechSynthesis.cancel(); // Clear any existing speech
@@ -153,16 +157,19 @@ export default function ArtisanBuddyPage() {
           utterance.onstart = () => {
             console.log('🔊 TTS started successfully');
             setIsSpeaking(true);
+            setIsPaused(false);
           };
 
           utterance.onend = () => {
             console.log('🔊 TTS finished successfully');
             setIsSpeaking(false);
+            setIsPaused(false);
           };
 
           utterance.onerror = (e) => {
             console.error('🔊 TTS error:', e);
             setIsSpeaking(false);
+            setIsPaused(false);
           };
 
           // Wait a moment for voices to load, then speak
@@ -173,6 +180,7 @@ export default function ArtisanBuddyPage() {
         } catch (error) {
           console.error('TTS failed:', error);
           setIsSpeaking(false);
+          setIsPaused(false);
         }
       }
 
@@ -210,6 +218,29 @@ export default function ArtisanBuddyPage() {
     setSessions(prev => [newSession, ...prev]);
     setCurrentSessionId(newSession.id);
     setMessages([]);
+  };
+
+  const togglePauseSpeech = () => {
+    if ('speechSynthesis' in window) {
+      if (isPaused) {
+        speechSynthesis.resume();
+        setIsPaused(false);
+        console.log('🔊 TTS resumed');
+      } else {
+        speechSynthesis.pause();
+        setIsPaused(true);
+        console.log('🔊 TTS paused');
+      }
+    }
+  };
+
+  const stopSpeech = () => {
+    if ('speechSynthesis' in window) {
+      speechSynthesis.cancel();
+      setIsSpeaking(false);
+      setIsPaused(false);
+      console.log('🔊 TTS stopped');
+    }
   };
 
   const formatTime = (date: Date) => {
@@ -291,10 +322,34 @@ export default function ArtisanBuddyPage() {
                   </Badge>
                 )}
                 {isSpeaking && (
-                  <Badge variant="default" className="bg-blue-500 text-white animate-pulse">
-                    <Volume2 className="h-3 w-3 mr-1" />
-                    Speaking
-                  </Badge>
+                  <div className="flex items-center space-x-1">
+                    <Badge variant="default" className="bg-blue-500 text-white animate-pulse">
+                      <Volume2 className="h-3 w-3 mr-1" />
+                      Speaking
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={togglePauseSpeech}
+                      className="h-7 px-2"
+                      title={isPaused ? "Resume" : "Pause"}
+                    >
+                      {isPaused ? (
+                        <Play className="h-3 w-3 text-blue-600" />
+                      ) : (
+                        <Pause className="h-3 w-3 text-blue-600" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={stopSpeech}
+                      className="h-7 px-2"
+                      title="Stop"
+                    >
+                      <VolumeX className="h-3 w-3 text-red-600" />
+                    </Button>
+                  </div>
                 )}
               </div>
 
