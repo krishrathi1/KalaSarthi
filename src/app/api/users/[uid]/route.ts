@@ -3,17 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
     request: NextRequest,
-<<<<<<< HEAD
-    context: { params: Promise<{ uid: string }> } // 👈 make params async
-) {
-    try {
-        const { uid } = await context.params; // 👈 await it
-=======
     { params }: { params: Promise<{ uid: string }> }
 ) {
     try {
         const { uid } = await params;
->>>>>>> 9a9fe0fa807a32ce6fddf5b2a6df011c8773083e
 
         if (!uid) {
             return NextResponse.json(
@@ -47,17 +40,10 @@ export async function GET(
 
 export async function PUT(
     request: NextRequest,
-<<<<<<< HEAD
-    context: { params: Promise<{ uid: string }> }
-) {
-    try {
-        const { uid } = await context.params;
-=======
     { params }: { params: Promise<{ uid: string }> }
 ) {
     try {
         const { uid } = await params;
->>>>>>> 9a9fe0fa807a32ce6fddf5b2a6df011c8773083e
         const updateData = await request.json();
 
         if (!uid) {
@@ -70,7 +56,7 @@ export async function PUT(
         const result = await UserService.updateUser(uid, updateData);
         if (result.success) {
             const updatedUser = await UserService.getUserByUid(uid);
-            
+
             // Prevent caching of user data
             const response = NextResponse.json(
                 { success: true, data: updatedUser, modifiedCount: result.modifiedCount },
@@ -97,17 +83,10 @@ export async function PUT(
 
 export async function DELETE(
     request: NextRequest,
-<<<<<<< HEAD
-    context: { params: Promise<{ uid: string }> }
-) {
-    try {
-        const { uid } = await context.params;
-=======
     { params }: { params: Promise<{ uid: string }> }
 ) {
     try {
         const { uid } = await params;
->>>>>>> 9a9fe0fa807a32ce6fddf5b2a6df011c8773083e
 
         if (!uid) {
             return NextResponse.json(
