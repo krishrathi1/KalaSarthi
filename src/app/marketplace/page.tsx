@@ -53,9 +53,8 @@ export default function MarketplacePage() {
 
     // Set up voice command listeners
     useEffect(() => {
-        const voiceService = conversationalProcessor;
-
-        // Listen for voice commands from the global voice service
+        // Voice command handling - placeholder for future integration
+        // This will be integrated with the global voice navigation system
         const handleVoiceCommand = (command: string) => {
             processVoiceCommand(command);
         };
