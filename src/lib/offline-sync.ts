@@ -53,12 +53,12 @@ class OfflineSyncManager {
     private startPeriodicSync(): void {
         if (this.syncInterval || typeof window === 'undefined') return;
 
-        // Sync every 30 seconds when online
+        // Sync every 5 minutes when online (reduced frequency to prevent spam)
         this.syncInterval = setInterval(() => {
             if (navigator.onLine && !this.isSyncing) {
                 this.syncAll();
             }
-        }, 30000);
+        }, 300000); // 5 minutes instead of 30 seconds
     }
 
     private stopPeriodicSync(): void {
@@ -98,6 +98,9 @@ class OfflineSyncManager {
                     if (item.retries >= this.maxRetries) {
                         console.warn(`Max retries reached for sync item ${item.id}, removing from queue`);
                         await this.removeSyncItem(item.id);
+                    } else {
+                        // Update retry count in storage
+                        await offlineStorage.updateSyncQueueItem(item.id, { retries: item.retries });
                     }
                 }
             }
@@ -114,7 +117,7 @@ class OfflineSyncManager {
                 success: false,
                 synced: 0,
                 failed: 0,
-                errors: [error instanceof Error ? error instanceof Error ? error.message : String(error) : 'Unknown sync error']
+                errors: [error instanceof Error ? error.message : String(error)]
             };
         } finally {
             this.isSyncing = false;
@@ -218,7 +221,12 @@ class OfflineSyncManager {
     private async syncProductCreate(data: any): Promise<void> {
         const response = await fetch('/api/products', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-Offline-Sync': 'true',
+                'X-Sync-Timestamp': new Date().toISOString(),
+                'X-Client-Version': String(data.version || 1)
+            },
             body: JSON.stringify(data)
         });
 
@@ -228,20 +236,53 @@ class OfflineSyncManager {
     }
 
     private async syncProductUpdate(data: any): Promise<void> {
+        // First, check if server has newer version
+        try {
+            const checkResponse = await fetch(`/api/products/${data.id}`);
+            if (checkResponse.ok) {
+                const serverData = await checkResponse.json();
+                const serverVersion = serverData.data?.version || 0;
+                const localVersion = data.version || 0;
+
+                // Conflict: server has newer version
+                if (serverVersion > localVersion) {
+                    console.warn(`Conflict detected for product ${data.id}. Server version: ${serverVersion}, Local version: ${localVersion}`);
+                    // Use server version (last-write-wins with server preference)
+                    return;
+                }
+            }
+        } catch (error) {
+            console.warn('Could not check server version, proceeding with update:', error);
+        }
+
         const response = await fetch(`/api/products/${data.id}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-Offline-Sync': 'true',
+                'X-Sync-Timestamp': new Date().toISOString(),
+                'X-Client-Version': String(data.version || 1)
+            },
             body: JSON.stringify(data)
         });
 
         if (!response.ok) {
+            // Handle 409 Conflict
+            if (response.status === 409) {
+                console.warn(`Conflict detected for product ${data.id}, server has newer version`);
+                return; // Skip this update
+            }
             throw new Error(`Failed to update product: ${response.statusText}`);
         }
     }
 
     private async syncProductDelete(id: string): Promise<void> {
         const response = await fetch(`/api/products/${id}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: {
+                'X-Offline-Sync': 'true',
+                'X-Sync-Timestamp': new Date().toISOString()
+            }
         });
 
         if (!response.ok) {
@@ -268,7 +309,11 @@ class OfflineSyncManager {
         // Chat messages might be sent to a chat API
         const response = await fetch('/api/chat', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-Offline-Sync': 'true',
+                'X-Sync-Timestamp': new Date().toISOString()
+            },
             body: JSON.stringify(data)
         });
 
@@ -290,7 +335,11 @@ class OfflineSyncManager {
     private async syncCartCreate(data: any): Promise<void> {
         const response = await fetch('/api/cart', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-Offline-Sync': 'true',
+                'X-Sync-Timestamp': new Date().toISOString()
+            },
             body: JSON.stringify(data)
         });
 
@@ -302,7 +351,11 @@ class OfflineSyncManager {
     private async syncCartUpdate(data: any): Promise<void> {
         const response = await fetch('/api/cart', {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-Offline-Sync': 'true',
+                'X-Sync-Timestamp': new Date().toISOString()
+            },
             body: JSON.stringify(data)
         });
 
@@ -313,7 +366,11 @@ class OfflineSyncManager {
 
     private async syncCartDelete(id: string): Promise<void> {
         const response = await fetch(`/api/cart/${id}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: {
+                'X-Offline-Sync': 'true',
+                'X-Sync-Timestamp': new Date().toISOString()
+            }
         });
 
         if (!response.ok) {
@@ -324,7 +381,11 @@ class OfflineSyncManager {
     private async syncWishlistCreate(data: any): Promise<void> {
         const response = await fetch('/api/wishlist', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-Offline-Sync': 'true',
+                'X-Sync-Timestamp': new Date().toISOString()
+            },
             body: JSON.stringify(data)
         });
 
@@ -336,7 +397,11 @@ class OfflineSyncManager {
     private async syncWishlistUpdate(data: any): Promise<void> {
         const response = await fetch('/api/wishlist', {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-Offline-Sync': 'true',
+                'X-Sync-Timestamp': new Date().toISOString()
+            },
             body: JSON.stringify(data)
         });
 
@@ -347,7 +412,11 @@ class OfflineSyncManager {
 
     private async syncWishlistDelete(id: string): Promise<void> {
         const response = await fetch(`/api/wishlist/${id}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: {
+                'X-Offline-Sync': 'true',
+                'X-Sync-Timestamp': new Date().toISOString()
+            }
         });
 
         if (!response.ok) {
@@ -356,11 +425,7 @@ class OfflineSyncManager {
     }
 
     private async removeSyncItem(id: string): Promise<void> {
-        const syncQueue = await offlineStorage.getSyncQueue();
-        const updatedQueue = syncQueue.filter(item => item.id !== id);
-
-        // Update the sync queue in storage
-        localStorage.setItem('kalabandhu-sync-queue', JSON.stringify(updatedQueue));
+        await offlineStorage.removeSyncQueueItem(id);
     }
 
     // Public methods

@@ -6,6 +6,10 @@ export async function POST(request: NextRequest) {
     try {
         const productData: Partial<IProduct> = await request.json();
 
+        // Check if this is an offline sync request
+        const isOfflineSync = request.headers.get('X-Offline-Sync') === 'true';
+        const syncTimestamp = request.headers.get('X-Sync-Timestamp');
+
         // Validate required fields
         if (!productData.artisanId || !productData.name || !productData.description || !productData.price || !productData.category) {
             return NextResponse.json(
@@ -32,7 +36,12 @@ export async function POST(request: NextRequest) {
 
         if (result.success) {
             return NextResponse.json(
-                { success: true, data: result.data },
+                { 
+                    success: true, 
+                    data: result.data,
+                    synced: isOfflineSync,
+                    syncTimestamp: syncTimestamp || new Date().toISOString()
+                },
                 { status: 201 }
             );
         } else {

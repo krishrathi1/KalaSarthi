@@ -93,9 +93,9 @@ export function useOffline() {
     }, [state.isOnline, toast, updateState]);
 
     // Store data offline
-    const storeOffline = useCallback(async (type: 'product' | 'trend' | 'chat' | 'cart' | 'wishlist', data: any, id?: string) => {
+    const storeOffline = useCallback(async (type: 'product' | 'trend' | 'chat' | 'cart' | 'wishlist', data: any, id?: string, skipSync: boolean = false) => {
         try {
-            const storedId = await offlineStorage.storeData(type, data, id);
+            const storedId = await offlineStorage.storeData(type, data, id, skipSync);
             await updateState();
             return storedId;
         } catch (error) {

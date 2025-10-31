@@ -6,12 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter, Star, Package, ShoppingBag, Mic, MicOff } from 'lucide-react';
+import { Search, Filter, Star, Package, ShoppingBag, Mic, MicOff, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import ProductCard from '@/components/marketplace/ProductCard';
 import { VoiceControl } from '@/components/ui/VoiceControl';
 import { ConversationalVoiceProcessor } from '@/lib/service/ConversationalVoiceProcessor';
 import { useToast } from '@/hooks/use-toast';
+import { useOffline } from '@/hooks/use-offline';
+import { offlineStorage } from '@/lib/offline-storage';
 
 export default function MarketplacePage() {
     const [products, setProducts] = useState<IProductDocument[]>([]);
@@ -31,10 +33,19 @@ export default function MarketplacePage() {
     const conversationalProcessor = ConversationalVoiceProcessor.getInstance();
     const { toast } = useToast();
 
-    // Fetch products on component mount
+    // Offline support
+    const {
+        isOnline,
+        isSyncing,
+        storeOffline,
+        getOfflineData,
+        sync,
+    } = useOffline();
+
+    // Fetch products on component mount and when online status changes
     useEffect(() => {
         fetchProducts();
-    }, []);
+    }, [isOnline]);
 
     // Filter and sort products when dependencies change
     useEffect(() => {
@@ -66,17 +77,93 @@ export default function MarketplacePage() {
 
     const fetchProducts = async () => {
         try {
-            const response = await fetch('/api/products?status=published');
-            const data = await response.json();
+            if (isOnline) {
+                // Fetch from API when online - DON'T use cache
+                const response = await fetch('/api/products?status=published');
+                const data = await response.json();
 
-            if (data.success) {
-                setProducts(data.data);
-                // Extract unique categories
-                const uniqueCategories = [...new Set(data.data.map((p: IProductDocument) => p.category))] as string[];
-                setCategories(uniqueCategories);
+                if (data.success) {
+                    // Set products directly from API
+                    setProducts(data.data);
+
+                    // Extract unique categories
+                    const uniqueCategories = [...new Set(data.data.map((p: IProductDocument) => p.category))] as string[];
+                    setCategories(uniqueCategories);
+
+                    // Cache products for offline use (don't await, run in background)
+                    (async () => {
+                        try {
+                            console.log(`Starting to cache ${data.data.length} products...`);
+
+                            // Clear only product cache to prevent duplicates (not cart, wishlist, etc.)
+                            await offlineStorage.clearDataByType('product');
+                            console.log('Cleared old product cache');
+
+                            // Store fresh products directly with skipSync=true (don't sync back to server)
+                            let cached = 0;
+                            for (const product of data.data) {
+                                try {
+                                    await offlineStorage.storeData('product', product, product.productId, true);
+                                    cached++;
+                                    if (cached % 10 === 0) {
+                                        console.log(`Cached ${cached}/${data.data.length} products...`);
+                                    }
+                                } catch (err) {
+                                    console.error(`Failed to cache product ${product.productId}:`, err);
+                                }
+                            }
+                            console.log(`✅ Successfully cached ${cached}/${data.data.length} products for offline use`);
+                        } catch (cacheError) {
+                            console.error('❌ Failed to cache products:', cacheError);
+                        }
+                    })();
+                }
+            } else {
+                // Load from offline storage ONLY when offline
+                console.log('Loading products from offline storage...');
+                const offlineProducts = await getOfflineData('product') as IProductDocument[];
+                console.log(`Found ${offlineProducts.length} cached products`);
+
+                if (offlineProducts.length > 0) {
+                    setProducts(offlineProducts);
+
+                    // Extract unique categories
+                    const uniqueCategories = [...new Set(offlineProducts.map((p: IProductDocument) => p.category))] as string[];
+                    setCategories(uniqueCategories);
+
+                    toast({
+                        title: "Working Offline",
+                        description: `Showing ${offlineProducts.length} cached products. Some features may be limited.`,
+                        duration: 5000,
+                    });
+                } else {
+                    toast({
+                        title: "No Offline Data",
+                        description: "Please connect to the internet to load products.",
+                        variant: "destructive",
+                    });
+                }
             }
         } catch (error) {
             console.error('Error fetching products:', error);
+
+            // Fallback to offline data on error
+            try {
+                const offlineProducts = await getOfflineData('product') as IProductDocument[];
+                if (offlineProducts.length > 0) {
+                    setProducts(offlineProducts);
+                    const uniqueCategories = [...new Set(offlineProducts.map((p: IProductDocument) => p.category))] as string[];
+                    setCategories(uniqueCategories);
+
+                    toast({
+                        title: "Using Cached Data",
+                        description: "Couldn't reach server. Showing cached products.",
+                        variant: "destructive",
+                    });
+                }
+            } catch (offlineError) {
+                console.error('Error loading offline products:', offlineError);
+            }
         } finally {
             setLoading(false);
         }
@@ -387,10 +474,65 @@ export default function MarketplacePage() {
                         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 text-center">
                             Artisan Marketplace
                         </h1>
+
+                        {/* Offline/Online Indicator */}
+                        <div className="flex items-center gap-2">
+                            {isOnline ? (
+                                <Badge variant="outline" className="gap-1 border-green-200 text-green-700 bg-green-50">
+                                    <Wifi className="h-3 w-3" />
+                                    <span className="hidden sm:inline">Online</span>
+                                </Badge>
+                            ) : (
+                                <Badge variant="outline" className="gap-1 border-red-200 text-red-700 bg-red-50">
+                                    <WifiOff className="h-3 w-3" />
+                                    <span className="hidden sm:inline">Offline</span>
+                                </Badge>
+                            )}
+
+                            {/* Sync Button */}
+                            {isOnline && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={async () => {
+                                        const result = await sync();
+                                        if (result) {
+                                            toast({
+                                                title: "Sync Complete",
+                                                description: "All data synchronized successfully.",
+                                            });
+                                        }
+                                    }}
+                                    disabled={isSyncing}
+                                    className="h-8 px-2"
+                                >
+                                    <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                                </Button>
+                            )}
+                        </div>
                     </div>
                     <p className="text-sm sm:text-base lg:text-lg text-gray-600 max-w-2xl mx-auto mb-4 sm:mb-6 px-4">
                         Discover unique handcrafted products from talented artisans around the world
                     </p>
+
+                    {/* Offline Banner */}
+                    {!isOnline && (
+                        <div className="max-w-2xl mx-auto mb-4">
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 sm:p-4">
+                                <div className="flex items-start gap-3">
+                                    <WifiOff className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1 text-left">
+                                        <p className="text-sm font-medium text-yellow-800">
+                                            Working Offline
+                                        </p>
+                                        <p className="text-xs text-yellow-700 mt-1">
+                                            You're viewing cached products. Some features may be limited. Changes will sync when you're back online.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Voice Control */}
                     <div className="flex justify-center mb-4">
@@ -642,7 +784,7 @@ export default function MarketplacePage() {
                         <div className="marketplace-grid">
                             {filteredProducts.map((product, index) => (
                                 <ProductCard
-                                    key={product.productId}
+                                    key={`${product.productId}-${index}`}
                                     product={product}
                                 />
                             ))}

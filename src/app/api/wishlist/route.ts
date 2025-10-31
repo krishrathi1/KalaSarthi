@@ -37,6 +37,10 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const { userId, productId } = body;
 
+        // Check if this is an offline sync request
+        const isOfflineSync = request.headers.get('X-Offline-Sync') === 'true';
+        const syncTimestamp = request.headers.get('X-Sync-Timestamp');
+
         if (!userId || !productId) {
             return NextResponse.json({
                 success: false,
@@ -50,7 +54,11 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(result, { status: 400 });
         }
 
-        return NextResponse.json(result);
+        return NextResponse.json({
+            ...result,
+            synced: isOfflineSync,
+            syncTimestamp: syncTimestamp || new Date().toISOString()
+        });
     } catch (error) {
         console.error('POST /api/wishlist error:', error);
         return NextResponse.json({
@@ -67,6 +75,10 @@ export async function DELETE(request: NextRequest) {
         const userId = searchParams.get('userId');
         const productId = searchParams.get('productId');
 
+        // Check if this is an offline sync request
+        const isOfflineSync = request.headers.get('X-Offline-Sync') === 'true';
+        const syncTimestamp = request.headers.get('X-Sync-Timestamp');
+
         if (!userId || !productId) {
             return NextResponse.json({
                 success: false,
@@ -80,7 +92,11 @@ export async function DELETE(request: NextRequest) {
             return NextResponse.json(result, { status: 400 });
         }
 
-        return NextResponse.json(result);
+        return NextResponse.json({
+            ...result,
+            synced: isOfflineSync,
+            syncTimestamp: syncTimestamp || new Date().toISOString()
+        });
     } catch (error) {
         console.error('DELETE /api/wishlist error:', error);
         return NextResponse.json({

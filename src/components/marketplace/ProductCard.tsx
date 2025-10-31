@@ -9,6 +9,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/format-utils';
 import { useState } from 'react';
+import { useOffline } from '@/hooks/use-offline';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/auth-context';
 
 interface ProductCardProps {
     product: IProductDocument;
@@ -17,23 +20,162 @@ interface ProductCardProps {
 export default function ProductCard({ product }: ProductCardProps) {
     const [isWishlisted, setIsWishlisted] = useState(false);
     const [imageError, setImageError] = useState(false);
+    const [isAddingToCart, setIsAddingToCart] = useState(false);
+    
+    const { isOnline, storeOffline } = useOffline();
+    const { toast } = useToast();
+    const { user } = useAuth();
     
     // Determine if product is trending (example logic - you can adjust this)
     const isTrending = Math.random() > 0.7; // 30% chance to be trending
     const isNew = new Date(product.createdAt).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000;
 
-    const handleWishlistToggle = (e: React.MouseEvent) => {
+    const handleWishlistToggle = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        setIsWishlisted(!isWishlisted);
-        // TODO: Implement wishlist API call
+        
+        if (!user) {
+            toast({
+                title: "Login Required",
+                description: "Please login to add items to wishlist.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        const newWishlistState = !isWishlisted;
+        setIsWishlisted(newWishlistState);
+
+        try {
+            if (isOnline) {
+                // Add/remove from wishlist via API
+                const method = newWishlistState ? 'POST' : 'DELETE';
+                const url = newWishlistState 
+                    ? '/api/wishlist'
+                    : `/api/wishlist?userId=${user.uid}&productId=${product.productId}`;
+                
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: newWishlistState ? JSON.stringify({
+                        userId: user.uid,
+                        productId: product.productId
+                    }) : undefined,
+                });
+
+                if (!response.ok) throw new Error('Failed to update wishlist');
+
+                toast({
+                    title: newWishlistState ? "Added to Wishlist" : "Removed from Wishlist",
+                    description: newWishlistState 
+                        ? `${product.name} added to your wishlist.`
+                        : `${product.name} removed from your wishlist.`,
+                });
+            } else {
+                // Store offline
+                if (newWishlistState) {
+                    await storeOffline('wishlist', {
+                        userId: user.uid,
+                        productId: product.productId,
+                        product: product,
+                        addedAt: new Date().toISOString(),
+                    }, `${user.uid}-${product.productId}`);
+                }
+
+                toast({
+                    title: newWishlistState ? "Added to Wishlist (Offline)" : "Removed from Wishlist (Offline)",
+                    description: "Changes will sync when you're back online.",
+                });
+            }
+        } catch (error) {
+            console.error('Wishlist error:', error);
+            setIsWishlisted(!newWishlistState); // Revert on error
+            
+            toast({
+                title: "Error",
+                description: "Failed to update wishlist. Please try again.",
+                variant: "destructive",
+            });
+        }
     };
 
-    const handleAddToCart = (e: React.MouseEvent) => {
+    const handleAddToCart = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        // TODO: Implement add to cart functionality
-        console.log('Add to cart:', product.productId);
+        
+        if (!user) {
+            toast({
+                title: "Login Required",
+                description: "Please login to add items to cart.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        setIsAddingToCart(true);
+
+        try {
+            if (isOnline) {
+                // Add to cart via API
+                const response = await fetch('/api/cart', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: user.uid,
+                        productId: product.productId,
+                        quantity: 1,
+                    }),
+                });
+
+                if (!response.ok) throw new Error('Failed to add to cart');
+
+                toast({
+                    title: "Added to Cart",
+                    description: `${product.name} added to your cart.`,
+                });
+            } else {
+                // Store offline
+                await storeOffline('cart', {
+                    userId: user.uid,
+                    productId: product.productId,
+                    product: product,
+                    quantity: 1,
+                    addedAt: new Date().toISOString(),
+                }, `${user.uid}-${product.productId}`);
+
+                toast({
+                    title: "Added to Cart (Offline)",
+                    description: "Item will sync when you're back online.",
+                });
+            }
+        } catch (error) {
+            console.error('Cart error:', error);
+            
+            // Fallback to offline storage
+            try {
+                await storeOffline('cart', {
+                    userId: user.uid,
+                    productId: product.productId,
+                    product: product,
+                    quantity: 1,
+                    addedAt: new Date().toISOString(),
+                }, `${user.uid}-${product.productId}`);
+
+                toast({
+                    title: "Saved Offline",
+                    description: "Item saved locally and will sync later.",
+                    variant: "destructive",
+                });
+            } catch (offlineError) {
+                toast({
+                    title: "Error",
+                    description: "Failed to add to cart. Please try again.",
+                    variant: "destructive",
+                });
+            }
+        } finally {
+            setIsAddingToCart(false);
+        }
     };
 
     return (

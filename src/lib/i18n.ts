@@ -985,7 +985,7 @@ export const menuItems: MenuItem[] = [
       or: 'ଟ୍ରେଣ୍ଡ ସ୍ପଟର',
       ur: 'ٹرینڈ سپاٹر',
     },
-<<<<<<< Updated upstream
+
     icon: Palette,
     path: "/trend-spotter",
   },

@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
         }
 
         const result = await CartService.getUserCart(userId);
-        
+
         if (!result.success) {
             return NextResponse.json(result, { status: 400 });
         }
@@ -36,6 +36,10 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const { userId, productId, quantity = 1 } = body;
 
+        // Check if this is an offline sync request
+        const isOfflineSync = request.headers.get('X-Offline-Sync') === 'true';
+        const syncTimestamp = request.headers.get('X-Sync-Timestamp');
+
         if (!userId || !productId) {
             return NextResponse.json({
                 success: false,
@@ -51,12 +55,16 @@ export async function POST(request: NextRequest) {
         }
 
         const result = await CartService.addToCart(userId, productId, quantity);
-        
+
         if (!result.success) {
             return NextResponse.json(result, { status: 400 });
         }
 
-        return NextResponse.json(result);
+        return NextResponse.json({
+            ...result,
+            synced: isOfflineSync,
+            syncTimestamp: syncTimestamp || new Date().toISOString()
+        });
     } catch (error) {
         console.error('POST /api/cart error:', error);
         return NextResponse.json({
@@ -72,6 +80,10 @@ export async function PUT(request: NextRequest) {
         const body = await request.json();
         const { userId, productId, quantity } = body;
 
+        // Check if this is an offline sync request
+        const isOfflineSync = request.headers.get('X-Offline-Sync') === 'true';
+        const syncTimestamp = request.headers.get('X-Sync-Timestamp');
+
         if (!userId || !productId || quantity === undefined) {
             return NextResponse.json({
                 success: false,
@@ -80,12 +92,16 @@ export async function PUT(request: NextRequest) {
         }
 
         const result = await CartService.updateCartItem(userId, productId, quantity);
-        
+
         if (!result.success) {
             return NextResponse.json(result, { status: 400 });
         }
 
-        return NextResponse.json(result);
+        return NextResponse.json({
+            ...result,
+            synced: isOfflineSync,
+            syncTimestamp: syncTimestamp || new Date().toISOString()
+        });
     } catch (error) {
         console.error('PUT /api/cart error:', error);
         return NextResponse.json({
@@ -102,6 +118,10 @@ export async function DELETE(request: NextRequest) {
         const userId = searchParams.get('userId');
         const productId = searchParams.get('productId');
 
+        // Check if this is an offline sync request
+        const isOfflineSync = request.headers.get('X-Offline-Sync') === 'true';
+        const syncTimestamp = request.headers.get('X-Sync-Timestamp');
+
         if (!userId || !productId) {
             return NextResponse.json({
                 success: false,
@@ -110,12 +130,16 @@ export async function DELETE(request: NextRequest) {
         }
 
         const result = await CartService.removeFromCart(userId, productId);
-        
+
         if (!result.success) {
             return NextResponse.json(result, { status: 400 });
         }
 
-        return NextResponse.json(result);
+        return NextResponse.json({
+            ...result,
+            synced: isOfflineSync,
+            syncTimestamp: syncTimestamp || new Date().toISOString()
+        });
     } catch (error) {
         console.error('DELETE /api/cart error:', error);
         return NextResponse.json({

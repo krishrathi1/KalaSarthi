@@ -3,45 +3,36 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { uid: string } }
+    context: { params: Promise<{ uid: string }> } // 👈 make params async
 ) {
     try {
-        const { uid } = params;
+        const { uid } = await context.params; // 👈 await it
 
         if (!uid) {
             return NextResponse.json(
-                {
-                    success: false,
-                    error: 'User ID is required'
-                },
+                { success: false, error: "User ID is required" },
                 { status: 400 }
             );
         }
 
         const user = await UserService.getUserByUid(uid);
-
         if (!user) {
             return NextResponse.json(
-                {
-                    success: false,
-                    error: 'User not found'
-                },
+                { success: false, error: "User not found" },
                 { status: 404 }
             );
         }
 
-        return NextResponse.json(
-            {
-                success: true,
-                data: user
-            },
-            { status: 200 }
-        );
-
+        // Prevent caching of user data
+        const response = NextResponse.json({ success: true, data: user }, { status: 200 });
+        response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        response.headers.set('Pragma', 'no-cache');
+        response.headers.set('Expires', '0');
+        return response;
     } catch (error) {
-        console.error('API Error:', error);
+        console.error("API Error:", error);
         return NextResponse.json(
-            { success: false, error: 'Internal server error' },
+            { success: false, error: "Internal server error" },
             { status: 500 }
         );
     }
@@ -49,47 +40,42 @@ export async function GET(
 
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { uid: string } }
+    context: { params: Promise<{ uid: string }> }
 ) {
     try {
-        const { uid } = params;
+        const { uid } = await context.params;
         const updateData = await request.json();
 
         if (!uid) {
             return NextResponse.json(
-                {
-                    success: false,
-                    error: 'User ID is required'
-                },
+                { success: false, error: "User ID is required" },
                 { status: 400 }
             );
         }
 
         const result = await UserService.updateUser(uid, updateData);
-
         if (result.success) {
-            // Get updated user data
             const updatedUser = await UserService.getUserByUid(uid);
-
-            return NextResponse.json(
-                {
-                    success: true,
-                    data: updatedUser,
-                    modifiedCount: result.modifiedCount
-                },
+            
+            // Prevent caching of user data
+            const response = NextResponse.json(
+                { success: true, data: updatedUser, modifiedCount: result.modifiedCount },
                 { status: 200 }
             );
+            response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+            response.headers.set('Pragma', 'no-cache');
+            response.headers.set('Expires', '0');
+            return response;
         } else {
             return NextResponse.json(
                 { success: false, error: result.error },
                 { status: 500 }
             );
         }
-
     } catch (error) {
-        console.error('API Error:', error);
+        console.error("API Error:", error);
         return NextResponse.json(
-            { success: false, error: 'Internal server error' },
+            { success: false, error: "Internal server error" },
             { status: 500 }
         );
     }
@@ -97,29 +83,25 @@ export async function PUT(
 
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { uid: string } }
+    context: { params: Promise<{ uid: string }> }
 ) {
     try {
-        const { uid } = params;
+        const { uid } = await context.params;
 
         if (!uid) {
             return NextResponse.json(
-                {
-                    success: false,
-                    error: 'User ID is required'
-                },
+                { success: false, error: "User ID is required" },
                 { status: 400 }
             );
         }
 
         const result = await UserService.deleteUser(uid);
-
         if (result.success) {
             return NextResponse.json(
                 {
                     success: true,
-                    message: 'User deleted successfully',
-                    deletedCount: result.deletedCount
+                    message: "User deleted successfully",
+                    deletedCount: result.deletedCount,
                 },
                 { status: 200 }
             );
@@ -129,11 +111,10 @@ export async function DELETE(
                 { status: 500 }
             );
         }
-
     } catch (error) {
-        console.error('API Error:', error);
+        console.error("API Error:", error);
         return NextResponse.json(
-            { success: false, error: 'Internal server error' },
+            { success: false, error: "Internal server error" },
             { status: 500 }
         );
     }

@@ -24,6 +24,34 @@ interface DeleteProductResponse extends ServiceResponse {
 export class ProductService {
     static async createProduct(productData: Partial<IProduct>): Promise<CreateProductResponse> {
         try {
+            // Check for duplicate products (same name + artisan + similar price)
+            if (productData.name && productData.artisanId) {
+                const existingProducts = await FirestoreService.query<IProduct>(
+                    COLLECTIONS.PRODUCTS,
+                    [
+                        where('artisanId', '==', productData.artisanId),
+                        where('name', '==', productData.name)
+                    ]
+                );
+
+                // If a product with same name and artisan exists, check if it's a true duplicate
+                if (existingProducts.length > 0) {
+                    const duplicate = existingProducts.find(p =>
+                        Math.abs(p.price - (productData.price || 0)) < 10 && // Price within 10 rupees
+                        p.category === productData.category
+                    );
+
+                    if (duplicate) {
+                        console.warn('Duplicate product detected, returning existing product:', duplicate.productId);
+                        return {
+                            success: true,
+                            data: duplicate,
+                            insertedId: duplicate.productId
+                        };
+                    }
+                }
+            }
+
             // Ensure specifications.dimensions is always an object
             if (productData?.specifications?.dimensions && typeof productData.specifications.dimensions === "string") {
                 const dimStr = productData.specifications.dimensions as string;
@@ -49,7 +77,7 @@ export class ProductService {
             } as IProduct;
 
             await FirestoreService.set(COLLECTIONS.PRODUCTS, productId, product);
-            
+
             return {
                 success: true,
                 data: product,
@@ -80,7 +108,7 @@ export class ProductService {
             if (status) {
                 constraints.unshift(where('status', '==', status));
             }
-            
+
             const products = await FirestoreService.query<IProduct>(COLLECTIONS.PRODUCTS, constraints);
             return products;
         } catch (error) {
@@ -97,7 +125,7 @@ export class ProductService {
             }
 
             // Build constraints from filter
-            const constraints = Object.entries(filter).map(([key, value]) => 
+            const constraints = Object.entries(filter).map(([key, value]) =>
                 where(key, '==', value)
             );
             constraints.push(orderBy('createdAt', 'desc'));
@@ -211,15 +239,15 @@ export class ProductService {
         }
     }
 
-    static async getProductStats(): Promise<{ 
-        totalProducts: number; 
-        publishedProducts: number; 
-        draftProducts: number; 
+    static async getProductStats(): Promise<{
+        totalProducts: number;
+        publishedProducts: number;
+        draftProducts: number;
         categories: Record<string, number>;
     }> {
         try {
             const allProducts = await FirestoreService.getAll<IProduct>(COLLECTIONS.PRODUCTS);
-            
+
             const totalProducts = allProducts.length;
             const publishedProducts = allProducts.filter(p => p.status === 'published').length;
             const draftProducts = allProducts.filter(p => p.status === 'draft').length;

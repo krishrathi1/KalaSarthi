@@ -2,6 +2,11 @@
   "name": "kala-sarthi",
   "version": "0.1.0",
   "private": true,
+  "overrides": {
+    "@browserbasehq/stagehand": {
+      "openai": "$openai"
+    }
+  },
   "scripts": {
     "dev": "next dev -p 9003 --turbo",
     "dev:fast": "NODE_OPTIONS='--max-old-space-size=4096' next dev -p 9003 --turbo",
@@ -27,7 +32,9 @@
     "test:load": "tsx src/__tests__/performance/load-test-runner.ts",
     "test:stress": "tsx src/__tests__/performance/stress-test-runner.ts",
     "clean": "rm -rf .next && rm -rf node_modules/.cache",
-    "dev:optimize": "node scripts/dev-optimize.js && npm run dev:fast"
+    "dev:optimize": "node scripts/dev-optimize.js && npm run dev:fast",
+    "update:products-status": "node scripts/update-products-status.js",
+    "update:products-status:ts": "tsx scripts/update-products-status.ts"
   },
   "dependencies": {
     "@cloudinary/url-gen": "^1.22.0",

@@ -7,6 +7,7 @@ import { AuthProvider } from "@/context/auth-context";
 import LayoutWrapper from "@/components/layout/LayoutWrapper";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PerformanceMonitor } from "@/components/PerformanceMonitor";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -84,6 +85,7 @@ console.log('₽'.charCodeAt(0)); // Should show 8381
         </ErrorBoundary>
         <Toaster />
         <PerformanceMonitor />
+        <ServiceWorkerRegistration />
       </body>
     </html>
   );

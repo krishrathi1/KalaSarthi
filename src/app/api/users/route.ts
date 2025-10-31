@@ -20,10 +20,15 @@ export async function POST(request: NextRequest) {
         const result = await UserService.createUser(userData);
 
         if (result.success) {
-            return NextResponse.json(
+            // Prevent caching of user data
+            const response = NextResponse.json(
                 { success: true, data: result.data },
                 { status: 201 }
             );
+            response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+            response.headers.set('Pragma', 'no-cache');
+            response.headers.set('Expires', '0');
+            return response;
         } else {
             return NextResponse.json(
                 { success: false, error: result.error },
@@ -47,18 +52,26 @@ export async function GET(request: NextRequest) {
 
         if (search) {
             const users = await UserService.searchArtisans(search);
-            return NextResponse.json(
+
+            // Prevent caching of user data
+            const response = NextResponse.json(
                 { success: true, data: users },
                 { status: 200 }
             );
+            response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+            return response;
         }
 
         if (role === 'artisan') {
             const artisans = await UserService.getAllArtisans();
-            return NextResponse.json(
+
+            // Prevent caching of user data
+            const response = NextResponse.json(
                 { success: true, data: artisans },
                 { status: 200 }
             );
+            response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+            return response;
         }
 
         return NextResponse.json(

@@ -17,10 +17,10 @@ interface OfflineStatusProps {
 
 export function OfflineStatus({ className = "", showDetails = false }: OfflineStatusProps) {
     const [isOnline, setIsOnline] = useState(true);
-    const [lastRefreshCw, setLastSyncTime] = useState<number | undefined>();
-    const [isRefreshCwing, setIsRefreshCwing] = useState(false);
-    const [syncProgress, setRefreshCwProgress] = useState(0);
-    const [showRefreshCwDetails, setShowRefreshCwDetails] = useState(false);
+    const [lastSync, setLastSyncTime] = useState<number | undefined>();
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [syncProgress, setSyncProgress] = useState(0);
+    const [showSyncDetails, setShowSyncDetails] = useState(false);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -69,7 +69,7 @@ export function OfflineStatus({ className = "", showDetails = false }: OfflineSt
         setLastSyncTime(status.lastSync);
     };
 
-    const handleRefreshCw = async () => {
+    const handleSync = async () => {
         if (!isOnline) {
             toast({
                 title: "No Connection",
@@ -79,49 +79,49 @@ export function OfflineStatus({ className = "", showDetails = false }: OfflineSt
             return;
         }
 
-        setIsRefreshCwing(true);
-        setRefreshCwProgress(0);
+        setIsSyncing(true);
+        setSyncProgress(0);
 
         try {
             // Simulate progress updates
             const progressInterval = setInterval(() => {
-                setRefreshCwProgress(prev => Math.min(prev + 10, 90));
+                setSyncProgress(prev => Math.min(prev + 10, 90));
             }, 200);
 
             const result = await syncOfflineData();
 
             clearInterval(progressInterval);
-            setRefreshCwProgress(100);
+            setSyncProgress(100);
 
             if (result.success) {
                 setLastSync();
                 setLastSyncTime(Date.now());
 
                 toast({
-                    title: "RefreshCw Complete",
+                    title: "Sync Complete",
                     description: `Successfully synced ${result.synced} items.`,
                     duration: 3000,
                 });
             } else {
                 toast({
-                    title: "RefreshCw Failed",
+                    title: "Sync Failed",
                     description: result.errors[0] || "Failed to sync offline data.",
                     variant: "destructive",
                 });
             }
         } catch (error) {
             toast({
-                title: "RefreshCw Error",
+                title: "Sync Error",
                 description: "An error occurred while syncing data.",
                 variant: "destructive",
             });
         } finally {
-            setIsRefreshCwing(false);
-            setTimeout(() => setRefreshCwProgress(0), 1000);
+            setIsSyncing(false);
+            setTimeout(() => setSyncProgress(0), 1000);
         }
     };
 
-    const formatLastRefreshCw = (timestamp: number) => {
+    const formatLastSync = (timestamp: number) => {
         const now = Date.now();
         const diff = now - timestamp;
         const minutes = Math.floor(diff / 60000);
@@ -151,22 +151,22 @@ export function OfflineStatus({ className = "", showDetails = false }: OfflineSt
 
     const getSyncStatusColor = () => {
         if (!isOnline) return "text-gray-500";
-        if (isRefreshCwing) return "text-blue-600";
-        if (lastRefreshCw) return "text-green-600";
+        if (isSyncing) return "text-blue-600";
+        if (lastSync) return "text-green-600";
         return "text-yellow-600";
     };
 
     const getSyncStatusIcon = () => {
         if (!isOnline) return <AlertCircle className="size-3" />;
-        if (isRefreshCwing) return <RefreshCw className="size-3 animate-spin" />;
-        if (lastRefreshCw) return <CheckCircle className="size-3" />;
+        if (isSyncing) return <RefreshCw className="size-3 animate-spin" />;
+        if (lastSync) return <CheckCircle className="size-3" />;
         return <AlertCircle className="size-3" />;
     };
 
     const getSyncStatusText = () => {
         if (!isOnline) return "No sync (offline)";
-        if (isRefreshCwing) return "RefreshCwing...";
-        if (lastRefreshCw) return `Last sync: ${formatLastRefreshCw(lastRefreshCw)}`;
+        if (isSyncing) return "Syncing...";
+        if (lastSync) return `Last sync: ${formatLastSync(lastSync)}`;
         return "Never synced";
     };
 
@@ -182,11 +182,11 @@ export function OfflineStatus({ className = "", showDetails = false }: OfflineSt
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={handleRefreshCw}
-                        disabled={isRefreshCwing}
+                        onClick={handleSync}
+                        disabled={isSyncing}
                         className="h-6 px-2 text-xs"
                     >
-                        {isRefreshCwing ? (
+                        {isSyncing ? (
                             <RefreshCw className="size-3 animate-spin" />
                         ) : (
                             <RefreshCw className="size-3" />
@@ -216,29 +216,29 @@ export function OfflineStatus({ className = "", showDetails = false }: OfflineSt
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={handleRefreshCw}
-                            disabled={isRefreshCwing}
+                            onClick={handleSync}
+                            disabled={isSyncing}
                             className="h-8"
                         >
-                            {isRefreshCwing ? (
+                            {isSyncing ? (
                                 <>
                                     <RefreshCw className="size-3 animate-spin mr-1" />
-                                    RefreshCwing...
+                                    Syncing...
                                 </>
                             ) : (
                                 <>
                                     <RefreshCw className="size-3 mr-1" />
-                                    RefreshCw Now
+                                    Sync Now
                                 </>
                             )}
                         </Button>
                     )}
                 </div>
 
-                {isRefreshCwing && (
+                {isSyncing && (
                     <div className="mb-3">
                         <div className="flex items-center justify-between text-sm text-muted-foreground mb-1">
-                            <span>RefreshCwing offline data...</span>
+                            <span>Syncing offline data...</span>
                             <span>{syncProgress}%</span>
                         </div>
                         <Progress value={syncProgress} className="h-2" />
@@ -247,7 +247,7 @@ export function OfflineStatus({ className = "", showDetails = false }: OfflineSt
 
                 <div className="space-y-2 text-sm">
                     <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">RefreshCw Status:</span>
+                        <span className="text-muted-foreground">Sync Status:</span>
                         <div className={`flex items-center gap-1 ${getSyncStatusColor()}`}>
                             {getSyncStatusIcon()}
                             <span className="text-xs">{getSyncStatusText()}</span>
@@ -274,13 +274,13 @@ export function OfflineStatus({ className = "", showDetails = false }: OfflineSt
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setShowRefreshCwDetails(!showRefreshCwDetails)}
+                            onClick={() => setShowSyncDetails(!showSyncDetails)}
                             className="w-full text-xs"
                         >
-                            {showRefreshCwDetails ? "Hide" : "Show"} RefreshCw Details
+                            {showSyncDetails ? "Hide" : "Show"} Sync Details
                         </Button>
 
-                        {showRefreshCwDetails && (
+                        {showSyncDetails && (
                             <div className="mt-2 space-y-1 text-xs text-muted-foreground">
                                 <div>• Cached data will sync when online</div>
                                 <div>• Offline changes are queued for sync</div>

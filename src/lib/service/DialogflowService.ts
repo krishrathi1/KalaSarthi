@@ -268,7 +268,7 @@ export class DialogflowService {
     this.updateConversationContext(sessionId, {
       sessionId,
       parameters,
-      currentPage: queryResult?.currentPage?.displayName,
+      currentPage: queryResult?.currentPage?.displayName!,
       followupIntents: queryResult?.intent?.displayName ? [queryResult.intent.displayName] : []
     });
 
@@ -279,7 +279,7 @@ export class DialogflowService {
       fulfillmentText,
       action: this.intentMappings[intent]?.action || 'chat',
       sessionId,
-      responseId: response.responseId,
+      responseId: response.responseId!,
       requiresVectorSearch: this.intentMappings[intent]?.requiresContext || false
     };
   }

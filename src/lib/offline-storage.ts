@@ -22,7 +22,7 @@ export interface SyncQueue {
 
 class OfflineStorageManager {
     private dbName = 'KalaBandhuOffline';
-    private version = 1;
+    private version = 2; // Bumped version to add missing stores
     private db: IDBDatabase | null = null;
     private syncQueue: SyncQueue[] = [];
 
@@ -30,7 +30,6 @@ class OfflineStorageManager {
         // Only initialize on client side
         if (typeof window !== 'undefined') {
             this.initDB();
-            this.loadSyncQueue();
         }
     }
 
@@ -53,15 +52,15 @@ class OfflineStorageManager {
                 const db = (event.target as IDBOpenDBRequest).result;
 
                 // Create object stores for different data types
-                if (!db.objectStoreNames.contains('products')) {
-                    const productStore = db.createObjectStore('products', { keyPath: 'id' });
+                if (!db.objectStoreNames.contains('product')) {
+                    const productStore = db.createObjectStore('product', { keyPath: 'id' });
                     productStore.createIndex('type', 'type', { unique: false });
                     productStore.createIndex('timestamp', 'timestamp', { unique: false });
                     productStore.createIndex('synced', 'synced', { unique: false });
                 }
 
-                if (!db.objectStoreNames.contains('trends')) {
-                    const trendStore = db.createObjectStore('trends', { keyPath: 'id' });
+                if (!db.objectStoreNames.contains('trend')) {
+                    const trendStore = db.createObjectStore('trend', { keyPath: 'id' });
                     trendStore.createIndex('timestamp', 'timestamp', { unique: false });
                     trendStore.createIndex('synced', 'synced', { unique: false });
                 }
@@ -69,6 +68,24 @@ class OfflineStorageManager {
                 if (!db.objectStoreNames.contains('chat')) {
                     const chatStore = db.createObjectStore('chat', { keyPath: 'id' });
                     chatStore.createIndex('timestamp', 'timestamp', { unique: false });
+                }
+
+                if (!db.objectStoreNames.contains('cart')) {
+                    const cartStore = db.createObjectStore('cart', { keyPath: 'id' });
+                    cartStore.createIndex('timestamp', 'timestamp', { unique: false });
+                    cartStore.createIndex('synced', 'synced', { unique: false });
+                }
+
+                if (!db.objectStoreNames.contains('wishlist')) {
+                    const wishlistStore = db.createObjectStore('wishlist', { keyPath: 'id' });
+                    wishlistStore.createIndex('timestamp', 'timestamp', { unique: false });
+                    wishlistStore.createIndex('synced', 'synced', { unique: false });
+                }
+
+                if (!db.objectStoreNames.contains('profile')) {
+                    const profileStore = db.createObjectStore('profile', { keyPath: 'id' });
+                    profileStore.createIndex('timestamp', 'timestamp', { unique: false });
+                    profileStore.createIndex('synced', 'synced', { unique: false });
                 }
 
                 if (!db.objectStoreNames.contains('syncQueue')) {
@@ -84,7 +101,7 @@ class OfflineStorageManager {
     }
 
     // Generic data storage methods
-    async storeData(type: OfflineData['type'], data: any, id?: string): Promise<string> {
+    async storeData(type: OfflineData['type'], data: any, id?: string, skipSync: boolean = false): Promise<string> {
         if (!this.db) await this.initDB();
 
         const offlineData: OfflineData = {
@@ -92,20 +109,34 @@ class OfflineStorageManager {
             type,
             data,
             timestamp: Date.now(),
-            synced: false,
+            synced: skipSync, // If skipSync is true, mark as already synced
             version: 1
         };
 
-        return new Promise((resolve, reject) => {
-            const transaction = this.db!.transaction([type], 'readwrite');
-            const store = transaction.objectStore(type);
-            const request = store.put(offlineData);
+        return new Promise(async (resolve, reject) => {
+            try {
+                const transaction = this.db!.transaction([type], 'readwrite');
+                const store = transaction.objectStore(type);
+                const request = store.put(offlineData);
 
-            request.onsuccess = () => {
-                this.addToSyncQueue('create', offlineData);
-                resolve(offlineData.id);
-            };
-            request.onerror = () => reject(request.error);
+                request.onsuccess = async () => {
+                    // Only add to sync queue if not skipping sync
+                    if (!skipSync) {
+                        await this.addToSyncQueue('create', offlineData);
+                    }
+                    resolve(offlineData.id);
+                };
+                request.onerror = () => reject(request.error);
+            } catch (error) {
+                // Handle quota exceeded error
+                if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+                    console.error('Storage quota exceeded. Cleaning up old data...');
+                    await this.cleanupOldData();
+                    reject(new Error('Storage quota exceeded. Please try again.'));
+                } else {
+                    reject(error);
+                }
+            }
         });
     }
 
@@ -142,13 +173,13 @@ class OfflineStorageManager {
             version: existing.version + 1
         };
 
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
             const transaction = this.db!.transaction([type], 'readwrite');
             const store = transaction.objectStore(type);
             const request = store.put(updatedData);
 
-            request.onsuccess = () => {
-                this.addToSyncQueue('update', updatedData);
+            request.onsuccess = async () => {
+                await this.addToSyncQueue('update', updatedData);
                 resolve();
             };
             request.onerror = () => reject(request.error);
@@ -158,13 +189,13 @@ class OfflineStorageManager {
     async deleteData(type: OfflineData['type'], id: string): Promise<void> {
         if (!this.db) await this.initDB();
 
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
             const transaction = this.db!.transaction([type], 'readwrite');
             const store = transaction.objectStore(type);
             const request = store.delete(id);
 
-            request.onsuccess = () => {
-                this.addToSyncQueue('delete', { id, type });
+            request.onsuccess = async () => {
+                await this.addToSyncQueue('delete', { id, type });
                 resolve();
             };
             request.onerror = () => reject(request.error);
@@ -178,7 +209,8 @@ class OfflineStorageManager {
 
     async getProducts(): Promise<any[]> {
         const data = await this.getData('product') as OfflineData[];
-        return data.map(item => item.data);
+        const products = data.map(item => item.data);
+        return products;
     }
 
     async storeTrendData(trendData: any): Promise<string> {
@@ -217,8 +249,10 @@ class OfflineStorageManager {
         return data.map(item => item.data);
     }
 
-    // Sync queue management
-    private addToSyncQueue(action: SyncQueue['action'], data: any): void {
+    // Sync queue management - Now using IndexedDB for consistency
+    private async addToSyncQueue(action: SyncQueue['action'], data: any): Promise<void> {
+        if (!this.db) await this.initDB();
+
         const syncItem: SyncQueue = {
             id: this.generateId(),
             action,
@@ -227,41 +261,76 @@ class OfflineStorageManager {
             retries: 0
         };
 
-        this.syncQueue.push(syncItem);
-        this.saveSyncQueue();
-    }
+        return new Promise((resolve, reject) => {
+            const transaction = this.db!.transaction(['syncQueue'], 'readwrite');
+            const store = transaction.objectStore('syncQueue');
+            const request = store.put(syncItem);
 
-    private loadSyncQueue(): void {
-        if (typeof window === 'undefined') return;
-
-        try {
-            const stored = localStorage.getItem('kalabandhu-sync-queue');
-            if (stored) {
-                this.syncQueue = JSON.parse(stored);
-            }
-        } catch (error) {
-            console.error('Failed to load sync queue:', error);
-            this.syncQueue = [];
-        }
-    }
-
-    private saveSyncQueue(): void {
-        if (typeof window === 'undefined') return;
-
-        try {
-            localStorage.setItem('kalabandhu-sync-queue', JSON.stringify(this.syncQueue));
-        } catch (error) {
-            console.error('Failed to save sync queue:', error);
-        }
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
     }
 
     async getSyncQueue(): Promise<SyncQueue[]> {
-        return [...this.syncQueue];
+        if (!this.db) await this.initDB();
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db!.transaction(['syncQueue'], 'readonly');
+            const store = transaction.objectStore('syncQueue');
+            const request = store.getAll();
+
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async removeSyncQueueItem(id: string): Promise<void> {
+        if (!this.db) await this.initDB();
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db!.transaction(['syncQueue'], 'readwrite');
+            const store = transaction.objectStore('syncQueue');
+            const request = store.delete(id);
+
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async updateSyncQueueItem(id: string, updates: Partial<SyncQueue>): Promise<void> {
+        if (!this.db) await this.initDB();
+
+        return new Promise(async (resolve, reject) => {
+            const transaction = this.db!.transaction(['syncQueue'], 'readwrite');
+            const store = transaction.objectStore('syncQueue');
+
+            const getRequest = store.get(id);
+            getRequest.onsuccess = () => {
+                const item = getRequest.result;
+                if (item) {
+                    const updated = { ...item, ...updates };
+                    const putRequest = store.put(updated);
+                    putRequest.onsuccess = () => resolve();
+                    putRequest.onerror = () => reject(putRequest.error);
+                } else {
+                    resolve();
+                }
+            };
+            getRequest.onerror = () => reject(getRequest.error);
+        });
     }
 
     async clearSyncQueue(): Promise<void> {
-        this.syncQueue = [];
-        this.saveSyncQueue();
+        if (!this.db) await this.initDB();
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db!.transaction(['syncQueue'], 'readwrite');
+            const store = transaction.objectStore('syncQueue');
+            const request = store.clear();
+
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
     }
 
     // Settings management
@@ -299,7 +368,7 @@ class OfflineStorageManager {
     async clearAllData(): Promise<void> {
         if (!this.db) await this.initDB();
 
-        const storeNames = ['products', 'trends', 'chat', 'cart', 'wishlist', 'settings'];
+        const storeNames = ['product', 'trend', 'chat', 'cart', 'wishlist', 'profile', 'settings'];
         const transaction = this.db!.transaction(storeNames, 'readwrite');
 
         await Promise.all(
@@ -314,6 +383,19 @@ class OfflineStorageManager {
         );
 
         this.clearSyncQueue();
+    }
+
+    async clearDataByType(type: OfflineData['type']): Promise<void> {
+        if (!this.db) await this.initDB();
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db!.transaction([type], 'readwrite');
+            const store = transaction.objectStore(type);
+            const request = store.clear();
+
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
     }
 
     // Check if data is stale (older than specified minutes)
@@ -333,6 +415,35 @@ class OfflineStorageManager {
             };
         }
         return { used: 0, available: 0 };
+    }
+
+    // Clean up old data to free space
+    private async cleanupOldData(): Promise<void> {
+        if (!this.db) await this.initDB();
+
+        const storeNames = ['product', 'trend', 'chat'];
+        const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
+        const cutoff = Date.now() - maxAge;
+
+        for (const storeName of storeNames) {
+            try {
+                const transaction = this.db!.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                const index = store.index('timestamp');
+                const range = IDBKeyRange.upperBound(cutoff);
+                const request = index.openCursor(range);
+
+                request.onsuccess = (event) => {
+                    const cursor = (event.target as IDBRequest).result;
+                    if (cursor) {
+                        cursor.delete();
+                        cursor.continue();
+                    }
+                };
+            } catch (error) {
+                console.error(`Failed to cleanup ${storeName}:`, error);
+            }
+        }
     }
 }
 
