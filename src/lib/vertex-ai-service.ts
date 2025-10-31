@@ -8,7 +8,7 @@ export class VertexAIImageService {
 
     constructor() {
         this.projectId = process.env.GOOGLE_CLOUD_PROJECT_ID || '';
-        
+
         if (!this.projectId) {
             throw new Error('GOOGLE_CLOUD_PROJECT_ID environment variable is required');
         }
@@ -27,11 +27,11 @@ export class VertexAIImageService {
     private async getAccessToken(): Promise<string> {
         const client = await this.auth.getClient();
         const accessToken = await client.getAccessToken();
-        
+
         if (!accessToken.token) {
             throw new Error('Failed to get access token');
         }
-        
+
         return accessToken.token;
     }
 
@@ -46,11 +46,18 @@ export class VertexAIImageService {
     ): Promise<Array<{ color: string; imageUrl: string; prompt: string }>> {
         const results = [];
 
+        console.log(`Generating ${colors.length} color variations for: ${productName}`);
+        console.log('Original image URL:', originalImageUrl);
+        console.log('Style:', style || 'default');
+
         for (const color of colors) {
             try {
-                const prompt = this.buildPrompt(productName, color, style);
-                
-                // For text-to-image generation (no reference image)
+                // Build a detailed prompt that describes the product and desired color
+                const prompt = this.buildDetailedPromptWithColor(productName, color, style, originalImageUrl);
+                console.log(`Generating ${color} variation with prompt:`, prompt);
+
+                // Use text-to-image with detailed description
+                // This is more reliable than image editing for color variations
                 const requestBody = {
                     instances: [
                         {
@@ -72,6 +79,8 @@ export class VertexAIImageService {
                     imageUrl,
                     prompt,
                 });
+
+                console.log(`✅ Successfully generated ${color} variation`);
             } catch (error) {
                 console.error(`Error generating variation for color ${color}:`, error);
                 // Continue with other colors even if one fails
@@ -86,7 +95,7 @@ export class VertexAIImageService {
      */
     private async callImageGenerationAPI(requestBody: any): Promise<string> {
         const accessToken = await this.getAccessToken();
-        
+
         const response = await fetch(
             `${this.apiEndpoint}/imagegeneration@006:predict`,
             {
@@ -105,11 +114,11 @@ export class VertexAIImageService {
         }
 
         const data = await response.json();
-        
+
         // Extract the generated image
         if (data.predictions && data.predictions.length > 0) {
             const prediction = data.predictions[0];
-            
+
             // The response typically contains bytesBase64Encoded
             if (prediction.bytesBase64Encoded) {
                 return `data:image/png;base64,${prediction.bytesBase64Encoded}`;
@@ -120,6 +129,8 @@ export class VertexAIImageService {
 
         throw new Error('No image generated in response');
     }
+
+
 
     /**
      * Edit an existing image with color changes
@@ -164,7 +175,7 @@ export class VertexAIImageService {
                 } else if (maskUrl.startsWith('data:')) {
                     maskBase64 = maskUrl.split(',')[1];
                 }
-                
+
                 requestBody.instances[0].mask = {
                     bytesBase64Encoded: maskBase64,
                 };
@@ -182,7 +193,7 @@ export class VertexAIImageService {
      */
     private buildPrompt(productName: string, color: string, style?: string): string {
         const basePrompt = `Create a beautiful ${color} colored variation of this ${productName} design.`;
-        
+
         const styleDescriptions: Record<string, string> = {
             traditional: 'with traditional Indian handicraft patterns and motifs',
             modern: 'with contemporary, minimalist aesthetic',
@@ -192,11 +203,53 @@ export class VertexAIImageService {
             festive: 'with festive, celebratory decorations',
         };
 
-        const styleDesc = style && styleDescriptions[style] 
-            ? styleDescriptions[style] 
+        const styleDesc = style && styleDescriptions[style]
+            ? styleDescriptions[style]
             : 'maintaining the original artistic style';
 
         return `${basePrompt} ${styleDesc}. Keep the same product structure and form, only change the color scheme to ${color}. High quality, professional product photography, well-lit, clean background.`;
+    }
+
+    /**
+     * Build a prompt specifically for color change operations
+     */
+    private buildColorChangePrompt(productName: string, color: string, style?: string): string {
+        const styleDescriptions: Record<string, string> = {
+            traditional: 'Keep the traditional Indian handicraft patterns and motifs.',
+            modern: 'Maintain the contemporary, minimalist aesthetic.',
+            vibrant: 'Keep the bold, energetic patterns.',
+            elegant: 'Preserve the sophisticated, elegant details.',
+            rustic: 'Maintain the natural, rustic textures.',
+            festive: 'Keep the festive, celebratory decorations.',
+        };
+
+        const styleInstruction = style && styleDescriptions[style]
+            ? styleDescriptions[style]
+            : 'Maintain the original artistic style and patterns.';
+
+        return `Change the main color of this ${productName} to ${color}. ${styleInstruction} Keep the exact same product shape, structure, design patterns, and details. Only change the primary color to ${color} while preserving all other aspects of the product. Professional product photography, same lighting and background.`;
+    }
+
+    /**
+     * Build a detailed prompt for generating color variations
+     * Since image editing requires masks, we use detailed text-to-image instead
+     */
+    private buildDetailedPromptWithColor(productName: string, color: string, style?: string, imageUrl?: string): string {
+        const styleDescriptions: Record<string, string> = {
+            traditional: 'traditional Indian handicraft style with intricate patterns and motifs',
+            modern: 'modern, contemporary, minimalist design',
+            vibrant: 'vibrant, bold, energetic patterns and colors',
+            elegant: 'elegant, sophisticated, refined details',
+            rustic: 'rustic, natural, earthy textures',
+            festive: 'festive, celebratory, decorative elements',
+        };
+
+        const styleDesc = style && styleDescriptions[style]
+            ? styleDescriptions[style]
+            : 'authentic artisan craftsmanship';
+
+        // Build a very detailed prompt
+        return `A beautiful ${color} colored ${productName} with ${styleDesc}. Professional product photography, high quality, well-lit, clean white background, centered composition, sharp focus, detailed texture, handcrafted Indian handicraft, artisan made, studio lighting, commercial product photo, 4k resolution.`;
     }
 
     /**
@@ -208,17 +261,17 @@ export class VertexAIImageService {
             const response = await fetch(url);
             const arrayBuffer = await response.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
-            
+
             // Check if image needs conversion (AVIF or WebP)
             const contentType = response.headers.get('content-type') || '';
-            
+
             if (contentType.includes('avif') || contentType.includes('webp') || url.includes('.avif') || url.includes('.webp')) {
                 // Import sharp dynamically (server-side only)
                 const sharp = (await import('sharp')).default;
                 const pngBuffer = await sharp(buffer).png().toBuffer();
                 return pngBuffer.toString('base64');
             }
-            
+
             // For JPEG/PNG, return as-is
             return buffer.toString('base64');
         } catch (error) {
@@ -249,7 +302,7 @@ export class VertexAIImageService {
         for (const color of colors) {
             try {
                 const prompt = this.buildPrompt(productName, color, style);
-                
+
                 // Use upscaling/editing endpoint for style preservation
                 const requestBody = {
                     instances: [

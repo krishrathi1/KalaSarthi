@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Cache & Service Worker</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f9fafb;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1f2937;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #6b7280;
+            margin-bottom: 30px;
+        }
+        button {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            font-weight: 500;
+        }
+        button:hover {
+            background: #dc2626;
+        }
+        button.secondary {
+            background: #3b82f6;
+        }
+        button.secondary:hover {
+            background: #2563eb;
+        }
+        .status {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+            background: #f3f4f6;
+        }
+        .success { background: #d1fae5; color: #065f46; }
+        .error { background: #fee2e2; color: #991b1b; }
+        .warning { background: #fef3c7; color: #92400e; }
+        .info { background: #dbeafe; color: #1e40af; }
+        .step {
+            background: #f9fafb;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #3b82f6;
+            border-radius: 4px;
+        }
+        .step h3 {
+            margin: 0 0 10px 0;
+            color: #1f2937;
+        }
+        .step p {
+            margin: 5px 0;
+            color: #4b5563;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Clear Cache & Service Worker</h1>
+        <p class="subtitle">Fix "Failed to load chunk" errors</p>
+        
+        <div id="status" class="status info">
+            <strong>Ready to clear cache</strong>
+        </div>
+
+        <div>
+            <button onclick="clearEverything()">🗑️ Clear Everything</button>
+            <button onclick="clearServiceWorker()" class="secondary">🔄 Clear Service Worker Only</button>
+            <button onclick="clearCaches()" class="secondary">💾 Clear Caches Only</button>
+        </div>
+
+        <div style="margin-top: 30px;">
+            <h2>What this does:</h2>
+            
+            <div class="step">
+                <h3>1. Unregister Service Worker</h3>
+                <p>Removes the service worker that might be serving old cached files</p>
+            </div>
+
+            <div class="step">
+                <h3>2. Clear All Caches</h3>
+                <p>Deletes all cached files including old Next.js chunks</p>
+            </div>
+
+            <div class="step">
+                <h3>3. Clear IndexedDB</h3>
+                <p>Removes offline data storage (products, etc.)</p>
+            </div>
+
+            <div class="step">
+                <h3>4. Clear Local Storage</h3>
+                <p>Removes any stored settings or data</p>
+            </div>
+
+            <div class="step">
+                <h3>5. Reload Page</h3>
+                <p>Fresh start with new service worker and no cached files</p>
+            </div>
+        </div>
+
+        <div style="margin-top: 30px; padding: 15px; background: #fef3c7; border-radius: 8px;">
+            <strong>⚠️ Note:</strong> This will log you out and remove all offline data. You'll need to log in again.
+        </div>
+    </div>
+
+    <script>
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<strong>${message}</strong>`;
+            statusDiv.className = `status ${type}`;
+        }
+
+        async function clearServiceWorker() {
+            updateStatus('Clearing service worker...', 'info');
+            
+            try {
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    
+                    for (const registration of registrations) {
+                        await registration.unregister();
+                        console.log('Service worker unregistered:', registration);
+                    }
+                    
+                    updateStatus('✅ Service worker cleared!', 'success');
+                    return true;
+                } else {
+                    updateStatus('⚠️ Service workers not supported', 'warning');
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error clearing service worker:', error);
+                updateStatus(`❌ Error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function clearCaches() {
+            updateStatus('Clearing caches...', 'info');
+            
+            try {
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    
+                    for (const cacheName of cacheNames) {
+                        await caches.delete(cacheName);
+                        console.log('Cache deleted:', cacheName);
+                    }
+                    
+                    updateStatus('✅ All caches cleared!', 'success');
+                    return true;
+                } else {
+                    updateStatus('⚠️ Cache API not supported', 'warning');
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error clearing caches:', error);
+                updateStatus(`❌ Error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function clearIndexedDB() {
+            updateStatus('Clearing IndexedDB...', 'info');
+            
+            try {
+                if ('indexedDB' in window) {
+                    const databases = await indexedDB.databases();
+                    
+                    for (const db of databases) {
+                        if (db.name) {
+                            indexedDB.deleteDatabase(db.name);
+                            console.log('Database deleted:', db.name);
+                        }
+                    }
+                    
+                    updateStatus('✅ IndexedDB cleared!', 'success');
+                    return true;
+                } else {
+                    updateStatus('⚠️ IndexedDB not supported', 'warning');
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error clearing IndexedDB:', error);
+                updateStatus(`❌ Error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        function clearLocalStorage() {
+            updateStatus('Clearing local storage...', 'info');
+            
+            try {
+                localStorage.clear();
+                sessionStorage.clear();
+                updateStatus('✅ Local storage cleared!', 'success');
+                return true;
+            } catch (error) {
+                console.error('Error clearing local storage:', error);
+                updateStatus(`❌ Error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function clearEverything() {
+            updateStatus('🧹 Clearing everything...', 'info');
+            
+            let success = true;
+            
+            // Clear service worker
+            success = await clearServiceWorker() && success;
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Clear caches
+            success = await clearCaches() && success;
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Clear IndexedDB
+            success = await clearIndexedDB() && success;
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Clear local storage
+            success = clearLocalStorage() && success;
+            
+            if (success) {
+                updateStatus('✅ Everything cleared! Reloading in 2 seconds...', 'success');
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
+            } else {
+                updateStatus('⚠️ Some items could not be cleared. Try manual clear.', 'warning');
+            }
+        }
+
+        // Show current status on load
+        window.onload = async () => {
+            let status = [];
+            
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                status.push(`Service Workers: ${registrations.length}`);
+            }
+            
+            if ('caches' in window) {
+                const cacheNames = await caches.keys();
+                status.push(`Caches: ${cacheNames.length}`);
+            }
+            
+            if ('indexedDB' in window) {
+                const databases = await indexedDB.databases();
+                status.push(`Databases: ${databases.length}`);
+            }
+            
+            updateStatus(`Current status: ${status.join(', ')}`, 'info');
+        };
+    </script>
+</body>
+</html>

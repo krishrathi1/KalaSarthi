@@ -1,5 +1,5 @@
 // Service Worker for KalaSarthi Offline Support
-const VERSION = '2.2.0'; // Fixed Next.js chunk caching issue
+const VERSION = '2.3.0'; // Fixed chunk loading issues completely
 const CACHE_NAME = `kalabandhu-v${VERSION}`;
 const STATIC_CACHE = `kalabandhu-static-v${VERSION}`;
 const DYNAMIC_CACHE = `kalabandhu-dynamic-v${VERSION}`;
@@ -15,45 +15,42 @@ const CACHE_EXPIRATION = {
 // Files to cache for offline functionality
 const STATIC_FILES = [
     '/',
-    '/dashboard',
-    '/trend-spotter',
-    '/smart-product-creator',
-    '/artisan-buddy',
-    '/matchmaking',
-    '/multi-marketplace',
-    '/profile',
-    '/auth',
-    '/scheme-sahayak',
-    '/manifest.json',
-    '/offline.html'
+    '/offline.html',
+    '/manifest.json'
 ];
 
-// Auth-sensitive endpoints that should NEVER be cached
-const AUTH_ENDPOINTS = [
-    '/api/users/',           // User data (auth-sensitive)
-    '/api/auth/',            // Authentication
-    '/firebase',             // Firebase auth
-    '/__/auth/',             // Firebase auth helpers
+// CRITICAL: URLs that should NEVER be cached (always fetch from network)
+const NEVER_CACHE = [
+    // Next.js internal files (change on every build)
+    '/_next/static/',           // ALL Next.js static files
+    '/_next/data/',             // Next.js data files
+    '/_buildManifest.js',       // Build manifest
+    '/_ssgManifest.js',         // SSG manifest
+    '/_middlewareManifest.js',  // Middleware manifest
+    '/next-font/',              // Next.js fonts
+
+    // Auth-sensitive endpoints
+    '/api/users/',              // User data
+    '/api/auth/',               // Authentication
+    '/firebase',                // Firebase auth
+    '/__/auth/',                // Firebase auth helpers
+
+    // Hot reload and development
+    '/_next/webpack-hmr',       // Hot module replacement
+    '/__nextjs',                // Next.js internals
+
+    // Browser extensions
+    'chrome-extension://',
+    'moz-extension://',
 ];
 
-// Next.js internal files that should NEVER be cached (they change on every build)
-const NEXTJS_INTERNAL = [
-    '/_next/static/chunks/',  // Code chunks
-    '/_next/static/css/',     // CSS chunks
-    '/_buildManifest.js',     // Build manifest
-    '/_ssgManifest.js',       // SSG manifest
-];
-
-// All other GET API endpoints will be cached for offline support
-// POST/PUT/DELETE requests are never cached (they modify data)
-
-// Install event - cache static files
+// Install event - cache only essential static files
 self.addEventListener('install', (event) => {
     console.log('Service Worker installing...');
     event.waitUntil(
         caches.open(STATIC_CACHE)
             .then((cache) => {
-                console.log('Caching static files...');
+                console.log('Caching essential static files...');
                 return cache.addAll(STATIC_FILES);
             })
             .then(() => {
@@ -66,12 +63,12 @@ self.addEventListener('install', (event) => {
     );
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up ALL old caches aggressively
 self.addEventListener('activate', (event) => {
     console.log('Service Worker activating...');
     event.waitUntil(
         Promise.all([
-            // Clean up old caches
+            // Delete ALL old caches
             caches.keys().then((cacheNames) => {
                 return Promise.all(
                     cacheNames.map((cacheName) => {
@@ -84,13 +81,36 @@ self.addEventListener('activate', (event) => {
                 );
             }),
             // Clean up expired cache entries
-            cleanupExpiredCaches()
+            cleanupExpiredCaches(),
+            // Clear all Next.js chunks from cache
+            clearNextJsChunks()
         ]).then(() => {
-            console.log('Service Worker activated');
+            console.log('Service Worker activated, all old caches cleared');
             return self.clients.claim();
         })
     );
 });
+
+// Clear all Next.js chunks from all caches
+async function clearNextJsChunks() {
+    try {
+        const cacheNames = await caches.keys();
+        for (const cacheName of cacheNames) {
+            const cache = await caches.open(cacheName);
+            const requests = await cache.keys();
+
+            for (const request of requests) {
+                const url = new URL(request.url);
+                if (url.pathname.includes('/_next/')) {
+                    await cache.delete(request);
+                    console.log('Cleared Next.js chunk:', url.pathname);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error clearing Next.js chunks:', error);
+    }
+}
 
 // Clean up expired cache entries
 async function cleanupExpiredCaches() {
@@ -117,34 +137,29 @@ async function cleanupExpiredCaches() {
     }
 }
 
+// Check if URL should never be cached
+function shouldNeverCache(url) {
+    return NEVER_CACHE.some(pattern => url.includes(pattern));
+}
+
 // Fetch event - serve from cache when offline
 self.addEventListener('fetch', (event) => {
     const { request } = event;
     const url = new URL(request.url);
 
-    // Check if this is a Next.js internal file - NEVER cache these
-    const isNextJsInternal = NEXTJS_INTERNAL.some(pattern =>
-        url.pathname.includes(pattern)
-    );
-
-    if (isNextJsInternal) {
-        // Always fetch fresh from network, no caching
+    // CRITICAL: Never cache Next.js internal files, auth endpoints, etc.
+    if (shouldNeverCache(request.url)) {
         event.respondWith(fetch(request));
         return;
     }
 
-    // Check if this is an auth-sensitive endpoint
-    const isAuthEndpoint = AUTH_ENDPOINTS.some(endpoint =>
-        url.pathname.includes(endpoint)
-    );
-
-    // Never cache auth endpoints - always fetch fresh
-    if (isAuthEndpoint) {
+    // Only handle http/https requests
+    if (!url.protocol.startsWith('http')) {
         event.respondWith(fetch(request));
         return;
     }
 
-    // Cache all other GET API requests (now that body bug is fixed)
+    // Cache only non-auth GET API requests
     if (url.pathname.startsWith('/api/') && request.method === 'GET') {
         event.respondWith(handleApiRequest(request));
         return;
@@ -156,7 +171,7 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Handle static file requests
+    // Handle static file requests (but not Next.js internals)
     if (request.method === 'GET') {
         event.respondWith(handleStaticRequest(request));
     }
@@ -165,15 +180,22 @@ self.addEventListener('fetch', (event) => {
 // Handle API requests with offline fallback
 async function handleApiRequest(request) {
     try {
-        // Try network first for API calls
-        const networkResponse = await fetch(request);
+        // Try network first for API calls (with short timeout)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+        const networkResponse = await fetch(request, {
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
 
         if (networkResponse.ok) {
-            // Clone the response BEFORE reading the body
+            // Clone responses before reading
             const responseToReturn = networkResponse.clone();
             const responseToCache = networkResponse.clone();
 
-            // Add cache timestamp to the cached version
+            // Add cache timestamp
             const cachedResponse = new Response(await responseToCache.blob(), {
                 status: responseToCache.status,
                 statusText: responseToCache.statusText,
@@ -181,17 +203,17 @@ async function handleApiRequest(request) {
             });
             cachedResponse.headers.set('sw-cache-time', Date.now().toString());
 
-            // Cache the response (don't await - cache in background)
-            const cache = await caches.open(API_CACHE);
-            cache.put(request, cachedResponse);
+            // Cache in background
+            caches.open(API_CACHE).then(cache => {
+                cache.put(request, cachedResponse);
+            });
 
-            // Return the original cloned response with intact body
             return responseToReturn;
         }
 
         throw new Error('Network response not ok');
     } catch (error) {
-        console.log('Network failed, trying cache for:', request.url);
+        console.log('Network failed for API, trying cache:', request.url);
 
         // Try to serve from cache
         const cachedResponse = await caches.match(request);
@@ -201,6 +223,7 @@ async function handleApiRequest(request) {
             if (cachedTime) {
                 const age = Date.now() - parseInt(cachedTime);
                 if (age < CACHE_EXPIRATION.api) {
+                    console.log('Serving from cache:', request.url);
                     return cachedResponse;
                 }
             } else {
@@ -209,43 +232,51 @@ async function handleApiRequest(request) {
             }
         }
 
-        // Return offline fallback for specific endpoints
+        // Return offline fallback
         return handleOfflineApiRequest(request);
     }
 }
 
-// Handle static file requests
+// Handle static file requests (images, fonts, etc. - NOT Next.js chunks)
 async function handleStaticRequest(request) {
     try {
-        // Ignore chrome-extension and other non-http(s) schemes
         const url = new URL(request.url);
-        if (!url.protocol.startsWith('http')) {
-            return fetch(request);
-        }
 
-        // Try cache first for static files
+        // Try cache first for static assets
         const cachedResponse = await caches.match(request);
         if (cachedResponse) {
             return cachedResponse;
         }
 
-        // If not in cache, try network
+        // If not in cache, fetch from network
         const networkResponse = await fetch(request);
 
         if (networkResponse.ok) {
-            // Cache the response for future use (only for http/https)
-            try {
+            // Only cache successful responses for static assets
+            // Do NOT cache HTML pages (they might have stale data)
+            const contentType = networkResponse.headers.get('content-type') || '';
+            const shouldCache = (
+                contentType.includes('image/') ||
+                contentType.includes('font/') ||
+                contentType.includes('woff') ||
+                url.pathname.match(/\.(jpg|jpeg|png|gif|svg|webp|woff|woff2|ttf|eot)$/i)
+            );
+
+            if (shouldCache) {
                 const cache = await caches.open(DYNAMIC_CACHE);
                 cache.put(request, networkResponse.clone());
-            } catch (cacheError) {
-                // Silently fail if caching fails (e.g., for unsupported schemes)
-                console.log('Could not cache request:', request.url);
             }
         }
 
         return networkResponse;
     } catch (error) {
-        console.log('Network failed, serving offline page for:', request.url);
+        console.log('Network failed for static request:', request.url);
+
+        // Try cache as fallback
+        const cachedResponse = await caches.match(request);
+        if (cachedResponse) {
+            return cachedResponse;
+        }
 
         // For navigation requests, serve offline page
         if (request.mode === 'navigate') {
@@ -354,6 +385,20 @@ self.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'SKIP_WAITING') {
         self.skipWaiting();
     }
+
+    // Handle manual cache clear request
+    if (event.data && event.data.type === 'CLEAR_CACHE') {
+        event.waitUntil(
+            caches.keys().then(cacheNames => {
+                return Promise.all(
+                    cacheNames.map(cacheName => caches.delete(cacheName))
+                );
+            }).then(() => {
+                console.log('All caches cleared');
+                event.ports[0].postMessage({ success: true });
+            })
+        );
+    }
 });
 
 // Background sync for when connection is restored
@@ -368,7 +413,6 @@ self.addEventListener('sync', (event) => {
 async function doBackgroundSync() {
     try {
         console.log('Performing background sync...');
-        // Sync offline data when connection is restored
         await syncOfflineData();
 
         // Notify all clients that sync is complete
@@ -385,7 +429,6 @@ async function doBackgroundSync() {
 }
 
 async function syncOfflineData() {
-    // Open IndexedDB to get pending sync items
     const db = await openDatabase();
     if (!db) return;
 
@@ -396,10 +439,9 @@ async function syncOfflineData() {
 
     request.onsuccess = async () => {
         const pendingApps = request.result || [];
-        
+
         for (const app of pendingApps) {
             try {
-                // Attempt to sync each application
                 const response = await fetch('/api/scheme-sahayak/applications', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -407,7 +449,6 @@ async function syncOfflineData() {
                 });
 
                 if (response.ok) {
-                    // Remove from IndexedDB after successful sync
                     const deleteTransaction = db.transaction(['applications'], 'readwrite');
                     const deleteStore = deleteTransaction.objectStore('applications');
                     deleteStore.delete(app.id);
@@ -428,31 +469,4 @@ async function openDatabase() {
             resolve(null);
         };
     });
-}
-
-// Cache scheme data with 7-day expiration
-async function cacheSchemeData(request, response) {
-    const cache = await caches.open(SCHEME_CACHE);
-    const clonedResponse = response.clone();
-    
-    // Add timestamp to response headers
-    const headers = new Headers(clonedResponse.headers);
-    headers.set('sw-cache-timestamp', Date.now().toString());
-    
-    const modifiedResponse = new Response(clonedResponse.body, {
-        status: clonedResponse.status,
-        statusText: clonedResponse.statusText,
-        headers: headers
-    });
-    
-    await cache.put(request, modifiedResponse);
-}
-
-// Check if cached scheme data is still valid (within 7 days)
-async function isSchemeDataValid(response) {
-    const timestamp = response.headers.get('sw-cache-timestamp');
-    if (!timestamp) return false;
-    
-    const age = Date.now() - parseInt(timestamp);
-    return age < SCHEME_CACHE_DURATION;
 }

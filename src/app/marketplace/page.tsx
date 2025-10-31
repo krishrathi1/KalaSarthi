@@ -13,6 +13,7 @@ import ProductCard from '@/components/marketplace/ProductCard';
 import { useToast } from '@/hooks/use-toast';
 import { useOffline } from '@/hooks/use-offline';
 import { offlineStorage } from '@/lib/offline-storage';
+import { notificationManager, notifySyncComplete, notifyProductsCached } from '@/lib/notifications';
 
 export default function MarketplacePage() {
     const [products, setProducts] = useState<IProductDocument[]>([]);
@@ -41,8 +42,30 @@ export default function MarketplacePage() {
         sync,
     } = useOffline();
 
+    // Request notification permission on mount
+    useEffect(() => {
+        if (notificationManager.isSupported() && notificationManager.getPermission() === 'default') {
+            // Request permission after a short delay to not be intrusive
+            setTimeout(() => {
+                notificationManager.requestPermission();
+            }, 3000); // 3 seconds delay for marketplace
+        }
+    }, []);
+
+    // Track previous online state for connection restoration detection
+    const previousOnlineState = useRef(isOnline);
+
     // Fetch products on component mount and when online status changes
     useEffect(() => {
+        // Detect when connection is restored
+        if (!previousOnlineState.current && isOnline) {
+            // Connection was restored
+            if (notificationManager.getPermission() === 'granted') {
+                notificationManager.notifyConnectionRestored();
+            }
+        }
+
+        previousOnlineState.current = isOnline;
         fetchProducts();
     }, [isOnline]);
 
@@ -112,6 +135,11 @@ export default function MarketplacePage() {
                                 }
                             }
                             console.log(`✅ Successfully cached ${cached}/${data.data.length} products for offline use`);
+
+                            // Show notification for successful caching
+                            if (notificationManager.getPermission() === 'granted' && cached > 0) {
+                                await notifyProductsCached(cached);
+                            }
                         } catch (cacheError) {
                             console.error('❌ Failed to cache products:', cacheError);
                         }
@@ -500,6 +528,11 @@ export default function MarketplacePage() {
                                                 title: "Sync Complete",
                                                 description: "All data synchronized successfully.",
                                             });
+
+                                            // Show browser notification for sync complete
+                                            if (notificationManager.getPermission() === 'granted') {
+                                                await notifySyncComplete(result.synced || 0);
+                                            }
                                         }
                                     }}
                                     disabled={isSyncing}

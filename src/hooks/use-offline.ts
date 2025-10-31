@@ -56,7 +56,7 @@ export function useOffline() {
                 description: "Please check your internet connection and try again.",
                 variant: "destructive",
             });
-            return false;
+            return null;
         }
 
         setState(prev => ({ ...prev, isSyncing: true }));
@@ -71,14 +71,14 @@ export function useOffline() {
                     duration: 3000,
                 });
                 await updateState();
-                return true;
+                return result; // Return the full result object
             } else {
                 toast({
                     title: "Sync Failed",
                     description: result.errors[0] || "Failed to sync offline data.",
                     variant: "destructive",
                 });
-                return false;
+                return null;
             }
         } catch (error) {
             toast({
@@ -86,7 +86,7 @@ export function useOffline() {
                 description: "An error occurred while syncing data.",
                 variant: "destructive",
             });
-            return false;
+            return null;
         } finally {
             setState(prev => ({ ...prev, isSyncing: false }));
         }
