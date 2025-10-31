@@ -1,194 +1,262 @@
 /**
- * Gupshup Configuration Interface and Validation
- * Manages API credentials, endpoints, and service configuration for Gupshup integration
+ * Gupshup Configuration Management
+ * Validates and provides type-safe access to Gupshup environment variables
  */
 
 export interface GupshupConfig {
+  // API Configuration
   apiKey: string;
   appId: string;
   baseUrl: string;
+  
+  // WhatsApp Configuration
   whatsapp: {
     phoneNumberId: string;
     businessAccountId: string;
   };
+  
+  // SMS Configuration
   sms: {
     senderId: string;
     route: string;
   };
+  
+  // Rate Limiting
   rateLimit: {
     whatsappPerSecond: number;
     smsPerSecond: number;
     dailyLimit: number;
+    monthlyLimit: number;
   };
+  
+  // Webhook Configuration
   webhook: {
     secret: string;
+    url: string;
+    timeout: number;
   };
-}
-
-export interface GupshupEnvironmentConfig {
-  GUPSHUP_API_KEY: string;
-  GUPSHUP_APP_ID: string;
-  GUPSHUP_BASE_URL: string;
-  GUPSHUP_WHATSAPP_PHONE_NUMBER_ID: string;
-  GUPSHUP_WHATSAPP_BUSINESS_ACCOUNT_ID: string;
-  GUPSHUP_SMS_SENDER_ID: string;
-  GUPSHUP_SMS_ROUTE: string;
-  GUPSHUP_WHATSAPP_RATE_LIMIT_PER_SECOND: string;
-  GUPSHUP_SMS_RATE_LIMIT_PER_SECOND: string;
-  GUPSHUP_DAILY_MESSAGE_LIMIT: string;
-  GUPSHUP_WEBHOOK_SECRET: string;
+  
+  // Template Configuration
+  template: {
+    defaultLanguage: string;
+    fallbackLanguage: string;
+    cacheTtl: number;
+  };
+  
+  // Retry Configuration
+  retry: {
+    maxRetries: number;
+    delayMs: number;
+    backoffMultiplier: number;
+  };
+  
+  // Cost Monitoring
+  cost: {
+    alertThreshold: number;
+    dailyLimit: number;
+    whatsappCostPerMessage: number;
+    smsCostPerMessage: number;
+  };
+  
+  // Environment
+  environment: 'development' | 'production';
+  debugMode: boolean;
 }
 
 /**
- * Validation error for Gupshup configuration
+ * Validates that all required environment variables are set
  */
-export class GupshupConfigError extends Error {
-  constructor(message: string, public field?: string) {
-    super(message);
-    this.name = 'GupshupConfigError';
-  }
-}
-
-/**
- * Validates required environment variables for Gupshup configuration
- */
-export function validateGupshupEnvironment(): GupshupEnvironmentConfig {
-  const requiredVars = [
+function validateRequiredEnvVars(): void {
+  const required = [
     'GUPSHUP_API_KEY',
     'GUPSHUP_APP_ID',
-    'GUPSHUP_BASE_URL',
     'GUPSHUP_WHATSAPP_PHONE_NUMBER_ID',
     'GUPSHUP_WHATSAPP_BUSINESS_ACCOUNT_ID',
-    'GUPSHUP_SMS_SENDER_ID',
-    'GUPSHUP_SMS_ROUTE',
-    'GUPSHUP_WHATSAPP_RATE_LIMIT_PER_SECOND',
-    'GUPSHUP_SMS_RATE_LIMIT_PER_SECOND',
-    'GUPSHUP_DAILY_MESSAGE_LIMIT',
-    'GUPSHUP_WEBHOOK_SECRET'
-  ] as const;
-
-  const config: Partial<GupshupEnvironmentConfig> = {};
-  const missingVars: string[] = [];
-
-  for (const varName of requiredVars) {
-    const value = process.env[varName];
-    if (!value || value.trim() === '' || value === `your-${varName.toLowerCase().replace(/_/g, '-')}-here`) {
-      missingVars.push(varName);
-    } else {
-      config[varName] = value.trim();
-    }
-  }
-
-  if (missingVars.length > 0) {
-    throw new GupshupConfigError(
-      `Missing or invalid Gupshup environment variables: ${missingVars.join(', ')}. ` +
-      'Please set these variables in your .env file with actual values.'
+    'GUPSHUP_WEBHOOK_SECRET',
+    'GUPSHUP_WEBHOOK_URL'
+  ];
+  
+  const missing = required.filter(key => !process.env[key] || process.env[key]?.includes('REPLACE_WITH'));
+  
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required Gupshup environment variables: ${missing.join(', ')}\n` +
+      'Please update your .env file with actual Gupshup credentials.\n' +
+      'See .env.production.example for configuration instructions.'
     );
   }
-
-  return config as GupshupEnvironmentConfig;
 }
 
 /**
- * Validates and parses Gupshup configuration from environment variables
+ * Validates webhook secret security requirements
  */
-export function validateGupshupConfig(): GupshupConfig {
-  const env = validateGupshupEnvironment();
-
-  // Validate API key format (basic validation)
-  if (env.GUPSHUP_API_KEY.length < 10) {
-    throw new GupshupConfigError('GUPSHUP_API_KEY appears to be invalid (too short)', 'apiKey');
+function validateWebhookSecurity(): void {
+  const secret = process.env.GUPSHUP_WEBHOOK_SECRET;
+  
+  if (!secret || secret.length < 32) {
+    throw new Error(
+      'GUPSHUP_WEBHOOK_SECRET must be at least 32 characters long for security.\n' +
+      'Generate a secure secret using: openssl rand -hex 32'
+    );
   }
-
-  // Validate base URL format
-  try {
-    new URL(env.GUPSHUP_BASE_URL);
-  } catch {
-    throw new GupshupConfigError('GUPSHUP_BASE_URL is not a valid URL', 'baseUrl');
+  
+  if (secret.includes('REPLACE_WITH') || secret === 'your-webhook-secret-here') {
+    throw new Error(
+      'GUPSHUP_WEBHOOK_SECRET contains placeholder value. Please set a secure random string.'
+    );
   }
+}
 
-  // Validate rate limits are positive numbers
-  const whatsappRateLimit = parseInt(env.GUPSHUP_WHATSAPP_RATE_LIMIT_PER_SECOND, 10);
-  const smsRateLimit = parseInt(env.GUPSHUP_SMS_RATE_LIMIT_PER_SECOND, 10);
-  const dailyLimit = parseInt(env.GUPSHUP_DAILY_MESSAGE_LIMIT, 10);
-
-  if (isNaN(whatsappRateLimit) || whatsappRateLimit <= 0) {
-    throw new GupshupConfigError('GUPSHUP_WHATSAPP_RATE_LIMIT_PER_SECOND must be a positive number', 'rateLimit.whatsappPerSecond');
+/**
+ * Validates production environment configuration
+ */
+function validateProductionConfig(): void {
+  if (process.env.NODE_ENV === 'production') {
+    const webhookUrl = process.env.GUPSHUP_WEBHOOK_URL;
+    
+    if (!webhookUrl || webhookUrl.includes('localhost') || webhookUrl.includes('127.0.0.1')) {
+      throw new Error(
+        'Production environment requires a public GUPSHUP_WEBHOOK_URL. ' +
+        'Localhost URLs will not work in production.'
+      );
+    }
+    
+    if (!webhookUrl.startsWith('https://')) {
+      throw new Error(
+        'GUPSHUP_WEBHOOK_URL must use HTTPS in production for security.'
+      );
+    }
   }
+}
 
-  if (isNaN(smsRateLimit) || smsRateLimit <= 0) {
-    throw new GupshupConfigError('GUPSHUP_SMS_RATE_LIMIT_PER_SECOND must be a positive number', 'rateLimit.smsPerSecond');
-  }
-
-  if (isNaN(dailyLimit) || dailyLimit <= 0) {
-    throw new GupshupConfigError('GUPSHUP_DAILY_MESSAGE_LIMIT must be a positive number', 'rateLimit.dailyLimit');
-  }
-
-  // Validate SMS sender ID (alphanumeric, 6 chars max for India)
-  if (!/^[A-Z0-9]{1,6}$/.test(env.GUPSHUP_SMS_SENDER_ID)) {
-    throw new GupshupConfigError('GUPSHUP_SMS_SENDER_ID must be 1-6 alphanumeric characters (uppercase)', 'sms.senderId');
-  }
-
-  // Validate SMS route
-  const smsRoute = parseInt(env.GUPSHUP_SMS_ROUTE, 10);
-  if (isNaN(smsRoute) || smsRoute < 1 || smsRoute > 4) {
-    throw new GupshupConfigError('GUPSHUP_SMS_ROUTE must be a number between 1-4', 'sms.route');
-  }
-
+/**
+ * Gets validated Gupshup configuration
+ */
+export function getGupshupConfig(): GupshupConfig {
+  // Validate environment variables
+  validateRequiredEnvVars();
+  validateWebhookSecurity();
+  validateProductionConfig();
+  
   return {
-    apiKey: env.GUPSHUP_API_KEY,
-    appId: env.GUPSHUP_APP_ID,
-    baseUrl: env.GUPSHUP_BASE_URL,
+    apiKey: process.env.GUPSHUP_API_KEY!,
+    appId: process.env.GUPSHUP_APP_ID!,
+    baseUrl: process.env.GUPSHUP_BASE_URL || 'https://api.gupshup.io/sm/api/v1',
+    
     whatsapp: {
-      phoneNumberId: env.GUPSHUP_WHATSAPP_PHONE_NUMBER_ID,
-      businessAccountId: env.GUPSHUP_WHATSAPP_BUSINESS_ACCOUNT_ID,
+      phoneNumberId: process.env.GUPSHUP_WHATSAPP_PHONE_NUMBER_ID!,
+      businessAccountId: process.env.GUPSHUP_WHATSAPP_BUSINESS_ACCOUNT_ID!,
     },
+    
     sms: {
-      senderId: env.GUPSHUP_SMS_SENDER_ID,
-      route: env.GUPSHUP_SMS_ROUTE,
+      senderId: process.env.GUPSHUP_SMS_SENDER_ID || 'KALASARTHI',
+      route: process.env.GUPSHUP_SMS_ROUTE || '1',
     },
+    
     rateLimit: {
-      whatsappPerSecond: whatsappRateLimit,
-      smsPerSecond: smsRateLimit,
-      dailyLimit: dailyLimit,
+      whatsappPerSecond: parseInt(process.env.GUPSHUP_WHATSAPP_RATE_LIMIT_PER_SECOND || '20'),
+      smsPerSecond: parseInt(process.env.GUPSHUP_SMS_RATE_LIMIT_PER_SECOND || '200'),
+      dailyLimit: parseInt(process.env.GUPSHUP_DAILY_MESSAGE_LIMIT || '50000'),
+      monthlyLimit: parseInt(process.env.GUPSHUP_MONTHLY_MESSAGE_LIMIT || '1000000'),
     },
+    
     webhook: {
-      secret: env.GUPSHUP_WEBHOOK_SECRET,
+      secret: process.env.GUPSHUP_WEBHOOK_SECRET!,
+      url: process.env.GUPSHUP_WEBHOOK_URL!,
+      timeout: parseInt(process.env.GUPSHUP_WEBHOOK_TIMEOUT || '30000'),
     },
+    
+    template: {
+      defaultLanguage: process.env.GUPSHUP_DEFAULT_LANGUAGE || 'hi',
+      fallbackLanguage: process.env.GUPSHUP_FALLBACK_LANGUAGE || 'en',
+      cacheTtl: parseInt(process.env.GUPSHUP_TEMPLATE_CACHE_TTL || '86400'),
+    },
+    
+    retry: {
+      maxRetries: parseInt(process.env.GUPSHUP_MAX_RETRIES || '3'),
+      delayMs: parseInt(process.env.GUPSHUP_RETRY_DELAY_MS || '1000'),
+      backoffMultiplier: parseInt(process.env.GUPSHUP_RETRY_BACKOFF_MULTIPLIER || '2'),
+    },
+    
+    cost: {
+      alertThreshold: parseFloat(process.env.GUPSHUP_COST_ALERT_THRESHOLD || '5000'),
+      dailyLimit: parseFloat(process.env.GUPSHUP_DAILY_COST_LIMIT || '1000'),
+      whatsappCostPerMessage: parseFloat(process.env.GUPSHUP_WHATSAPP_COST_PER_MESSAGE || '0.05'),
+      smsCostPerMessage: parseFloat(process.env.GUPSHUP_SMS_COST_PER_MESSAGE || '0.02'),
+    },
+    
+    environment: (process.env.GUPSHUP_ENVIRONMENT as 'development' | 'production') || 'development',
+    debugMode: process.env.GUPSHUP_DEBUG_MODE === 'true',
   };
 }
 
 /**
- * Gets validated Gupshup configuration with caching
+ * Validates configuration without throwing errors
+ * Returns validation results for health checks
  */
-let cachedConfig: GupshupConfig | null = null;
-
-export function getGupshupConfig(): GupshupConfig {
-  if (!cachedConfig) {
-    cachedConfig = validateGupshupConfig();
+export function validateGupshupConfig(): {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+} {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  
+  try {
+    validateRequiredEnvVars();
+  } catch (error) {
+    errors.push(error instanceof Error ? error.message : 'Unknown validation error');
   }
-  return cachedConfig;
+  
+  try {
+    validateWebhookSecurity();
+  } catch (error) {
+    errors.push(error instanceof Error ? error.message : 'Unknown webhook validation error');
+  }
+  
+  try {
+    validateProductionConfig();
+  } catch (error) {
+    errors.push(error instanceof Error ? error.message : 'Unknown production validation error');
+  }
+  
+  // Check for warnings
+  const dailyLimit = parseInt(process.env.GUPSHUP_DAILY_MESSAGE_LIMIT || '0');
+  if (dailyLimit > 100000) {
+    warnings.push('Daily message limit is very high. Monitor costs carefully.');
+  }
+  
+  const costLimit = parseFloat(process.env.GUPSHUP_DAILY_COST_LIMIT || '0');
+  if (costLimit > 10000) {
+    warnings.push('Daily cost limit is high. Ensure proper monitoring is in place.');
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors,
+    warnings,
+  };
 }
 
 /**
- * Clears the cached configuration (useful for testing)
+ * Gets configuration summary for logging (without sensitive data)
  */
-export function clearGupshupConfigCache(): void {
-  cachedConfig = null;
+export function getConfigSummary(): Record<string, any> {
+  try {
+    const config = getGupshupConfig();
+    return {
+      environment: config.environment,
+      debugMode: config.debugMode,
+      baseUrl: config.baseUrl,
+      rateLimit: config.rateLimit,
+      template: config.template,
+      retry: config.retry,
+      webhookConfigured: !!config.webhook.url,
+      apiKeyConfigured: !!config.apiKey,
+    };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : 'Configuration error',
+    };
+  }
 }
-
-/**
- * Default configuration values for development/testing
- */
-export const DEFAULT_GUPSHUP_CONFIG: Partial<GupshupConfig> = {
-  baseUrl: 'https://api.gupshup.io/sm/api/v1',
-  sms: {
-    senderId: 'KALASARTHI',
-    route: '1',
-  },
-  rateLimit: {
-    whatsappPerSecond: 10,
-    smsPerSecond: 100,
-    dailyLimit: 10000,
-  },
-};

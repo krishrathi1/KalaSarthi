@@ -740,7 +740,53 @@ Next Steps:
                           </div>
                         </div>
                         {notification.actionRequired && (
-                          <Button size="sm">
+                          <Button 
+                            size="sm"
+                            onClick={() => {
+                              console.log('Take Action clicked for notification:', notification.id);
+                              console.log('Notification metadata:', notification.metadata);
+                              
+                              // Determine the correct URL based on scheme type
+                              let targetUrl = notification.actionUrl;
+                              
+                              // Map scheme IDs to actual government websites
+                              if (notification.metadata?.schemeId) {
+                                const schemeUrls = {
+                                  'mudra_plus': 'https://www.mudra.org.in/',
+                                  'pmegp': 'https://www.kviconline.gov.in/pmegpeportal/jsp/pmegponline/pmegp_online_main.jsp',
+                                  'digital_marketing_training': 'https://www.digitalindia.gov.in/',
+                                  'pm_vishwakarma': 'https://pmvishwakarma.gov.in/',
+                                  'sfurti': 'https://sfurti.msme.gov.in/',
+                                  'cgtmse': 'https://www.cgtmse.in/',
+                                  'stand_up_india': 'https://www.standupmitra.in/'
+                                };
+                                
+                                const schemeUrl = schemeUrls[notification.metadata.schemeId as keyof typeof schemeUrls];
+                                if (schemeUrl) {
+                                  targetUrl = schemeUrl;
+                                }
+                              }
+                              
+                              // Handle different notification types
+                              if (notification.type === 'deadline_reminder' && targetUrl) {
+                                console.log('Opening scheme URL:', targetUrl);
+                                window.open(targetUrl, '_blank');
+                              } else if (notification.type === 'status_update' && notification.metadata?.applicationId) {
+                                // For status updates, show tracking info
+                                alert(`📋 Application Status Update\n\nApplication ID: ${notification.metadata.applicationId}\nStatus: ${notification.metadata.newStatus}\n\nPlease check the official portal for detailed updates.`);
+                                if (targetUrl) {
+                                  window.open(targetUrl, '_blank');
+                                }
+                              } else if (notification.actionUrl) {
+                                // Fallback to actionUrl
+                                console.log('Opening action URL:', notification.actionUrl);
+                                window.open(notification.actionUrl, '_blank');
+                              } else {
+                                // No URL available
+                                alert('Action URL not available for this notification. Please contact support.');
+                              }
+                            }}
+                          >
                             Take Action
                           </Button>
                         )}

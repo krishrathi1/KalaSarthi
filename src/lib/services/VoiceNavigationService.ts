@@ -918,7 +918,7 @@ export class VoiceNavigationService {
             debugMode: process.env.NODE_ENV === 'development',
             serviceAccount: {
                 keyFilename: 'key.json',
-                projectId: process.env.GOOGLE_CLOUD_PROJECT_ID || 'kalamitra-470611'
+                projectId: process.env.GOOGLE_CLOUD_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'kalabandhu-a93b0'
             }
         };
     }

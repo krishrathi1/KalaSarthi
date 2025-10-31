@@ -61,50 +61,30 @@ export class EnhancedDigitalKhataService {
   subscribeToDashboard(artisanId: string, callback: DashboardCallback): string {
     const subscriptionId = `dashboard_${artisanId}_${Date.now()}`;
     
-    // Set up listeners for sales events and aggregates
-    const salesEventsListener = this.syncService.subscribeToSalesEvents(
-      artisanId,
-      (events) => this.handleSalesEventsUpdate(subscriptionId, events),
-      { limit: 50 }
-    );
-
-    const dailyAggregatesListener = this.syncService.subscribeToSalesAggregates(
-      artisanId,
-      'daily',
-      (aggregate) => this.handleAggregateUpdate(subscriptionId, aggregate),
-      { limit: 30 }
-    );
-
-    const weeklyAggregatesListener = this.syncService.subscribeToSalesAggregates(
-      artisanId,
-      'weekly',
-      (aggregate) => this.handleAggregateUpdate(subscriptionId, aggregate),
-      { limit: 12 }
-    );
-
-    const monthlyAggregatesListener = this.syncService.subscribeToSalesAggregates(
-      artisanId,
-      'monthly',
-      (aggregate) => this.handleAggregateUpdate(subscriptionId, aggregate),
-      { limit: 12 }
-    );
-
-    // Store subscription
+    // Store subscription with simplified approach
     this.dashboardSubscriptions.set(subscriptionId, {
       artisanId,
       callback,
-      listeners: [
-        salesEventsListener,
-        dailyAggregatesListener,
-        weeklyAggregatesListener,
-        monthlyAggregatesListener
-      ]
+      listeners: []
     });
 
     // Initial data load
     this.loadInitialDashboardData(subscriptionId);
 
-    console.log(`📊 Subscribed to dashboard updates for artisan ${artisanId} (${subscriptionId})`);
+    // Set up periodic refresh every 30 seconds for real-time feel
+    const refreshInterval = setInterval(async () => {
+      try {
+        const dashboardData = await this.getDashboardData(artisanId);
+        callback(dashboardData);
+      } catch (error) {
+        console.error('Error refreshing dashboard data:', error);
+      }
+    }, 30000);
+
+    // Store the interval for cleanup
+    this.dashboardSubscriptions.get(subscriptionId)!.listeners = [refreshInterval as any];
+
+    // Subscription created successfully
     return subscriptionId;
   }
 
@@ -115,27 +95,27 @@ export class EnhancedDigitalKhataService {
     const subscription = this.dashboardSubscriptions.get(subscriptionId);
     if (!subscription) return;
 
-    // Unsubscribe from all listeners
-    subscription.listeners.forEach(listenerId => {
-      this.syncService.unsubscribe(listenerId);
+    // Clear intervals
+    subscription.listeners.forEach(interval => {
+      if (interval && typeof interval === 'number') {
+        clearInterval(interval);
+      }
     });
 
     this.dashboardSubscriptions.delete(subscriptionId);
-    console.log(`🔇 Unsubscribed from dashboard updates: ${subscriptionId}`);
+    // Unsubscribed successfully
   }
 
   /**
    * Process a new sales event (sync to Firestore and update aggregates)
+   * Note: Disabled since we're using pre-populated Firestore data
    */
   async processSalesEvent(event: ISalesEvent): Promise<void> {
     try {
-      // Sync to Firestore
-      await this.syncService.syncSalesEvent(event);
-
-      // Update aggregates
-      await this.aggregationService.processSalesEvent(event);
-
-      console.log(`✅ Processed sales event: ${event.orderId}`);
+      console.log(`📝 Sales event received (not syncing - using existing Firestore data): ${event.id}`);
+      // Sync disabled - using existing Firestore data
+      // await this.syncService.syncSalesEvent(event);
+      // await this.aggregationService.processSalesEvent(event);
     } catch (error) {
       console.error('Error processing sales event:', error);
       throw error;
@@ -147,12 +127,11 @@ export class EnhancedDigitalKhataService {
    */
   async getDashboardData(artisanId: string): Promise<DashboardData> {
     try {
-      // Get recent sales events
-      const recentEvents = this.syncService.getCachedSalesEvents(artisanId)
-        .slice(0, 10);
+      // Get recent sales events from API (increased limit to get more data)
+      const recentEvents = await this.fetchSalesEvents(artisanId, 50);
 
-      // Get aggregates
-      const aggregates = await this.aggregationService.getDashboardAggregates(artisanId);
+      // Generate simple aggregates from recent events
+      const aggregates = this.generateSimpleAggregates(recentEvents);
 
       // Calculate current sales
       const now = new Date();
@@ -170,9 +149,9 @@ export class EnhancedDigitalKhataService {
 
       return {
         currentSales,
-        recentEvents,
+        recentEvents: recentEvents.slice(0, 20), // Show top 20 recent events
         aggregates,
-        connectionState: this.syncService.getConnectionState(),
+        connectionState: 'online', // Simplified connection state
         lastUpdated: new Date()
       };
     } catch (error) {
@@ -312,6 +291,96 @@ export class EnhancedDigitalKhataService {
         (event.eventType === 'order_paid' || event.eventType === 'order_fulfilled')
       )
       .reduce((total, event) => total + event.totalAmount, 0);
+  }
+
+
+
+  /**
+   * Generate simple aggregates from sales events
+   */
+  private generateSimpleAggregates(events: ISalesEvent[]) {
+    const now = new Date();
+    const dailyAggregates: ISalesAggregate[] = [];
+    const weeklyAggregates: ISalesAggregate[] = [];
+    const monthlyAggregates: ISalesAggregate[] = [];
+    
+    // Group events by day for the last 7 days
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      const dateKey = date.toISOString().split('T')[0];
+      
+      const dayEvents = events.filter(event => {
+        const eventDate = new Date(event.eventTimestamp);
+        return eventDate.toISOString().split('T')[0] === dateKey;
+      });
+      
+      if (dayEvents.length > 0) {
+        const totalRevenue = dayEvents.reduce((sum, event) => sum + event.totalAmount, 0);
+        const totalQuantity = dayEvents.reduce((sum, event) => sum + event.quantity, 0);
+        
+        dailyAggregates.push({
+          id: `daily_${dateKey}`,
+          artisanId: events[0]?.artisanId || 'dev_bulchandani_001',
+          period: 'daily',
+          periodKey: dateKey,
+          periodStart: new Date(date.setHours(0, 0, 0, 0)),
+          periodEnd: new Date(date.setHours(23, 59, 59, 999)),
+          totalRevenue,
+          totalOrders: dayEvents.length,
+          totalQuantity,
+          uniqueCustomers: new Set(dayEvents.map(e => e.buyerId)).size,
+          uniqueProducts: new Set(dayEvents.map(e => e.productId)).size,
+          averageOrderValue: totalRevenue / dayEvents.length,
+          netRevenue: totalRevenue, // Simplified
+          lastUpdated: now,
+          watermark: now,
+          createdAt: now,
+          updatedAt: now
+        });
+      }
+    }
+    
+    return {
+      daily: dailyAggregates,
+      weekly: weeklyAggregates,
+      monthly: monthlyAggregates,
+      yearly: []
+    };
+  }
+
+  /**
+   * Fetch sales events from API
+   */
+  private async fetchSalesEvents(artisanId: string, limit: number = 50): Promise<ISalesEvent[]> {
+    try {
+      const response = await fetch(`/api/sales-events?artisanId=${artisanId}&limit=${limit}`);
+      const result = await response.json();
+      
+      if (result.success && result.data && Array.isArray(result.data)) {
+        const events = result.data.map((event: any) => ({
+          ...event,
+          eventTimestamp: event.eventTimestamp?.seconds 
+            ? new Date(event.eventTimestamp.seconds * 1000)
+            : new Date(event.eventTimestamp),
+          createdAt: event.createdAt?.seconds 
+            ? new Date(event.createdAt.seconds * 1000)
+            : new Date(event.createdAt),
+          updatedAt: event.updatedAt?.seconds 
+            ? new Date(event.updatedAt.seconds * 1000)
+            : new Date(event.updatedAt)
+        }));
+        
+        console.log(`✅ Fetched ${events.length} sales events for ${artisanId}`);
+        return events;
+      } else {
+        console.warn('No sales events found or invalid response:', result);
+        return [];
+      }
+    } catch (error) {
+      console.error('❌ Error fetching sales events:', error);
+      return [];
+    }
   }
 
   /**

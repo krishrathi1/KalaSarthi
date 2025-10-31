@@ -210,7 +210,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                     </button>
 
                     {/* Availability Badge */}
-                    {!product.inventory.isAvailable && (
+                    {product.inventory && !product.inventory.isAvailable && (
                         <div className="absolute top-2 sm:top-3 left-2 sm:left-3">
                             <Badge variant="destructive" className="text-xs px-2 py-1 rounded-full">
                                 Out of Stock
@@ -292,7 +292,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                             <span className="text-gray-500 ml-1">(24)</span>
                         </div>
                         <span className="text-gray-500">
-                            {product.inventory.quantity} left
+                            {product.inventory?.quantity || 0} left
                         </span>
                     </div>
 
@@ -318,7 +318,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                         size="sm"
                         className="w-full border-orange-200 text-orange-600 hover:bg-orange-50 hover:border-orange-300 transition-all duration-200 h-8"
                         onClick={handleAddToCart}
-                        disabled={!product.inventory.isAvailable}
+                        disabled={product.inventory && !product.inventory.isAvailable}
                     >
                         <ShoppingBag className="h-3 w-3 mr-1" />
                         <span className="text-xs">Add to Cart</span>

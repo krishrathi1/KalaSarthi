@@ -7,6 +7,5 @@ export { default as TaxCalculations } from './TaxCalculations';
 export { default as RealtimeDashboard } from './RealtimeDashboard';
 export { default as ConnectionStatus } from './ConnectionStatus';
 export { default as RealtimeMetrics } from './RealtimeMetrics';
-export { default as RealtimeKPICards } from './RealtimeKPICards';
 export { default as ProductRankings } from './ProductRankings';
 export { default as PredictiveInsightsPanel } from './PredictiveInsightsPanel';

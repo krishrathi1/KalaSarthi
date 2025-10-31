@@ -38,6 +38,7 @@
   },
   "dependencies": {
     "@cloudinary/url-gen": "^1.22.0",
+    "@faker-js/faker": "^10.1.0",
     "@genkit-ai/core": "^1.19.2",
     "@genkit-ai/firebase": "^1.18.0",
     "@genkit-ai/googleai": "^1.18.0",

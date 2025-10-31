@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { TrendingUp, Target, AlertCircle, BarChart3 } from 'lucide-react';
+import { EnhancedDigitalKhataService } from '@/lib/services/EnhancedDigitalKhataService';
+import { useAuth } from '@/context/auth-context';
 
 interface ForecastChartProps {
   horizon: number; // days to forecast
@@ -27,6 +29,7 @@ export default function ForecastChart({ horizon, metric, className = '' }: Forec
   const [confidence, setConfidence] = useState<'low' | 'medium' | 'high'>('medium');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { userProfile } = useAuth();
 
   useEffect(() => {
     generateForecastData();
@@ -37,57 +40,97 @@ export default function ForecastChart({ horizon, metric, className = '' }: Forec
       setLoading(true);
       setError(null);
 
-      // Mock forecast data generation
-      const data = generateMockForecastData();
-      setForecastData(data);
+      // Fetch historical sales data from finance API
+      const response = await fetch(`/api/finance/sales?range=90d&resolution=daily&artisanId=dev_bulchandani_001`);
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        // Generate forecast based on real historical data
+        const data = generateRealForecastData(result.data);
+        setForecastData(data);
+      } else {
+        throw new Error(result.error || 'Failed to fetch historical data');
+      }
 
     } catch (err) {
+      console.error('Error generating forecast:', err);
       setError(err instanceof Error ? err.message : 'Failed to generate forecast');
     } finally {
       setLoading(false);
     }
   };
 
-  const generateMockForecastData = (): ForecastDataPoint[] => {
+  const generateRealForecastData = (salesData: any[]): ForecastDataPoint[] => {
     const data: ForecastDataPoint[] = [];
     const now = new Date();
     
-    // Generate historical data (last 30 days)
-    for (let i = 30; i >= 1; i--) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
+    // Use last 30 days of real historical data
+    const last30Days = salesData.slice(-30);
+    
+    last30Days.forEach((item, index) => {
+      const date = new Date(item.periodKey);
+      let value = 0;
       
-      const baseValue = getBaseValue(metric);
-      const seasonalFactor = 1 + Math.sin((i / 30) * Math.PI * 2) * 0.2;
-      const randomFactor = 0.8 + Math.random() * 0.4;
-      const value = Math.round(baseValue * seasonalFactor * randomFactor);
+      switch (metric) {
+        case 'revenue':
+          value = item.revenue;
+          break;
+        case 'orders':
+          value = item.orders;
+          break;
+        case 'units':
+          value = item.units;
+          break;
+      }
       
       data.push({
         date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         historical: value,
         isHistorical: true
       });
+    });
+
+    // Calculate trend from real data
+    if (data.length < 7) {
+      // Not enough data for meaningful forecast
+      return data;
     }
 
-    // Generate forecast data
-    const lastHistoricalValue = data[data.length - 1].historical || 0;
-    const trendFactor = 1.02; // 2% growth trend
+    const recentValues = data.slice(-7).map(d => d.historical || 0);
+    const olderValues = data.slice(-14, -7).map(d => d.historical || 0);
     
+    const recentAvg = recentValues.reduce((sum, val) => sum + val, 0) / recentValues.length;
+    const olderAvg = olderValues.reduce((sum, val) => sum + val, 0) / olderValues.length;
+    
+    // Calculate growth rate from real data
+    const growthRate = olderAvg > 0 ? (recentAvg - olderAvg) / olderAvg : 0;
+    const dailyGrowthFactor = 1 + (growthRate / 7); // Convert to daily growth
+    
+    const lastHistoricalValue = data[data.length - 1].historical || recentAvg;
+    
+    // Generate forecast data based on real trends
     for (let i = 1; i <= horizon; i++) {
       const date = new Date(now);
       date.setDate(date.getDate() + i);
       
-      const trendValue = lastHistoricalValue * Math.pow(trendFactor, i / 30);
-      const seasonalFactor = 1 + Math.sin(((30 + i) / 30) * Math.PI * 2) * 0.2;
+      // Apply trend with some seasonal variation based on historical patterns
+      const trendValue = lastHistoricalValue * Math.pow(dailyGrowthFactor, i);
+      
+      // Add weekly seasonality based on historical data
+      const dayOfWeek = date.getDay();
+      const weeklyPattern = calculateWeeklyPattern(data);
+      const seasonalFactor = weeklyPattern[dayOfWeek] || 1;
+      
       const forecastValue = Math.round(trendValue * seasonalFactor);
       
-      // Confidence intervals
+      // Confidence intervals based on historical variance
+      const historicalVariance = calculateHistoricalVariance(data);
       const confidenceMultiplier = getConfidenceMultiplier(confidence);
-      const variance = forecastValue * 0.1 * confidenceMultiplier * (i / horizon);
+      const variance = historicalVariance * confidenceMultiplier * Math.sqrt(i / horizon);
       
       data.push({
         date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        forecast: forecastValue,
+        forecast: Math.max(0, forecastValue),
         upperBound: Math.round(forecastValue + variance),
         lowerBound: Math.round(Math.max(0, forecastValue - variance)),
         isHistorical: false
@@ -97,18 +140,42 @@ export default function ForecastChart({ horizon, metric, className = '' }: Forec
     return data;
   };
 
-  const getBaseValue = (metric: string): number => {
-    switch (metric) {
-      case 'revenue':
-        return 8000;
-      case 'orders':
-        return 15;
-      case 'units':
-        return 25;
-      default:
-        return 8000;
-    }
+  const calculateWeeklyPattern = (historicalData: ForecastDataPoint[]): number[] => {
+    const dayTotals = new Array(7).fill(0);
+    const dayCounts = new Array(7).fill(0);
+    
+    historicalData.forEach(point => {
+      if (point.isHistorical && point.historical !== undefined) {
+        const date = new Date(point.date + ', 2024'); // Add year for parsing
+        const dayOfWeek = date.getDay();
+        dayTotals[dayOfWeek] += point.historical;
+        dayCounts[dayOfWeek]++;
+      }
+    });
+    
+    const dayAverages = dayTotals.map((total, index) => 
+      dayCounts[index] > 0 ? total / dayCounts[index] : 0
+    );
+    
+    const overallAverage = dayAverages.reduce((sum, avg) => sum + avg, 0) / 7;
+    
+    return dayAverages.map(avg => overallAverage > 0 ? avg / overallAverage : 1);
   };
+
+  const calculateHistoricalVariance = (historicalData: ForecastDataPoint[]): number => {
+    const values = historicalData
+      .filter(d => d.isHistorical && d.historical !== undefined)
+      .map(d => d.historical!);
+    
+    if (values.length < 2) return 0;
+    
+    const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
+    const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length;
+    
+    return Math.sqrt(variance);
+  };
+
+
 
   const getConfidenceMultiplier = (confidence: string): number => {
     switch (confidence) {

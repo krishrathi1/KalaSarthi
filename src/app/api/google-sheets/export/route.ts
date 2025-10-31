@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 
 export async function POST(request: NextRequest) {
+  let data: any;
+  
   try {
-    const data = await request.json();
+    data = await request.json();
 
     console.log('📊 Google Sheets Export Request:', {
       summary: data.summary,
@@ -11,12 +13,34 @@ export async function POST(request: NextRequest) {
       salesCount: data.recentSales?.length
     });
 
-    // Load service account credentials
-    const serviceAccount = require('../../../../../key.json');
+    // Load service account credentials from environment variables
+    const credentials = {
+      type: 'service_account',
+      project_id: process.env.GOOGLE_CLOUD_PROJECT_ID,
+      private_key_id: process.env.GOOGLE_CLOUD_PRIVATE_KEY_ID,
+      private_key: process.env.GOOGLE_CLOUD_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      client_email: process.env.GOOGLE_CLOUD_CLIENT_EMAIL,
+      client_id: process.env.GOOGLE_CLOUD_CLIENT_ID,
+      auth_uri: 'https://accounts.google.com/o/oauth2/auth',
+      token_uri: 'https://oauth2.googleapis.com/token',
+      auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
+      client_x509_cert_url: process.env.GOOGLE_CLOUD_CLIENT_X509_CERT_URL
+    };
+
+    // Validate required environment variables
+    if (!credentials.project_id || !credentials.private_key || !credentials.client_email) {
+      throw new Error('Missing required Google Cloud credentials. Please check your environment variables.');
+    }
+
+    console.log('🔑 Using Google Cloud credentials:', {
+      project_id: credentials.project_id,
+      client_email: credentials.client_email,
+      has_private_key: !!credentials.private_key
+    });
 
     // Initialize Google Sheets API with service account
     const auth = new google.auth.GoogleAuth({
-      credentials: serviceAccount,
+      credentials,
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
 
@@ -180,6 +204,32 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Google Sheets export error:', error);
+    
+    // If it's an authentication error, provide helpful guidance
+    if (error.message?.includes('invalid_grant') || error.message?.includes('account not found')) {
+      return NextResponse.json({
+        success: false,
+        error: 'Google Sheets API authentication failed',
+        message: 'The Google Cloud service account needs proper setup. Please ensure the Google Sheets API is enabled and the service account has the necessary permissions.',
+        troubleshooting: {
+          steps: [
+            '1. Enable Google Sheets API in Google Cloud Console',
+            '2. Ensure the service account has Editor permissions',
+            '3. Create a test spreadsheet and share it with the service account email',
+            '4. Update GOOGLE_SHEETS_SPREADSHEET_ID with the test spreadsheet ID'
+          ],
+          serviceAccountEmail: process.env.GOOGLE_CLOUD_CLIENT_EMAIL
+        },
+        mockExport: {
+          message: 'Here\'s what would be exported to Google Sheets:',
+          summary: data.summary,
+          productCount: data.topProducts?.length || 0,
+          salesCount: data.recentSales?.length || 0,
+          trendCount: data.monthlyTrend?.length || 0
+        }
+      }, { status: 200 }); // Return 200 so the frontend can show the mock data
+    }
+    
     return NextResponse.json(
       {
         success: false,

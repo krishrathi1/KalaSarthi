@@ -19,6 +19,9 @@ export { SMSTemplateManager, getSMSTemplateManager } from './SMSTemplateManager'
 export { AnalyticsService, getAnalyticsService } from './AnalyticsService';
 export { WebhookProcessor, getWebhookProcessor } from './WebhookProcessor';
 
+// Monitoring and Alerting
+export { MonitoringService, getMonitoringService, clearMonitoringServiceInstance } from './MonitoringService';
+
 // Error Handling
 export { GupshupErrorHandler, handleGupshupError } from './GupshupErrorHandler';
 
@@ -125,6 +128,16 @@ export type {
   TrendAnalysis,
   OptimizationRecommendation,
 } from './AnalyticsService';
+
+// Monitoring Types
+export type {
+  HealthCheckResult,
+  SystemHealthStatus,
+  AlertRule,
+  Alert,
+  CostAlert,
+  PerformanceAlert,
+} from './MonitoringService';
 
 // Webhook Processing Types
 export type {

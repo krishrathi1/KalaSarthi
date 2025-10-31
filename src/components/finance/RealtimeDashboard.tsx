@@ -16,18 +16,109 @@ import {
   WifiOff,
   RefreshCw,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import EnhancedDigitalKhataService, { DashboardData } from '@/lib/services/EnhancedDigitalKhataService';
 import { ConnectionState } from '@/lib/services/RealtimeFirestoreSyncService';
 import ConnectionStatus from './ConnectionStatus';
 import RealtimeMetrics from './RealtimeMetrics';
-import RealtimeKPICards from './RealtimeKPICards';
 import ProductRankings from './ProductRankings';
+import SalesOverview from './SalesOverview';
 
 interface RealtimeDashboardProps {
   artisanId: string;
   className?: string;
+}
+
+// Recent Sales Events Component with dropdown
+function RecentSalesEvents({ 
+  events, 
+  connectionState, 
+  formatCurrency 
+}: { 
+  events: any[], 
+  connectionState: ConnectionState, 
+  formatCurrency: (amount: number) => string 
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const displayEvents = showAll ? events : events.slice(0, 5);
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Recent Sales</CardTitle>
+            <CardDescription>
+              Latest transactions in real-time
+            </CardDescription>
+          </div>
+          <Badge variant="outline" className="flex items-center gap-1">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            Live
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {events.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Package className="h-8 w-8 mx-auto mb-2" />
+            <p>No recent sales events</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {displayEvents.map((event, index) => (
+              <div 
+                key={event.id || index} 
+                className="flex items-center justify-between p-3 bg-muted/20 rounded-lg"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <div>
+                    <p className="font-medium">{event.productName}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {event.eventType} • {event.quantity} units • {event.buyerName || 'Customer'}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium">{formatCurrency(event.totalAmount)}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {new Date(event.eventTimestamp).toLocaleTimeString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+            
+            {events.length > 5 && (
+              <div className="text-center pt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAll(!showAll)}
+                  className="flex items-center gap-2"
+                >
+                  {showAll ? (
+                    <>
+                      <ChevronUp className="h-4 w-4" />
+                      Show Less
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="h-4 w-4" />
+                      Show All ({events.length} events)
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function RealtimeDashboard({ artisanId, className = '' }: RealtimeDashboardProps) {
@@ -57,28 +148,55 @@ export default function RealtimeDashboard({ artisanId, className = '' }: Realtim
   // Initialize real-time dashboard
   useEffect(() => {
     let cleanup: (() => void) | null = null;
+    let refreshInterval: NodeJS.Timeout | null = null;
+
+    const fetchDashboardData = async (mode: 'realtime' | 'offline' = 'realtime', forceRefresh = false) => {
+      try {
+        console.log(`🔄 Fetching dashboard data - Mode: ${mode}, Force: ${forceRefresh}`);
+        
+        const response = await fetch(`/api/dashboard-realtime?artisanId=${artisanId}&mode=${mode}&refresh=${forceRefresh}`);
+        const result = await response.json();
+
+        if (result.success) {
+          setDashboardData(result.data);
+          setConnectionState(result.data.connectionState || 'online');
+          setLastUpdated(new Date());
+          setError(null);
+          
+          console.log(`✅ Dashboard data loaded - Source: ${result.metadata.dataSource}, Events: ${result.data.totalEvents}`);
+          console.log(`💰 Revenue: Today ₹${result.data.currentSales.today}, Year ₹${result.data.currentSales.thisYear}`);
+        } else {
+          throw new Error(result.error || 'Failed to fetch dashboard data');
+        }
+      } catch (err) {
+        console.error('❌ Error fetching dashboard data:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch dashboard data');
+        
+        // Try offline mode as fallback
+        if (mode === 'realtime') {
+          console.log('🔄 Trying offline mode as fallback...');
+          await fetchDashboardData('offline');
+        }
+      }
+    };
 
     const initializeDashboard = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Subscribe to dashboard updates
-        const subId = service.subscribeToDashboard(artisanId, handleDashboardUpdate);
-        setSubscriptionId(subId);
-
-        // Subscribe to connection state changes
-        const unsubscribeConnection = service.onConnectionStateChange(handleConnectionStateChange);
-
         // Load initial data
-        const initialData = await service.getDashboardData(artisanId);
-        setDashboardData(initialData);
-        setConnectionState(initialData.connectionState);
-        setLastUpdated(new Date());
+        await fetchDashboardData('realtime', true);
+
+        // Set up real-time refresh every 30 seconds
+        refreshInterval = setInterval(() => {
+          fetchDashboardData('realtime', false);
+        }, 30000);
 
         cleanup = () => {
-          service.unsubscribeFromDashboard(subId);
-          unsubscribeConnection();
+          if (refreshInterval) {
+            clearInterval(refreshInterval);
+          }
         };
 
       } catch (err) {
@@ -94,17 +212,28 @@ export default function RealtimeDashboard({ artisanId, className = '' }: Realtim
     return () => {
       if (cleanup) cleanup();
     };
-  }, [artisanId, handleDashboardUpdate, handleConnectionStateChange, service]);
+  }, [artisanId]);
 
   // Manual refresh
   const handleRefresh = async () => {
     try {
       setLoading(true);
-      const data = await service.getDashboardData(artisanId);
-      setDashboardData(data);
-      setLastUpdated(new Date());
-      setError(null);
+      console.log('🔄 Manual refresh triggered');
+      
+      const response = await fetch(`/api/dashboard-realtime?artisanId=${artisanId}&mode=realtime&refresh=true`);
+      const result = await response.json();
+
+      if (result.success) {
+        setDashboardData(result.data);
+        setConnectionState(result.data.connectionState || 'online');
+        setLastUpdated(new Date());
+        setError(null);
+        console.log(`✅ Manual refresh completed - Source: ${result.metadata.dataSource}`);
+      } else {
+        throw new Error(result.error || 'Failed to refresh data');
+      }
     } catch (err) {
+      console.error('❌ Manual refresh failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh data');
     } finally {
       setLoading(false);
@@ -217,7 +346,12 @@ export default function RealtimeDashboard({ artisanId, className = '' }: Realtim
         <div>
           <h2 className="text-2xl font-bold">Real-time Dashboard</h2>
           <p className="text-muted-foreground">
-            Live financial data and performance metrics
+            {connectionState === 'online' 
+              ? 'Live financial data and performance metrics' 
+              : connectionState === 'offline' 
+                ? 'Showing cached data - offline mode'
+                : 'Reconnecting to live data...'
+            }
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -237,150 +371,68 @@ export default function RealtimeDashboard({ artisanId, className = '' }: Realtim
         </div>
       </div>
 
-      {/* Real-time Metrics Cards */}
+
+
+      {/* Sales Overview Component */}
+      <SalesOverview
+        timeRange="month"
+      />
+
+      {/* Real-time Analytics */}
       <RealtimeMetrics 
         currentSales={dashboardData.currentSales}
         recentEvents={dashboardData.recentEvents}
         connectionState={connectionState}
       />
 
-      {/* Enhanced KPI Cards */}
-      <RealtimeKPICards
-        recentEvents={dashboardData.recentEvents}
-        aggregates={dashboardData.aggregates}
-        connectionState={connectionState}
-      />
+      {/* Performance Overview */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Performance Overview</CardTitle>
+          <CardDescription>Key business metrics and trends</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{dashboardData.recentEvents.length}</div>
+              <p className="text-sm text-muted-foreground">Total Events</p>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">
+                {dashboardData.recentEvents.filter(e => e.eventType === 'order_paid').length}
+              </div>
+              <p className="text-sm text-muted-foreground">Completed Orders</p>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-600">
+                {dashboardData.recentEvents.reduce((sum, e) => sum + e.quantity, 0)}
+              </div>
+              <p className="text-sm text-muted-foreground">Units Sold</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Product Rankings */}
+      {/* Real-time Product Rankings */}
       <ProductRankings
         recentEvents={dashboardData.recentEvents}
         aggregates={dashboardData.aggregates}
         connectionState={connectionState}
       />
 
-      {/* Recent Sales Events */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Recent Sales Events</CardTitle>
-              <CardDescription>
-                Latest transactions in real-time
-              </CardDescription>
-            </div>
-            <Badge variant="outline" className="flex items-center gap-1">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              Live
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {dashboardData.recentEvents.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Package className="h-8 w-8 mx-auto mb-2" />
-              <p>No recent sales events</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {dashboardData.recentEvents.slice(0, 5).map((event, index) => (
-                <div 
-                  key={event.orderId} 
-                  className="flex items-center justify-between p-3 bg-muted/20 rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <div>
-                      <p className="font-medium">{event.productName}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {event.eventType} • {event.quantity} units • {event.channel}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">{formatCurrency(event.totalAmount)}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(event.eventTimestamp).toLocaleTimeString()}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Aggregates Summary */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Daily Performance</CardTitle>
-            <CardDescription>Today's aggregated metrics</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {dashboardData.aggregates.daily.length === 0 ? (
-              <p className="text-muted-foreground">No daily data available</p>
-            ) : (
-              <div className="space-y-4">
-                {dashboardData.aggregates.daily.slice(0, 3).map((aggregate, index) => (
-                  <div key={aggregate.periodKey} className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{aggregate.periodKey}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {aggregate.totalOrders} orders • {aggregate.totalQuantity} units
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium">{formatCurrency(aggregate.totalRevenue)}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatCurrency(aggregate.averageOrderValue)} avg
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Weekly Trends</CardTitle>
-            <CardDescription>This week's performance</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {dashboardData.aggregates.weekly.length === 0 ? (
-              <p className="text-muted-foreground">No weekly data available</p>
-            ) : (
-              <div className="space-y-4">
-                {dashboardData.aggregates.weekly.slice(0, 3).map((aggregate, index) => (
-                  <div key={aggregate.periodKey} className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Week {aggregate.periodKey}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {aggregate.totalOrders} orders • {aggregate.uniqueProducts} products
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium">{formatCurrency(aggregate.totalRevenue)}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatCurrency(aggregate.netRevenue)} net
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      {/* Recent Sales Events - Limited to 5 with dropdown */}
+      <RecentSalesEvents 
+        events={dashboardData.recentEvents}
+        connectionState={connectionState}
+        formatCurrency={formatCurrency}
+      />
 
       {/* Connection Status Alert */}
       {connectionState === 'offline' && (
-        <Alert variant="destructive">
+        <Alert>
           <WifiOff className="h-4 w-4" />
           <AlertDescription>
-            You're currently offline. Data may not be up to date. 
-            Connection will be restored automatically when available.
+            Showing cached sales data from Redis. Real-time updates will resume when connection is restored.
           </AlertDescription>
         </Alert>
       )}

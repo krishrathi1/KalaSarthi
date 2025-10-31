@@ -5,6 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { TrendingUp, TrendingDown, Activity } from 'lucide-react';
+import { EnhancedDigitalKhataService } from '@/lib/services/EnhancedDigitalKhataService';
+import { useAuth } from '@/context/auth-context';
 
 interface SalesOverviewProps {
   timeRange: 'week' | 'month' | 'quarter' | 'year';
@@ -23,6 +25,7 @@ export default function SalesOverview({ timeRange, className = '' }: SalesOvervi
   const [salesData, setSalesData] = useState<SalesDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { userProfile } = useAuth();
 
   useEffect(() => {
     fetchSalesData();
@@ -33,77 +36,69 @@ export default function SalesOverview({ timeRange, className = '' }: SalesOvervi
       setLoading(true);
       setError(null);
 
-      // Mock data for demonstration
-      const mockData = generateMockSalesData(timeRange);
-      setSalesData(mockData);
+      // Map timeRange to API parameters
+      const rangeMap = {
+        'week': '7d',
+        'month': '30d', 
+        'quarter': '90d',
+        'year': '1y'
+      };
+
+      const resolutionMap = {
+        'week': 'daily',
+        'month': 'daily',
+        'quarter': 'weekly', 
+        'year': 'monthly'
+      };
+
+      const range = rangeMap[timeRange];
+      const resolution = resolutionMap[timeRange];
+
+      // Fetch sales data from finance API
+      const response = await fetch(`/api/finance/sales?range=${range}&resolution=${resolution}&artisanId=dev_bulchandani_001`);
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        // Convert API data to chart format
+        const chartData: SalesDataPoint[] = result.data.map((item: any) => ({
+          period: formatPeriodLabel(item.periodKey, timeRange),
+          revenue: item.revenue,
+          orders: item.orders,
+          units: item.units,
+          averageOrderValue: item.averageOrderValue
+        }));
+
+        setSalesData(chartData);
+      } else {
+        throw new Error(result.error || 'Failed to fetch sales data');
+      }
 
     } catch (err) {
+      console.error('Error fetching sales data:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch sales data');
     } finally {
       setLoading(false);
     }
   };
 
-  const generateMockSalesData = (range: string): SalesDataPoint[] => {
-    const data: SalesDataPoint[] = [];
-    const now = new Date();
+  const formatPeriodLabel = (periodKey: string, timeRange: string): string => {
+    const date = new Date(periodKey);
     
-    let periods: string[] = [];
-    let baseRevenue = 50000;
-    
-    switch (range) {
+    switch (timeRange) {
       case 'week':
-        for (let i = 6; i >= 0; i--) {
-          const date = new Date(now);
-          date.setDate(date.getDate() - i);
-          periods.push(date.toLocaleDateString('en-US', { weekday: 'short' }));
-        }
-        baseRevenue = 8000;
-        break;
+        return date.toLocaleDateString('en-US', { weekday: 'short' });
       case 'month':
-        for (let i = 29; i >= 0; i--) {
-          const date = new Date(now);
-          date.setDate(date.getDate() - i);
-          periods.push(date.getDate().toString());
-        }
-        baseRevenue = 5000;
-        break;
+        return date.getDate().toString();
       case 'quarter':
-        for (let i = 11; i >= 0; i--) {
-          const date = new Date(now);
-          date.setMonth(date.getMonth() - i);
-          periods.push(date.toLocaleDateString('en-US', { month: 'short' }));
-        }
-        baseRevenue = 45000;
-        break;
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       case 'year':
-        for (let i = 11; i >= 0; i--) {
-          const date = new Date(now);
-          date.setMonth(date.getMonth() - i);
-          periods.push(date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }));
-        }
-        baseRevenue = 120000;
-        break;
+        return date.toLocaleDateString('en-US', { month: 'short' });
+      default:
+        return periodKey;
     }
-
-    periods.forEach((period, index) => {
-      const variation = (Math.random() - 0.5) * 0.4; // ±20% variation
-      const seasonalFactor = 1 + Math.sin((index / periods.length) * Math.PI * 2) * 0.2;
-      const revenue = Math.round(baseRevenue * (1 + variation) * seasonalFactor);
-      const orders = Math.round(revenue / (2000 + Math.random() * 1000));
-      const units = Math.round(orders * (1.2 + Math.random() * 0.8));
-      
-      data.push({
-        period,
-        revenue,
-        orders,
-        units,
-        averageOrderValue: Math.round(revenue / orders)
-      });
-    });
-
-    return data;
   };
+
+
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -196,41 +191,58 @@ export default function SalesOverview({ timeRange, className = '' }: SalesOvervi
         </div>
       </CardHeader>
       <CardContent>
-        <div className="h-80">
+        {/* Enhanced Graph with Better Visual Appeal */}
+        <div className="h-96 bg-gradient-to-br from-slate-50 to-gray-100 rounded-xl p-4 border">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={salesData}>
-              <CartesianGrid strokeDasharray="3 3" />
+            <LineChart data={salesData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+              <defs>
+                <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" strokeOpacity={0.5} />
               <XAxis 
                 dataKey="period" 
-                fontSize={12}
+                fontSize={11}
                 tickLine={false}
                 axisLine={false}
+                tick={{ fill: '#64748b' }}
+                dy={10}
               />
               <YAxis 
-                fontSize={12}
+                fontSize={11}
                 tickLine={false}
                 axisLine={false}
+                tick={{ fill: '#64748b' }}
                 tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
+                dx={-10}
               />
               <Tooltip 
                 content={({ active, payload, label }) => {
                   if (active && payload && payload.length) {
                     const data = payload[0].payload as SalesDataPoint;
                     return (
-                      <div className="bg-background border rounded-lg p-3 shadow-lg">
-                        <p className="font-medium">{label}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Revenue: {formatCurrency(data.revenue)}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Orders: {data.orders}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Units: {data.units}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          AOV: {formatCurrency(data.averageOrderValue)}
-                        </p>
+                      <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-xl">
+                        <p className="font-bold text-gray-900 mb-2">{label}</p>
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Revenue:</span>
+                            <span className="font-bold text-green-600">{formatCurrency(data.revenue)}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Orders:</span>
+                            <span className="font-medium text-blue-600">{data.orders}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Units:</span>
+                            <span className="font-medium text-purple-600">{data.units}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">AOV:</span>
+                            <span className="font-medium text-orange-600">{formatCurrency(data.averageOrderValue)}</span>
+                          </div>
+                        </div>
                       </div>
                     );
                   }
@@ -240,37 +252,123 @@ export default function SalesOverview({ timeRange, className = '' }: SalesOvervi
               <Line 
                 type="monotone" 
                 dataKey="revenue" 
-                stroke="hsl(var(--primary))" 
-                strokeWidth={2}
-                dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6, stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
+                stroke="#3b82f6" 
+                strokeWidth={3}
+                fill="url(#revenueGradient)"
+                dot={{ 
+                  fill: '#3b82f6', 
+                  strokeWidth: 3, 
+                  r: 5,
+                  stroke: '#ffffff'
+                }}
+                activeDot={{ 
+                  r: 8, 
+                  stroke: '#3b82f6', 
+                  strokeWidth: 3,
+                  fill: '#ffffff',
+                  filter: 'drop-shadow(0 4px 6px rgba(59, 130, 246, 0.3))'
+                }}
               />
             </LineChart>
           </ResponsiveContainer>
         </div>
         
-        {/* Summary Stats */}
-        <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t">
-          <div className="text-center">
-            <p className="text-2xl font-bold">
+        {/* Enhanced Summary Stats - Positioned Below Graph */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+          <div className="bg-gradient-to-br from-green-50 to-emerald-100 p-6 rounded-xl border border-green-200">
+            <div className="flex items-center justify-between mb-2">
+              <div className="p-2 bg-green-500 rounded-lg">
+                <TrendingUp className="h-5 w-5 text-white" />
+              </div>
+              {trend.trend === 'up' && (
+                <Badge className="bg-green-100 text-green-800 border-green-300">
+                  +{trend.change.toFixed(1)}%
+                </Badge>
+              )}
+            </div>
+            <p className="text-3xl font-bold text-green-900 mb-1">
               {formatCurrency(salesData.reduce((sum, item) => sum + item.revenue, 0))}
             </p>
-            <p className="text-sm text-muted-foreground">Total Revenue</p>
+            <p className="text-sm font-medium text-green-700">Total Revenue</p>
+            <p className="text-xs text-green-600 mt-1">
+              {timeRange === 'week' ? 'This Week' : 
+               timeRange === 'month' ? 'This Month' : 
+               timeRange === 'quarter' ? 'This Quarter' : 'This Year'}
+            </p>
           </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold">
+          
+          <div className="bg-gradient-to-br from-blue-50 to-cyan-100 p-6 rounded-xl border border-blue-200">
+            <div className="flex items-center justify-between mb-2">
+              <div className="p-2 bg-blue-500 rounded-lg">
+                <Activity className="h-5 w-5 text-white" />
+              </div>
+              <Badge variant="outline" className="border-blue-300 text-blue-700">
+                {Math.round((salesData.reduce((sum, item) => sum + item.orders, 0) / salesData.length))} avg/period
+              </Badge>
+            </div>
+            <p className="text-3xl font-bold text-blue-900 mb-1">
               {salesData.reduce((sum, item) => sum + item.orders, 0)}
             </p>
-            <p className="text-sm text-muted-foreground">Total Orders</p>
+            <p className="text-sm font-medium text-blue-700">Total Orders</p>
+            <p className="text-xs text-blue-600 mt-1">
+              {salesData.reduce((sum, item) => sum + item.units, 0)} units sold
+            </p>
           </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold">
+          
+          <div className="bg-gradient-to-br from-purple-50 to-violet-100 p-6 rounded-xl border border-purple-200">
+            <div className="flex items-center justify-between mb-2">
+              <div className="p-2 bg-purple-500 rounded-lg">
+                <TrendingUp className="h-5 w-5 text-white" />
+              </div>
+              <Badge variant="outline" className="border-purple-300 text-purple-700">
+                AOV
+              </Badge>
+            </div>
+            <p className="text-3xl font-bold text-purple-900 mb-1">
               {formatCurrency(
                 salesData.reduce((sum, item) => sum + item.revenue, 0) /
                 salesData.reduce((sum, item) => sum + item.orders, 0) || 0
               )}
             </p>
-            <p className="text-sm text-muted-foreground">Avg Order Value</p>
+            <p className="text-sm font-medium text-purple-700">Avg Order Value</p>
+            <p className="text-xs text-purple-600 mt-1">
+              Per transaction
+            </p>
+          </div>
+        </div>
+        
+        {/* Additional Insights Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+          <div className="bg-gradient-to-r from-orange-50 to-amber-50 p-4 rounded-lg border border-orange-200">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-500 rounded-lg">
+                <Activity className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <p className="text-lg font-bold text-orange-900">
+                  {(salesData.reduce((sum, item) => sum + item.units, 0) / 
+                    salesData.reduce((sum, item) => sum + item.orders, 0) || 0).toFixed(1)}
+                </p>
+                <p className="text-sm text-orange-700">Units per Order</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-teal-50 to-cyan-50 p-4 rounded-lg border border-teal-200">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-teal-500 rounded-lg">
+                <TrendingUp className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <p className="text-lg font-bold text-teal-900">
+                  {formatCurrency(
+                    salesData.reduce((sum, item) => sum + item.revenue, 0) / 
+                    salesData.reduce((sum, item) => sum + item.units, 0) || 0
+                  )}
+                </p>
+                <p className="text-sm text-teal-700">Revenue per Unit</p>
+              </div>
+            </div>
           </div>
         </div>
       </CardContent>

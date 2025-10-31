@@ -1,159 +1,170 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-
-// Initialize Firebase Admin
-if (!getApps().length) {
-  try {
-    const serviceAccount = require('../../../../../key.json');
-    initializeApp({
-      credential: cert(serviceAccount)
-    });
-  } catch (error) {
-    console.error('Firebase Admin initialization error:', error);
-  }
-}
-
-const db = getFirestore();
+import { db } from '@/lib/firebase';
+import { collection, query, where, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const artisanId = searchParams.get('artisanId') || 'artisan_001';
-    const period = searchParams.get('period') || 'month';
+    const range = searchParams.get('range') || '30d';
+    const resolution = searchParams.get('resolution') || 'daily';
+    const artisanId = searchParams.get('artisanId') || 'dev_bulchandani_001';
 
-    // Calculate date range based on period
-    const now = new Date();
-    let startDate = new Date();
+    console.log(`📊 Fetching sales data - Range: ${range}, Resolution: ${resolution}, Artisan: ${artisanId}`);
+
+    // Calculate date range
+    const endDate = new Date();
+    const startDate = new Date();
     
-    switch (period) {
-      case 'week':
-        startDate.setDate(now.getDate() - 7);
+    switch (range) {
+      case '7d':
+        startDate.setDate(endDate.getDate() - 7);
         break;
-      case 'month':
-        startDate.setMonth(now.getMonth() - 1);
+      case '30d':
+        startDate.setDate(endDate.getDate() - 30);
         break;
-      case 'year':
-        startDate.setFullYear(now.getFullYear() - 1);
+      case '90d':
+        startDate.setDate(endDate.getDate() - 90);
         break;
+      case '1y':
+        startDate.setFullYear(endDate.getFullYear() - 1);
+        break;
+      default:
+        startDate.setDate(endDate.getDate() - 30);
     }
 
-    // Fetch sales events
-    const salesSnapshot = await db
-      .collection('sales_events')
-      .where('artisanId', '==', artisanId)
-      .where('timestamp', '>=', Timestamp.fromDate(startDate))
-      .where('paymentStatus', '==', 'completed')
-      .orderBy('timestamp', 'desc')
-      .get();
+    // Query Firestore for sales events
+    const salesEventsRef = collection(db, 'sales_events');
+    const q = query(
+      salesEventsRef,
+      where('artisanId', '==', artisanId),
+      where('eventTimestamp', '>=', Timestamp.fromDate(startDate)),
+      where('eventTimestamp', '<=', Timestamp.fromDate(endDate)),
+      orderBy('eventTimestamp', 'desc'),
+      limit(1000)
+    );
 
-    const salesEvents = salesSnapshot.docs.map(doc => ({
+    const querySnapshot = await getDocs(q);
+    const salesEvents = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
-      timestamp: doc.data().timestamp.toDate()
+      eventTimestamp: doc.data().eventTimestamp.toDate()
     }));
 
-    // Calculate metrics
-    let totalRevenue = 0;
-    let totalOrders = salesEvents.length;
-    let totalUnits = 0;
-    const productStats: Record<string, { revenue: number; units: number }> = {};
-    const monthlyData: Record<string, { revenue: number; orders: number }> = {};
+    console.log(`📈 Found ${salesEvents.length} sales events`);
 
-    salesEvents.forEach((event: any) => {
-      totalRevenue += event.totalAmount;
-      totalUnits += event.quantity;
+    // Aggregate data by resolution
+    const aggregatedData = aggregateSalesData(salesEvents, resolution);
+    
+    // Calculate summary
+    const totalRevenue = salesEvents.reduce((sum, event) => sum + (event.totalAmount || 0), 0);
+    const totalOrders = salesEvents.length;
+    const totalUnits = salesEvents.reduce((sum, event) => sum + (event.quantity || 0), 0);
+    const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
-      // Product stats
-      if (!productStats[event.productName]) {
-        productStats[event.productName] = { revenue: 0, units: 0 };
-      }
-      productStats[event.productName].revenue += event.totalAmount;
-      productStats[event.productName].units += event.quantity;
+    // Calculate growth rate (simplified - compare with previous period)
+    const previousPeriodStart = new Date(startDate);
+    const previousPeriodEnd = new Date(startDate);
+    const periodDuration = endDate.getTime() - startDate.getTime();
+    previousPeriodStart.setTime(startDate.getTime() - periodDuration);
 
-      // Monthly trend
-      const monthKey = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(event.timestamp);
-      if (!monthlyData[monthKey]) {
-        monthlyData[monthKey] = { revenue: 0, orders: 0 };
-      }
-      monthlyData[monthKey].revenue += event.totalAmount;
-      monthlyData[monthKey].orders += 1;
-    });
+    const previousQuery = query(
+      salesEventsRef,
+      where('artisanId', '==', artisanId),
+      where('eventTimestamp', '>=', Timestamp.fromDate(previousPeriodStart)),
+      where('eventTimestamp', '<', Timestamp.fromDate(previousPeriodEnd)),
+      orderBy('eventTimestamp', 'desc')
+    );
 
-    // Top products
-    const topProducts = Object.entries(productStats)
-      .map(([productName, stats]) => ({
-        productName,
-        revenue: stats.revenue,
-        units: stats.units
-      }))
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5);
+    const previousSnapshot = await getDocs(previousQuery);
+    const previousRevenue = previousSnapshot.docs.reduce((sum, doc) => {
+      return sum + (doc.data().totalAmount || 0);
+    }, 0);
 
-    // Monthly trend
-    const monthlyTrend = Object.entries(monthlyData)
-      .map(([month, data]) => ({
-        month,
-        revenue: data.revenue,
-        orders: data.orders
-      }))
-      .slice(-3); // Last 3 months
+    const growthRate = previousRevenue > 0 ? ((totalRevenue - previousRevenue) / previousRevenue) * 100 : 0;
 
-    // Recent sales
-    const recentSales = salesEvents.slice(0, 5).map((event: any) => ({
-      id: event.id,
-      productName: event.productName,
-      buyerName: event.buyerName || 'Anonymous',
-      totalAmount: event.totalAmount,
-      quantity: event.quantity,
-      timestamp: event.timestamp,
-      paymentStatus: event.paymentStatus
-    }));
+    const summary = {
+      totalRevenue,
+      totalOrders,
+      totalUnits,
+      averageOrderValue,
+      growthRate
+    };
 
-    const averageOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+    console.log(`💰 Summary - Revenue: ₹${totalRevenue.toLocaleString('en-IN')}, Orders: ${totalOrders}, Growth: ${growthRate.toFixed(1)}%`);
 
     return NextResponse.json({
       success: true,
-      data: salesEvents.map((event: any) => ({
-        periodKey: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(event.timestamp),
-        revenue: event.totalAmount,
-        units: event.quantity,
-        orders: 1,
-        averageOrderValue: event.totalAmount,
-        averageUnitPrice: event.unitPrice
-      })),
-      summary: {
-        totalRevenue,
-        totalOrders,
-        totalUnits,
-        averageOrderValue,
-        growthRate: 0
+      data: aggregatedData,
+      summary,
+      metadata: {
+        range,
+        resolution,
+        artisanId,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        totalEvents: salesEvents.length
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching sales data:', error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Failed to fetch sales data',
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
-      topProducts,
-      recentSales,
-      monthlyTrend
-    });
-
-  } catch (error: any) {
-    console.error('Error fetching sales data:', error);
-    
-    // Return mock data if Firestore fails
-    const mockData = [
-      { periodKey: 'Oct 28', revenue: 4200, units: 5, orders: 3, averageOrderValue: 1400, averageUnitPrice: 840 },
-      { periodKey: 'Oct 29', revenue: 5600, units: 7, orders: 4, averageOrderValue: 1400, averageUnitPrice: 800 },
-      { periodKey: 'Oct 30', revenue: 3800, units: 4, orders: 2, averageOrderValue: 1900, averageUnitPrice: 950 }
-    ];
-    
-    return NextResponse.json({
-      success: true,
-      data: mockData,
-      summary: {
-        totalRevenue: 125000,
-        totalOrders: 45,
-        totalUnits: 78,
-        averageOrderValue: 2778,
-        growthRate: 12.5
-      }
-    });
+      { status: 500 }
+    );
   }
+}
+
+function aggregateSalesData(salesEvents: any[], resolution: string) {
+  const aggregated = new Map();
+
+  salesEvents.forEach(event => {
+    const date = new Date(event.eventTimestamp);
+    let periodKey: string;
+
+    switch (resolution) {
+      case 'daily':
+        periodKey = date.toISOString().split('T')[0]; // YYYY-MM-DD
+        break;
+      case 'weekly':
+        const weekStart = new Date(date);
+        weekStart.setDate(date.getDate() - date.getDay());
+        periodKey = weekStart.toISOString().split('T')[0];
+        break;
+      case 'monthly':
+        periodKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        break;
+      default:
+        periodKey = date.toISOString().split('T')[0];
+    }
+
+    if (!aggregated.has(periodKey)) {
+      aggregated.set(periodKey, {
+        periodKey,
+        revenue: 0,
+        units: 0,
+        orders: 0,
+        averageOrderValue: 0,
+        averageUnitPrice: 0
+      });
+    }
+
+    const period = aggregated.get(periodKey);
+    period.revenue += event.totalAmount || 0;
+    period.units += event.quantity || 0;
+    period.orders += 1;
+  });
+
+  // Calculate averages
+  aggregated.forEach(period => {
+    period.averageOrderValue = period.orders > 0 ? period.revenue / period.orders : 0;
+    period.averageUnitPrice = period.units > 0 ? period.revenue / period.units : 0;
+  });
+
+  // Convert to array and sort by period
+  return Array.from(aggregated.values()).sort((a, b) => a.periodKey.localeCompare(b.periodKey));
 }

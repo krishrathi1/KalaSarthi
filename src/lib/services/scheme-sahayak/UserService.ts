@@ -115,10 +115,10 @@ export class UserService extends BaseService {
       }
 
       const data = docSnap.data();
-      
+
       // Decrypt sensitive fields
       const decryptedData = await encryptionService.decryptFields(data);
-      
+
       return {
         ...decryptedData,
         id: docSnap.id,
@@ -273,10 +273,10 @@ export class UserService extends BaseService {
       const profiles = await Promise.all(
         querySnapshot.docs.map(async doc => {
           const data = doc.data();
-          
+
           // Decrypt sensitive fields
           const decryptedData = await encryptionService.decryptFields(data);
-          
+
           return {
             ...decryptedData,
             id: doc.id,

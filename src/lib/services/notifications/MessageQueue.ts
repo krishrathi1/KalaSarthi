@@ -7,6 +7,8 @@
 
 import { getGupshupLogger } from './GupshupLogger';
 import { GupshupError, GupshupErrorCode, handleGupshupError } from './GupshupErrorHandler';
+import { getRateLimitManager, RateLimitManager } from './RateLimitManager';
+import { getBatchProcessor, BatchProcessor, BatchResult } from './BatchProcessor';
 
 export interface QueuedMessage {
   id: string;
@@ -101,6 +103,8 @@ export class MessageQueue {
   };
   
   private readonly logger = getGupshupLogger();
+  private readonly rateLimitManager: RateLimitManager;
+  private readonly batchProcessor: BatchProcessor;
   private readonly maxQueueSize = 10000;
   private readonly maxDeadLetterSize = 1000;
   private readonly persistenceInterval = 30000; // 30 seconds
@@ -110,17 +114,118 @@ export class MessageQueue {
   private healthCheckTimer?: NodeJS.Timeout;
 
   constructor() {
+    this.rateLimitManager = getRateLimitManager();
+    this.batchProcessor = getBatchProcessor();
     this.startPeriodicTasks();
     this.logger.info('message_queue_init', 'Message queue initialized', {
       maxQueueSize: this.maxQueueSize,
       maxDeadLetterSize: this.maxDeadLetterSize,
       persistenceInterval: this.persistenceInterval,
       healthCheckInterval: this.healthCheckInterval,
+      rateLimitingEnabled: true,
+      batchProcessingEnabled: true,
     });
   }
 
   /**
-   * Add message to queue with priority handling
+   * Add message to queue with intelligent scheduling and rate limit optimization
+   */
+  async enqueueWithIntelligentScheduling(message: QueuedMessage): Promise<void> {
+    try {
+      // Validate message
+      this.validateMessage(message);
+      
+      // Check queue capacity
+      const totalMessages = this.getTotalQueueSize();
+      if (totalMessages >= this.maxQueueSize) {
+        throw handleGupshupError(
+          new Error(`Queue capacity exceeded. Current size: ${totalMessages}, Max: ${this.maxQueueSize}`),
+          { messageId: message.id, queueSize: totalMessages }
+        );
+      }
+
+      // Get intelligent scheduling recommendation
+      const recommendation = await this.rateLimitManager.getSchedulingRecommendation(
+        message.channel,
+        message.priority
+      );
+
+      // Apply scheduling recommendation
+      if (recommendation.shouldSchedule && recommendation.recommendedDelay > 0) {
+        message.scheduledAt = recommendation.estimatedDeliveryTime;
+        
+        this.logger.info('message_intelligently_scheduled', 'Message scheduled based on rate limit optimization', {
+          messageId: message.id,
+          originalScheduledAt: message.scheduledAt,
+          newScheduledAt: recommendation.estimatedDeliveryTime,
+          delay: recommendation.recommendedDelay,
+          reason: recommendation.reason,
+          priority: recommendation.priority,
+        });
+      }
+
+      // Set metadata
+      message.metadata.updatedAt = new Date();
+      if (!message.metadata.createdAt) {
+        message.metadata.createdAt = new Date();
+      }
+
+      // Add scheduling metadata
+      message.metadata.tags.push('intelligent_scheduling');
+      if (recommendation.shouldSchedule) {
+        message.metadata.tags.push('rate_limit_optimized');
+      }
+
+      // Handle scheduled messages
+      if (message.scheduledAt > new Date()) {
+        this.scheduledMessages.set(message.id, message);
+        this.logger.debug('message_scheduled', 'Message scheduled for future delivery', {
+          messageId: message.id,
+          scheduledAt: message.scheduledAt,
+          priority: message.priority,
+          channel: message.channel,
+          intelligentlyScheduled: recommendation.shouldSchedule,
+        });
+        return;
+      }
+
+      // Add to appropriate priority queue
+      switch (message.priority) {
+        case 'high':
+          this.highPriorityQueue.push(message);
+          break;
+        case 'medium':
+          this.mediumPriorityQueue.push(message);
+          break;
+        case 'low':
+          this.lowPriorityQueue.push(message);
+          break;
+        default:
+          this.mediumPriorityQueue.push(message);
+      }
+
+      this.logger.info('message_enqueued_with_intelligence', 'Message added to queue with intelligent scheduling', {
+        messageId: message.id,
+        priority: message.priority,
+        channel: message.channel,
+        userId: message.userId,
+        queueSize: this.getTotalQueueSize(),
+        schedulingApplied: recommendation.shouldSchedule,
+      });
+
+    } catch (error) {
+      const gupshupError = error instanceof GupshupError ? error : handleGupshupError(error);
+      this.logger.error('message_enqueue_failed', 'Failed to enqueue message with intelligent scheduling', {
+        messageId: message.id,
+        error: gupshupError.message,
+        errorCode: gupshupError.code,
+      });
+      throw gupshupError;
+    }
+  }
+
+  /**
+   * Add message to queue with priority handling (original method)
    */
   async enqueue(message: QueuedMessage): Promise<void> {
     try {
@@ -189,7 +294,71 @@ export class MessageQueue {
   }
 
   /**
-   * Process messages from queue with priority ordering
+   * Process messages from queue with batch processing and retry logic
+   */
+  async processBatch(): Promise<BatchResult[]> {
+    if (this.isProcessing) {
+      this.logger.debug('batch_processing_skipped', 'Batch processing already in progress');
+      return [];
+    }
+
+    this.isProcessing = true;
+    const batchResults: BatchResult[] = [];
+    const startTime = Date.now();
+
+    try {
+      // Move due scheduled messages to immediate queues
+      await this.processDueScheduledMessages();
+
+      // Get messages for batch processing with quota awareness
+      const messagesToProcess = await this.getMessagesForProcessing();
+      
+      if (messagesToProcess.length === 0) {
+        return batchResults;
+      }
+
+      this.logger.info('batch_processing_start', 'Starting batch processing', {
+        totalMessages: messagesToProcess.length,
+        highPriority: this.highPriorityQueue.length,
+        mediumPriority: this.mediumPriorityQueue.length,
+        lowPriority: this.lowPriorityQueue.length,
+      });
+
+      // Process messages in batches using BatchProcessor
+      const batchResult = await this.batchProcessor.processBatch(messagesToProcess);
+      batchResults.push(batchResult);
+
+      // Handle retry scheduling for failed messages
+      await this.handleBatchRetries(messagesToProcess, batchResult);
+
+      const processingTime = Date.now() - startTime;
+      this.logger.info('batch_processing_complete', 'Batch processing completed', {
+        batchCount: batchResults.length,
+        totalMessages: batchResult.totalMessages,
+        successCount: batchResult.successCount,
+        failureCount: batchResult.failureCount,
+        retryCount: batchResult.retryCount,
+        deadLetterCount: batchResult.deadLetterCount,
+        processingTime,
+        throughput: batchResult.throughputPerSecond,
+      });
+
+    } catch (error) {
+      const gupshupError = error instanceof GupshupError ? error : handleGupshupError(error);
+      this.logger.error('batch_processing_failed', 'Batch processing failed', {
+        error: gupshupError.message,
+        errorCode: gupshupError.code,
+      });
+      throw gupshupError;
+    } finally {
+      this.isProcessing = false;
+    }
+
+    return batchResults;
+  }
+
+  /**
+   * Process messages from queue with priority ordering (legacy individual processing)
    */
   async process(): Promise<ProcessingResult[]> {
     if (this.isProcessing) {
@@ -205,14 +374,14 @@ export class MessageQueue {
       // Move due scheduled messages to immediate queues
       await this.processDueScheduledMessages();
 
-      // Process messages by priority
-      const messagesToProcess = this.getMessagesForProcessing();
+      // Process messages by priority with quota awareness
+      const messagesToProcess = await this.getMessagesForProcessing();
       
       if (messagesToProcess.length === 0) {
         return results;
       }
 
-      this.logger.info('queue_processing_start', 'Starting queue processing', {
+      this.logger.info('queue_processing_start', 'Starting individual queue processing', {
         totalMessages: messagesToProcess.length,
         highPriority: this.highPriorityQueue.length,
         mediumPriority: this.mediumPriorityQueue.length,
@@ -240,13 +409,14 @@ export class MessageQueue {
             error: gupshupError,
           };
 
-          // Handle retry logic
+          // Handle retry logic using BatchProcessor
+          const retryHistory = this.batchProcessor.getRetryHistory(message.id);
           if (message.retryCount < message.maxRetries) {
             const retryResult = await this.scheduleRetry(message, gupshupError);
             result.retryScheduled = retryResult.retryScheduled;
             result.nextRetryAt = retryResult.nextRetryAt;
           } else {
-            // Move to dead letter queue
+            // Move to dead letter queue using BatchProcessor
             await this.moveToDeadLetterQueue(message, gupshupError);
           }
 
@@ -256,7 +426,7 @@ export class MessageQueue {
       }
 
       const processingTime = Date.now() - startTime;
-      this.logger.info('queue_processing_complete', 'Queue processing completed', {
+      this.logger.info('queue_processing_complete', 'Individual queue processing completed', {
         processedCount: results.length,
         successCount: results.filter(r => r.success).length,
         failureCount: results.filter(r => !r.success).length,
@@ -266,7 +436,7 @@ export class MessageQueue {
 
     } catch (error) {
       const gupshupError = error instanceof GupshupError ? error : handleGupshupError(error);
-      this.logger.error('queue_processing_failed', 'Queue processing failed', {
+      this.logger.error('queue_processing_failed', 'Individual queue processing failed', {
         error: gupshupError.message,
         errorCode: gupshupError.code,
       });
@@ -279,7 +449,7 @@ export class MessageQueue {
   }
 
   /**
-   * Get current queue status and metrics
+   * Get current queue status and metrics (enhanced with batch processing)
    */
   getQueueStatus(): QueueStatus {
     const totalMessages = this.getTotalQueueSize();
@@ -294,6 +464,9 @@ export class MessageQueue {
     const recentProcessingTimes = processingTimes.filter(time => time > oneMinuteAgo);
     const throughputPerMinute = recentProcessingTimes.length;
 
+    // Get dead letter queue size from BatchProcessor
+    const deadLetterStats = this.batchProcessor.getDeadLetterStats();
+
     return {
       totalMessages,
       highPriority: this.highPriorityQueue.length,
@@ -301,7 +474,7 @@ export class MessageQueue {
       lowPriority: this.lowPriorityQueue.length,
       scheduledMessages: this.scheduledMessages.size,
       processingMessages: this.processingMessages.size,
-      failedMessages: this.deadLetterQueue.length,
+      failedMessages: deadLetterStats.totalMessages, // Use BatchProcessor's dead letter count
       retryMessages: this.getRetryMessageCount(),
       lastProcessedAt: this.processingStats.lastProcessedAt,
       averageProcessingTime,
@@ -394,32 +567,149 @@ export class MessageQueue {
   }
 
   /**
-   * Get dead letter queue messages
+   * Handle retry scheduling for failed messages in batch processing
    */
-  getDeadLetterQueue(): QueuedMessage[] {
-    return [...this.deadLetterQueue];
+  private async handleBatchRetries(messages: QueuedMessage[], batchResult: BatchResult): Promise<void> {
+    for (const error of batchResult.errors) {
+      const message = messages.find(m => m.id === error.messageId);
+      if (!message) continue;
+
+      if (error.retryable && message.retryCount < message.maxRetries) {
+        // Message will be automatically retried by BatchProcessor
+        this.logger.debug('batch_retry_scheduled', 'Message scheduled for retry in batch processing', {
+          messageId: error.messageId,
+          retryCount: error.retryCount,
+          errorCode: error.errorCode,
+        });
+      } else {
+        // Message moved to dead letter queue by BatchProcessor
+        this.logger.info('batch_message_to_dlq', 'Message moved to dead letter queue in batch processing', {
+          messageId: error.messageId,
+          finalRetryCount: error.retryCount,
+          errorCode: error.errorCode,
+        });
+      }
+    }
   }
 
   /**
-   * Requeue message from dead letter queue
+   * Get dead letter queue messages (using BatchProcessor)
+   */
+  getDeadLetterQueue(): QueuedMessage[] {
+    const deadLetterMessages = this.batchProcessor.getDeadLetterMessages();
+    return deadLetterMessages.map(dlm => dlm.originalMessage);
+  }
+
+  /**
+   * Get detailed dead letter queue information
+   */
+  getDeadLetterQueueDetails() {
+    return {
+      messages: this.batchProcessor.getDeadLetterMessages(),
+      statistics: this.batchProcessor.getDeadLetterStats(),
+    };
+  }
+
+  /**
+   * Requeue message from dead letter queue (using BatchProcessor)
    */
   async requeueFromDeadLetter(messageId: string): Promise<boolean> {
-    const messageIndex = this.deadLetterQueue.findIndex(m => m.id === messageId);
-    if (messageIndex === -1) {
+    const reprocessedMessage = this.batchProcessor.reprocessDeadLetterMessage(messageId);
+    
+    if (!reprocessedMessage) {
+      this.logger.warn('dlq_requeue_failed', 'Failed to requeue message from dead letter queue', {
+        messageId,
+        reason: 'Message not found or not reprocessable',
+      });
       return false;
     }
 
-    const message = this.deadLetterQueue.splice(messageIndex, 1)[0];
-    message.retryCount = 0;
-    message.metadata.updatedAt = new Date();
-
-    await this.enqueue(message);
+    await this.enqueue(reprocessedMessage);
     
     this.logger.info('message_requeued_from_dlq', 'Message requeued from dead letter queue', {
-      messageId: message.id,
+      messageId: reprocessedMessage.id,
     });
 
     return true;
+  }
+
+  /**
+   * Remove message from dead letter queue
+   */
+  removeFromDeadLetterQueue(messageId: string): boolean {
+    const removed = this.batchProcessor.removeDeadLetterMessage(messageId);
+    
+    if (removed) {
+      this.logger.info('message_removed_from_dlq', 'Message removed from dead letter queue', {
+        messageId,
+      });
+    }
+    
+    return removed;
+  }
+
+  /**
+   * Get comprehensive queue status including rate limiting, quota, and batch processing information
+   */
+  getEnhancedQueueStatus(): QueueStatus & {
+    quotaStats: any;
+    rateLimitInfo: {
+      whatsapp: any;
+      sms: any;
+    };
+    quotaAlerts: any[];
+    batchProcessing: {
+      stats: any;
+      deadLetterStats: any;
+      config: any;
+    };
+  } {
+    const baseStatus = this.getQueueStatus();
+    const quotaStats = this.rateLimitManager.getQuotaUsageStats();
+    const whatsappRateLimit = this.rateLimitManager.getWhatsAppRateLimit();
+    const smsRateLimit = this.rateLimitManager.getSMSRateLimit();
+    const quotaAlerts = this.rateLimitManager.getQuotaAlerts();
+    
+    // Get batch processing information
+    const batchStats = this.batchProcessor.getProcessingStats();
+    const deadLetterStats = this.batchProcessor.getDeadLetterStats();
+    const batchConfig = this.batchProcessor.getConfig();
+
+    return {
+      ...baseStatus,
+      quotaStats,
+      rateLimitInfo: {
+        whatsapp: whatsappRateLimit,
+        sms: smsRateLimit,
+      },
+      quotaAlerts,
+      batchProcessing: {
+        stats: batchStats,
+        deadLetterStats,
+        config: batchConfig,
+      },
+    };
+  }
+
+  /**
+   * Get batch processing statistics
+   */
+  getBatchProcessingStats() {
+    return this.batchProcessor.getProcessingStats();
+  }
+
+  /**
+   * Get retry history for a specific message
+   */
+  getMessageRetryHistory(messageId: string) {
+    return this.batchProcessor.getRetryHistory(messageId);
+  }
+
+  /**
+   * Get rate limiting performance metrics
+   */
+  getRateLimitingMetrics() {
+    return this.rateLimitManager.getPerformanceMetrics();
   }
 
   /**
@@ -487,9 +777,60 @@ export class MessageQueue {
   }
 
   /**
-   * Get messages for processing in priority order
+   * Get messages for processing in priority order with quota awareness
    */
-  private getMessagesForProcessing(): QueuedMessage[] {
+  private async getMessagesForProcessing(): Promise<QueuedMessage[]> {
+    const messages: QueuedMessage[] = [];
+    const quotaStats = this.rateLimitManager.getQuotaUsageStats();
+    
+    // Adjust batch sizes based on quota utilization
+    let highPriorityBatchSize = 5;
+    let mediumPriorityBatchSize = 3;
+    let lowPriorityBatchSize = 2;
+    
+    // Reduce batch sizes if quota is running low
+    if (quotaStats.daily.utilizationPercentage > 90) {
+      highPriorityBatchSize = 2;
+      mediumPriorityBatchSize = 1;
+      lowPriorityBatchSize = 0; // Skip low priority when quota is critical
+    } else if (quotaStats.daily.utilizationPercentage > 75) {
+      highPriorityBatchSize = 3;
+      mediumPriorityBatchSize = 2;
+      lowPriorityBatchSize = 1;
+    }
+    
+    // Process high priority first
+    const highPriorityBatch = this.highPriorityQueue.splice(0, highPriorityBatchSize);
+    messages.push(...highPriorityBatch);
+    
+    // Then medium priority
+    const mediumPriorityBatch = this.mediumPriorityQueue.splice(0, mediumPriorityBatchSize);
+    messages.push(...mediumPriorityBatch);
+    
+    // Finally low priority (if quota allows)
+    if (lowPriorityBatchSize > 0) {
+      const lowPriorityBatch = this.lowPriorityQueue.splice(0, lowPriorityBatchSize);
+      messages.push(...lowPriorityBatch);
+    }
+
+    // Log quota-aware processing decisions
+    if (quotaStats.daily.utilizationPercentage > 75) {
+      this.logger.info('quota_aware_processing', 'Adjusted batch sizes due to quota utilization', {
+        quotaUtilization: quotaStats.daily.utilizationPercentage,
+        highPriorityBatch: highPriorityBatchSize,
+        mediumPriorityBatch: mediumPriorityBatchSize,
+        lowPriorityBatch: lowPriorityBatchSize,
+        totalMessages: messages.length,
+      });
+    }
+
+    return messages;
+  }
+
+  /**
+   * Get messages for processing in priority order (original method)
+   */
+  private getMessagesForProcessingOriginal(): QueuedMessage[] {
     const messages: QueuedMessage[] = [];
     
     // Process high priority first (up to 50% of batch)
@@ -538,30 +879,45 @@ export class MessageQueue {
   }
 
   /**
-   * Schedule message retry with exponential backoff
+   * Schedule message retry with exponential backoff (enhanced with BatchProcessor)
    */
   private async scheduleRetry(message: QueuedMessage, error: GupshupError): Promise<{ retryScheduled: boolean; nextRetryAt?: Date }> {
+    // Use BatchProcessor's retry handler for consistent retry logic
+    const retryHistory = this.batchProcessor.getRetryHistory(message.id);
+    
     message.retryCount++;
     
-    // Calculate exponential backoff delay
+    // Calculate exponential backoff delay using BatchProcessor's logic
     const baseDelay = 60000; // 1 minute
     const maxDelay = 3600000; // 1 hour
-    const delay = Math.min(baseDelay * Math.pow(2, message.retryCount - 1), maxDelay);
+    const backoffMultiplier = 2;
+    
+    let delay = baseDelay * Math.pow(backoffMultiplier, message.retryCount - 1);
+    
+    // Add jitter (±10%)
+    const jitter = Math.random() * 0.1;
+    delay = delay * (1 + (jitter - 0.05));
+    
+    // Cap at maximum delay
+    delay = Math.min(delay, maxDelay);
     
     const nextRetryAt = new Date(Date.now() + delay);
     message.scheduledAt = nextRetryAt;
     message.metadata.updatedAt = new Date();
+    message.metadata.tags.push('retry_scheduled');
     
     // Add to scheduled messages
     this.scheduledMessages.set(message.id, message);
     
-    this.logger.info('message_retry_scheduled', 'Message scheduled for retry', {
+    this.logger.info('message_retry_scheduled', 'Message scheduled for retry with exponential backoff', {
       messageId: message.id,
       retryCount: message.retryCount,
       maxRetries: message.maxRetries,
       nextRetryAt,
       delay,
       errorCode: error.code,
+      backoffMultiplier,
+      jitterApplied: true,
     });
     
     return {
@@ -571,31 +927,43 @@ export class MessageQueue {
   }
 
   /**
-   * Move message to dead letter queue
+   * Move message to dead letter queue (using BatchProcessor)
    */
   private async moveToDeadLetterQueue(message: QueuedMessage, error: GupshupError): Promise<void> {
     // Add error information to metadata
     message.metadata.tags.push('dead_letter');
     message.metadata.updatedAt = new Date();
     
-    // Ensure dead letter queue doesn't exceed capacity
-    if (this.deadLetterQueue.length >= this.maxDeadLetterSize) {
-      // Remove oldest message
-      const removed = this.deadLetterQueue.shift();
-      this.logger.warn('dlq_capacity_exceeded', 'Dead letter queue capacity exceeded, removing oldest message', {
-        removedMessageId: removed?.id,
-        maxSize: this.maxDeadLetterSize,
-      });
+    // Get retry history for comprehensive error tracking
+    const retryHistory = this.batchProcessor.getRetryHistory(message.id);
+    const errorHistory = retryHistory.map(attempt => attempt.error).filter(Boolean) as GupshupError[];
+    errorHistory.push(error);
+    
+    // Use BatchProcessor's dead letter manager
+    const deadLetterManager = (this.batchProcessor as any).deadLetterManager;
+    if (deadLetterManager) {
+      deadLetterManager.addToDeadLetter(message, error, errorHistory);
+    } else {
+      // Fallback to legacy dead letter queue
+      if (this.deadLetterQueue.length >= this.maxDeadLetterSize) {
+        const removed = this.deadLetterQueue.shift();
+        this.logger.warn('dlq_capacity_exceeded', 'Dead letter queue capacity exceeded, removing oldest message', {
+          removedMessageId: removed?.id,
+          maxSize: this.maxDeadLetterSize,
+        });
+      }
+      
+      this.deadLetterQueue.push(message);
     }
     
-    this.deadLetterQueue.push(message);
-    
-    this.logger.error('message_moved_to_dlq', 'Message moved to dead letter queue', {
+    this.logger.error('message_moved_to_dlq', 'Message moved to dead letter queue with comprehensive error tracking', {
       messageId: message.id,
       retryCount: message.retryCount,
       maxRetries: message.maxRetries,
       errorCode: error.code,
       errorMessage: error.message,
+      totalErrorHistory: errorHistory.length,
+      usingBatchProcessor: !!deadLetterManager,
     });
   }
 
@@ -729,6 +1097,16 @@ export class MessageQueue {
   }
 
   /**
+   * Cleanup old data and perform maintenance
+   */
+  cleanup(): void {
+    // Cleanup BatchProcessor data
+    this.batchProcessor.cleanup();
+    
+    this.logger.info('message_queue_cleanup', 'Message queue cleanup completed');
+  }
+
+  /**
    * Stop periodic tasks and cleanup
    */
   destroy(): void {
@@ -738,6 +1116,9 @@ export class MessageQueue {
     if (this.healthCheckTimer) {
       clearInterval(this.healthCheckTimer);
     }
+    
+    // Cleanup BatchProcessor
+    this.batchProcessor.destroy();
     
     this.logger.info('message_queue_destroyed', 'Message queue destroyed and cleaned up');
   }

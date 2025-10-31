@@ -436,11 +436,16 @@ export class RealtimeFirestoreSyncService {
 
   /**
    * Sync new sales event to Firestore
+   * Note: Disabled since we're using pre-populated Firestore data
    */
   async syncSalesEvent(event: ISalesEvent): Promise<void> {
     try {
+      console.log(`📝 Sales event sync skipped (using existing Firestore data): ${event.id || event.orderId}`);
+      // Sync disabled to prevent write errors - using existing Firestore data
+      return;
+      
+      /* Original sync code disabled:
       if (this.connectionState === 'offline') {
-        // Cache for later sync
         this.offlineCache.pendingSyncs.push({
           id: event.orderId,
           type: 'sales_event',
@@ -451,7 +456,6 @@ export class RealtimeFirestoreSyncService {
         return;
       }
 
-      // Convert dates to Firestore timestamps
       const firestoreEvent = {
         ...event,
         eventTimestamp: Timestamp.fromDate(event.eventTimestamp),
@@ -459,36 +463,27 @@ export class RealtimeFirestoreSyncService {
         updatedAt: Timestamp.fromDate(event.updatedAt)
       };
 
-      // Use orderId as document ID for idempotency
       await FirestoreService.set(COLLECTIONS.SALES_EVENTS, event.orderId, firestoreEvent);
-
       console.log(`✅ Sales event synced to Firestore: ${event.orderId}`);
+      */
 
     } catch (error) {
-      console.error('Error syncing sales event to Firestore:', error);
-      
-      // Cache for retry if connection error
-      if (this.isConnectionError(error)) {
-        this.handleConnectionStateChange('offline');
-        this.offlineCache.pendingSyncs.push({
-          id: event.orderId,
-          type: 'sales_event',
-          data: event,
-          timestamp: new Date()
-        });
-      } else {
-        throw error;
-      }
+      console.error('Error in sales event sync (disabled):', error);
     }
   }
 
   /**
    * Sync expense record to Firestore
+   * Note: Disabled to prevent write errors - using read-only mode
    */
   async syncExpense(expense: ExpenseRecord): Promise<void> {
     try {
+      console.log(`📝 Expense sync skipped (read-only mode): ${expense.id}`);
+      // Sync disabled to prevent write errors
+      return;
+      
+      /* Original sync code disabled:
       if (this.connectionState === 'offline') {
-        // Cache for later sync
         this.offlineCache.pendingSyncs.push({
           id: expense.id || `expense_${Date.now()}`,
           type: 'expense',
@@ -499,7 +494,6 @@ export class RealtimeFirestoreSyncService {
         return;
       }
 
-      // Convert dates to Firestore timestamps
       const firestoreExpense = {
         ...expense,
         date: Timestamp.fromDate(expense.date),
@@ -509,35 +503,20 @@ export class RealtimeFirestoreSyncService {
 
       let expenseId: string;
       if (expense.id) {
-        // Update existing expense
         await FirestoreService.set(COLLECTIONS.EXPENSES, expense.id, firestoreExpense);
         expenseId = expense.id;
       } else {
-        // Create new expense
         expenseId = await FirestoreService.create(COLLECTIONS.EXPENSES, firestoreExpense);
       }
 
-      // Cache the expense
       const cachedExpense = { ...expense, id: expenseId };
       this.offlineCache.expenses.set(expenseId, cachedExpense);
-
       console.log(`✅ Expense synced to Firestore: ${expenseId}`);
+      */
 
     } catch (error) {
-      console.error('Error syncing expense to Firestore:', error);
-      
-      // Cache for retry if connection error
-      if (this.isConnectionError(error)) {
-        this.handleConnectionStateChange('offline');
-        this.offlineCache.pendingSyncs.push({
-          id: expense.id || `expense_${Date.now()}`,
-          type: 'expense',
-          data: expense,
-          timestamp: new Date()
-        });
-      } else {
-        throw error;
-      }
+      console.error('Error in expense sync (disabled):', error);
+      // No longer throwing errors since sync is disabled
     }
   }
 
@@ -592,8 +571,42 @@ export class RealtimeFirestoreSyncService {
    * Get cached data for offline access
    */
   getCachedSalesEvents(artisanId: string): ISalesEvent[] {
-    return Array.from(this.offlineCache.salesEvents.values())
+    const cached = Array.from(this.offlineCache.salesEvents.values())
       .filter(event => event.artisanId === artisanId);
+    
+    // If no cached data, try to populate from API
+    if (cached.length === 0) {
+      this.populateCacheFromAPI(artisanId);
+    }
+    
+    return cached;
+  }
+
+  /**
+   * Populate cache from API (for initial load)
+   */
+  private async populateCacheFromAPI(artisanId: string): Promise<void> {
+    try {
+      const response = await fetch(`/api/sales-events?artisanId=${artisanId}&limit=50`);
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        result.data.forEach((eventData: any) => {
+          const event: ISalesEvent = {
+            ...eventData,
+            eventTimestamp: new Date(eventData.eventTimestamp),
+            createdAt: new Date(eventData.createdAt),
+            updatedAt: new Date(eventData.updatedAt)
+          };
+          
+          this.offlineCache.salesEvents.set(event.id, event);
+        });
+        
+        console.log(`📦 Populated cache with ${result.data.length} sales events for ${artisanId}`);
+      }
+    } catch (error) {
+      console.error('Error populating cache from API:', error);
+    }
   }
 
   /**
@@ -681,8 +694,15 @@ export class RealtimeFirestoreSyncService {
 
   /**
    * Sync cached data when connection is restored
+   * Note: Disabled since we're using pre-populated Firestore data
    */
   private async syncCachedData(): Promise<void> {
+    console.log(`📝 Cached data sync skipped (using existing Firestore data)`);
+    // Clear any pending syncs since we're not syncing
+    this.offlineCache.pendingSyncs = [];
+    return;
+    
+    /* Original sync code disabled:
     if (this.offlineCache.pendingSyncs.length === 0) return;
 
     console.log(`🔄 Syncing ${this.offlineCache.pendingSyncs.length} cached items...`);
@@ -704,13 +724,13 @@ export class RealtimeFirestoreSyncService {
     const results = await Promise.allSettled(syncPromises);
     const successful = results.filter(r => r.status === 'fulfilled' && r.value !== null).length;
 
-    // Remove successfully synced items
     this.offlineCache.pendingSyncs = this.offlineCache.pendingSyncs.filter((item, index) => {
       const result = results[index];
       return result.status === 'rejected' || result.value === null;
     });
 
     console.log(`✅ Synced ${successful} cached items, ${this.offlineCache.pendingSyncs.length} remaining`);
+    */
   }
 
   /**

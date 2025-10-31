@@ -846,7 +846,7 @@ function generateMockSmartNotifications(artisanId: string) {
       message: 'MUDRA Plus scheme application deadline is in 3 days',
       priority: 'urgent',
       actionRequired: true,
-      actionUrl: '/schemes/mudra-plus/apply',
+      actionUrl: 'https://www.mudra.org.in/',
       scheduledFor: new Date(),
       channels: ['push', 'sms', 'email'],
       metadata: { schemeId: 'mudra_plus', daysLeft: 3 }
@@ -855,12 +855,13 @@ function generateMockSmartNotifications(artisanId: string) {
       id: 'notif_new_1',
       type: 'new_scheme',
       title: 'New Scheme Available',
-      message: 'Digital Marketing Training Scheme now available for artisans',
+      message: 'PM Vishwakarma Scheme now available for traditional artisans',
       priority: 'medium',
-      actionRequired: false,
+      actionRequired: true,
+      actionUrl: 'https://pmvishwakarma.gov.in/',
       scheduledFor: new Date(),
       channels: ['push', 'email'],
-      metadata: { schemeId: 'digital_marketing_training' }
+      metadata: { schemeId: 'pm_vishwakarma' }
     },
     {
       id: 'notif_status_1',
@@ -869,10 +870,34 @@ function generateMockSmartNotifications(artisanId: string) {
       message: 'Your PMEGP application has been approved for the next stage',
       priority: 'high',
       actionRequired: true,
-      actionUrl: '/applications/track/pmegp_123',
+      actionUrl: 'https://www.kviconline.gov.in/pmegpeportal/jsp/pmegponline/pmegp_online_main.jsp',
       scheduledFor: new Date(),
       channels: ['push', 'sms'],
       metadata: { applicationId: 'pmegp_123', newStatus: 'approved_stage_1' }
+    },
+    {
+      id: 'notif_urgent_2',
+      type: 'deadline_reminder',
+      title: 'SFURTI Scheme Deadline',
+      message: 'SFURTI cluster development scheme application closes in 5 days',
+      priority: 'urgent',
+      actionRequired: true,
+      actionUrl: 'https://sfurti.msme.gov.in/',
+      scheduledFor: new Date(),
+      channels: ['push', 'sms', 'email'],
+      metadata: { schemeId: 'sfurti', daysLeft: 5 }
+    },
+    {
+      id: 'notif_medium_1',
+      type: 'document_reminder',
+      title: 'Document Verification Pending',
+      message: 'Complete your Aadhaar verification to improve scheme eligibility',
+      priority: 'medium',
+      actionRequired: true,
+      actionUrl: 'https://uidai.gov.in/',
+      scheduledFor: new Date(),
+      channels: ['push', 'email'],
+      metadata: { documentType: 'aadhaar', verificationStatus: 'pending' }
     }
   ];
 }

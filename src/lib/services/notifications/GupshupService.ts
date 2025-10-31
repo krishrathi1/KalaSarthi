@@ -46,6 +46,14 @@ import {
   SMSOptimizationResult,
   getSMSTemplateManager
 } from './SMSTemplateManager';
+import {
+  RateLimitManager,
+  RateLimitInfo,
+  QuotaAlert,
+  QuotaUsageStats,
+  SchedulingRecommendation,
+  getRateLimitManager
+} from './RateLimitManager';
 
 export interface MessageResponse {
   messageId: string;
@@ -303,6 +311,7 @@ export interface RetryPolicy {
 export class GupshupService {
   private config: GupshupConfig;
   private rateLimiter: RateLimiter;
+  private rateLimitManager: RateLimitManager;
   private httpConfig: HttpClientConfig;
   private retryPolicy: RetryPolicy;
   private logger: GupshupLogger;
@@ -314,6 +323,7 @@ export class GupshupService {
   constructor(config?: GupshupConfig) {
     this.config = config || getGupshupConfig();
     this.rateLimiter = new RateLimiter(this.config);
+    this.rateLimitManager = getRateLimitManager();
     this.logger = getGupshupLogger();
     this.templateManager = getTemplateManager();
     this.deliveryTracker = getDeliveryTracker();
@@ -385,12 +395,32 @@ export class GupshupService {
         });
       }
 
-      // Check rate limit
-      if (!this.rateLimiter.consumeWhatsAppToken()) {
-        const rateLimitInfo = this.rateLimiter.getWhatsAppRateLimit();
-        this.logger.logRateLimit('whatsapp', rateLimitInfo.remaining, rateLimitInfo.isLimited);
+      // Check rate limit and quota with enhanced management
+      const rateLimitCheck = await this.rateLimitManager.canSendWhatsApp();
+      if (!rateLimitCheck.allowed) {
+        this.logger.logRateLimit('whatsapp', rateLimitCheck.rateLimitInfo.remaining, rateLimitCheck.rateLimitInfo.isLimited);
+        
+        let errorMessage = 'WhatsApp rate limit exceeded. Please try again later.';
+        if (rateLimitCheck.recommendation) {
+          errorMessage = `WhatsApp delivery restricted: ${rateLimitCheck.recommendation.reason}. Recommended delay: ${rateLimitCheck.recommendation.recommendedDelay}ms`;
+        }
+        
         throw handleGupshupError(
-          new Error('WhatsApp rate limit exceeded. Please try again later.'),
+          new Error(errorMessage),
+          { 
+            channel: 'whatsapp', 
+            rateLimitInfo: rateLimitCheck.rateLimitInfo,
+            recommendation: rateLimitCheck.recommendation,
+            ...params 
+          }
+        );
+      }
+
+      // Consume token with quota tracking
+      const tokenConsumed = await this.rateLimitManager.consumeWhatsAppToken();
+      if (!tokenConsumed) {
+        throw handleGupshupError(
+          new Error('Failed to consume WhatsApp token due to quota restrictions'),
           { channel: 'whatsapp', ...params }
         );
       }
@@ -467,12 +497,33 @@ export class GupshupService {
         );
       }
 
-      // Check rate limit
-      if (!this.rateLimiter.consumeWhatsAppToken()) {
-        const rateLimitInfo = this.rateLimiter.getWhatsAppRateLimit();
-        this.logger.logRateLimit('whatsapp', rateLimitInfo.remaining, rateLimitInfo.isLimited);
+      // Check rate limit and quota with enhanced management
+      const rateLimitCheck = await this.rateLimitManager.canSendWhatsApp();
+      if (!rateLimitCheck.allowed) {
+        this.logger.logRateLimit('whatsapp', rateLimitCheck.rateLimitInfo.remaining, rateLimitCheck.rateLimitInfo.isLimited);
+        
+        let errorMessage = 'WhatsApp rate limit exceeded. Please try again later.';
+        if (rateLimitCheck.recommendation) {
+          errorMessage = `WhatsApp delivery restricted: ${rateLimitCheck.recommendation.reason}. Recommended delay: ${rateLimitCheck.recommendation.recommendedDelay}ms`;
+        }
+        
         throw handleGupshupError(
-          new Error('WhatsApp rate limit exceeded. Please try again later.'),
+          new Error(errorMessage),
+          { 
+            channel: 'whatsapp', 
+            rateLimitInfo: rateLimitCheck.rateLimitInfo,
+            recommendation: rateLimitCheck.recommendation,
+            to, 
+            text 
+          }
+        );
+      }
+
+      // Consume token with quota tracking
+      const tokenConsumed = await this.rateLimitManager.consumeWhatsAppToken();
+      if (!tokenConsumed) {
+        throw handleGupshupError(
+          new Error('Failed to consume WhatsApp token due to quota restrictions'),
           { channel: 'whatsapp', to, text }
         );
       }
@@ -538,12 +589,32 @@ export class GupshupService {
         });
       }
 
-      // Check rate limit
-      if (!this.rateLimiter.consumeSMSToken()) {
-        const rateLimitInfo = this.rateLimiter.getSMSRateLimit();
-        this.logger.logRateLimit('sms', rateLimitInfo.remaining, rateLimitInfo.isLimited);
+      // Check rate limit and quota with enhanced management
+      const rateLimitCheck = await this.rateLimitManager.canSendSMS();
+      if (!rateLimitCheck.allowed) {
+        this.logger.logRateLimit('sms', rateLimitCheck.rateLimitInfo.remaining, rateLimitCheck.rateLimitInfo.isLimited);
+        
+        let errorMessage = 'SMS rate limit exceeded. Please try again later.';
+        if (rateLimitCheck.recommendation) {
+          errorMessage = `SMS delivery restricted: ${rateLimitCheck.recommendation.reason}. Recommended delay: ${rateLimitCheck.recommendation.recommendedDelay}ms`;
+        }
+        
         throw handleGupshupError(
-          new Error('SMS rate limit exceeded. Please try again later.'),
+          new Error(errorMessage),
+          { 
+            channel: 'sms', 
+            rateLimitInfo: rateLimitCheck.rateLimitInfo,
+            recommendation: rateLimitCheck.recommendation,
+            ...params 
+          }
+        );
+      }
+
+      // Consume token with quota tracking
+      const tokenConsumed = await this.rateLimitManager.consumeSMSToken();
+      if (!tokenConsumed) {
+        throw handleGupshupError(
+          new Error('Failed to consume SMS token due to quota restrictions'),
           { channel: 'sms', ...params }
         );
       }
@@ -1119,6 +1190,88 @@ export class GupshupService {
    */
   getAllSMSTemplates(): SMSTemplate[] {
     return this.smsTemplateManager.getAllTemplates();
+  }
+
+  /**
+   * Get enhanced rate limit information for WhatsApp
+   */
+  getEnhancedWhatsAppRateLimit(): RateLimitInfo {
+    return this.rateLimitManager.getWhatsAppRateLimit();
+  }
+
+  /**
+   * Get enhanced rate limit information for SMS
+   */
+  getEnhancedSMSRateLimit(): RateLimitInfo {
+    return this.rateLimitManager.getSMSRateLimit();
+  }
+
+  /**
+   * Get comprehensive quota usage statistics
+   */
+  getQuotaUsageStats(): QuotaUsageStats {
+    return this.rateLimitManager.getQuotaUsageStats();
+  }
+
+  /**
+   * Get current quota alerts
+   */
+  getQuotaAlerts(): QuotaAlert[] {
+    return this.rateLimitManager.getQuotaAlerts();
+  }
+
+  /**
+   * Clear quota alerts
+   */
+  clearQuotaAlerts(): void {
+    this.rateLimitManager.clearQuotaAlerts();
+  }
+
+  /**
+   * Get intelligent scheduling recommendation for message delivery
+   */
+  async getSchedulingRecommendation(
+    channel: 'whatsapp' | 'sms',
+    priority: 'high' | 'medium' | 'low' = 'medium'
+  ): Promise<SchedulingRecommendation> {
+    return this.rateLimitManager.getSchedulingRecommendation(channel, priority);
+  }
+
+  /**
+   * Schedule message for optimal delivery time
+   */
+  async scheduleMessageForOptimalDelivery(
+    messageId: string,
+    channel: 'whatsapp' | 'sms',
+    priority: 'high' | 'medium' | 'low' = 'medium'
+  ): Promise<{ scheduled: boolean; scheduledFor: Date; reason: string }> {
+    return this.rateLimitManager.scheduleMessage(messageId, channel, priority);
+  }
+
+  /**
+   * Get messages ready for delivery from the intelligent scheduler
+   */
+  getReadyScheduledMessages(): Array<{
+    messageId: string;
+    channel: 'whatsapp' | 'sms';
+    priority: 'high' | 'medium' | 'low';
+  }> {
+    return this.rateLimitManager.getReadyMessages();
+  }
+
+  /**
+   * Get rate limiting and quota performance metrics
+   */
+  getRateLimitPerformanceMetrics() {
+    return this.rateLimitManager.getPerformanceMetrics();
+  }
+
+  /**
+   * Reset daily quota (for administrative purposes)
+   */
+  resetDailyQuota(): void {
+    this.rateLimitManager.resetDailyQuota();
+    this.logger.info('daily_quota_reset_manual', 'Daily quota manually reset');
   }
 
   /**

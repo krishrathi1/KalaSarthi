@@ -1,117 +1,58 @@
-import { IProduct } from "@/lib/models/Product";
-import { ProductService } from "@/lib/service/ProductService";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
+import { initializeApp, getApps } from 'firebase/app';
+import { getFirestore, collection, query, where, getDocs } from 'firebase/firestore';
 
-export async function POST(request: NextRequest) {
-    try {
-        const productData: Partial<IProduct> = await request.json();
+// Firebase config
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+};
 
-        // Check if this is an offline sync request
-        const isOfflineSync = request.headers.get('X-Offline-Sync') === 'true';
-        const syncTimestamp = request.headers.get('X-Sync-Timestamp');
-
-        // Validate required fields
-        if (!productData.artisanId || !productData.name || !productData.description || !productData.price || !productData.category) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    error: 'Missing required fields: artisanId, name, description, price, category'
-                },
-                { status: 400 }
-            );
-        }
-
-        // Validate images array
-        if (!productData.images || productData.images.length === 0) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    error: 'At least one product image is required'
-                },
-                { status: 400 }
-            );
-        }
-
-        const result = await ProductService.createProduct(productData);
-
-        if (result.success) {
-            return NextResponse.json(
-                { 
-                    success: true, 
-                    data: result.data,
-                    synced: isOfflineSync,
-                    syncTimestamp: syncTimestamp || new Date().toISOString()
-                },
-                { status: 201 }
-            );
-        } else {
-            return NextResponse.json(
-                { success: false, error: result.error },
-                { status: 500 }
-            );
-        }
-    } catch (error) {
-        console.error('API Error:', error);
-        return NextResponse.json(
-            { success: false, error: 'Internal server error' },
-            { status: 500 }
-        );
-    }
-}
+// Initialize Firebase
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const db = getFirestore(app);
 
 export async function GET(request: NextRequest) {
-    try {
-        const { searchParams } = new URL(request.url);
-        const artisanId = searchParams.get('artisanId');
-        const category = searchParams.get('category');
-        const status = searchParams.get('status');
-        const search = searchParams.get('search');
-        const featured = searchParams.get('featured');
+  try {
+    const { searchParams } = new URL(request.url);
+    const artisanId = searchParams.get('artisanId') || 'dev_bulchandani_001';
 
-        if (search) {
-            const products = await ProductService.searchProducts(search);
-            return NextResponse.json(
-                { success: true, data: products },
-                { status: 200 }
-            );
-        }
+    // Query products from Firestore
+    const productsQuery = query(
+      collection(db, 'products'),
+      where('artisanId', '==', artisanId),
+      where('isActive', '==', true)
+    );
 
-        if (featured === 'true') {
-            const limit = parseInt(searchParams.get('limit') || '10');
-            const products = await ProductService.getFeaturedProducts(limit);
-            return NextResponse.json(
-                { success: true, data: products },
-                { status: 200 }
-            );
-        }
+    const snapshot = await getDocs(productsQuery);
+    const products = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        // Convert Firestore Timestamp to Date for JSON serialization
+        createdAt: data.createdAt?.toDate?.() || new Date(data.createdAt),
+        updatedAt: data.updatedAt?.toDate?.() || new Date(data.updatedAt)
+      };
+    });
 
-        if (artisanId) {
-            const products = await ProductService.getProductsByArtisan(artisanId, status || undefined);
-            return NextResponse.json(
-                { success: true, data: products },
-                { status: 200 }
-            );
-        }
+    return NextResponse.json({
+      success: true,
+      data: products,
+      count: products.length,
+      artisanId
+    });
 
-        if (status === 'published') {
-            const products = await ProductService.getPublishedProducts(category || undefined);
-            return NextResponse.json(
-                { success: true, data: products },
-                { status: 200 }
-            );
-        }
-
-        const products = await ProductService.getAllProducts();
-        return NextResponse.json(
-            { success: true, data: products },
-            { status: 200 }
-        );
-
-    } catch (error) {
-        console.error('API Error:', error);
-        return NextResponse.json(
-            { success: false, error: 'Internal server error' },
-            { status: 500 }
-        );
-    }
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to fetch products',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
+  }
 }

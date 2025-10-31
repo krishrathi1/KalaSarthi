@@ -1,716 +1,767 @@
 /**
- * Rate Limiting and Quota Management for Gupshup Notification System
+ * Enhanced Rate Limiting and Quota Management for Gupshup Notification System
  * 
- * Provides comprehensive rate limiting for WhatsApp and SMS APIs,
- * daily quota tracking with alerts, and intelligent message scheduling
+ * Provides comprehensive rate limiting, daily quota tracking, intelligent scheduling,
+ * and alerts for WhatsApp and SMS APIs
  */
 
+import { getGupshupConfig, GupshupConfig } from '../../config/gupshup-config';
 import { getGupshupLogger } from './GupshupLogger';
 import { GupshupError, GupshupErrorCode, handleGupshupError } from './GupshupErrorHandler';
-import { getGupshupConfig, GupshupConfig } from '../../config/gupshup-config';
 
-export interface RateLimitConfig {
-  whatsappPerSecond: number;
-  whatsappPerMinute: number;
-  whatsappPerHour: number;
-  whatsappPerDay: number;
-  smsPerSecond: number;
-  smsPerMinute: number;
-  smsPerHour: number;
-  smsPerDay: number;
-  burstAllowance: number;
-  quotaWarningThreshold: number; // Percentage (e.g., 80 for 80%)
-  quotaCriticalThreshold: number; // Percentage (e.g., 95 for 95%)
-}
-
-export interface RateLimitStatus {
-  channel: 'whatsapp' | 'sms';
+export interface RateLimitInfo {
+  remaining: number;
+  resetTime: Date;
   isLimited: boolean;
-  remaining: {
-    perSecond: number;
-    perMinute: number;
-    perHour: number;
-    perDay: number;
-  };
-  resetTimes: {
-    perSecond: Date;
-    perMinute: Date;
-    perHour: Date;
-    perDay: Date;
-  };
-  quotaUsage: {
-    used: number;
-    total: number;
-    percentage: number;
-  };
-  nextAvailableSlot?: Date;
+  quotaUsed: number;
+  quotaRemaining: number;
+  dailyQuotaUsed: number;
+  dailyQuotaRemaining: number;
 }
 
 export interface QuotaAlert {
-  channel: 'whatsapp' | 'sms';
-  alertType: 'warning' | 'critical' | 'exceeded';
+  id: string;
+  type: 'warning' | 'critical' | 'exceeded';
+  channel: 'whatsapp' | 'sms' | 'daily';
+  threshold: number;
   currentUsage: number;
-  totalQuota: number;
-  percentage: number;
+  maxQuota: number;
   timestamp: Date;
-  estimatedTimeToReset: number; // milliseconds
+  message: string;
+}
+
+export interface QuotaUsageStats {
+  whatsapp: {
+    perSecondUsed: number;
+    perSecondLimit: number;
+    dailyUsed: number;
+    dailyLimit: number;
+    utilizationPercentage: number;
+  };
+  sms: {
+    perSecondUsed: number;
+    perSecondLimit: number;
+    dailyUsed: number;
+    dailyLimit: number;
+    utilizationPercentage: number;
+  };
+  daily: {
+    totalUsed: number;
+    totalLimit: number;
+    utilizationPercentage: number;
+  };
+  lastResetAt: Date;
+  nextResetAt: Date;
 }
 
 export interface SchedulingRecommendation {
-  canSendNow: boolean;
-  recommendedDelay: number; // milliseconds
+  shouldSchedule: boolean;
+  recommendedDelay: number;
   reason: string;
-  alternativeChannel?: 'whatsapp' | 'sms';
-  estimatedQueueTime: number;
+  priority: 'immediate' | 'delayed' | 'scheduled';
+  estimatedDeliveryTime: Date;
 }
 
 /**
- * Token bucket implementation for rate limiting
- */
-class TokenBucket {
-  private tokens: number;
-  private lastRefill: Date;
-  private readonly capacity: number;
-  private readonly refillRate: number; // tokens per second
-  private readonly refillInterval: number; // milliseconds
-
-  constructor(capacity: number, refillRate: number) {
-    this.capacity = capacity;
-    this.refillRate = refillRate;
-    this.refillInterval = 1000; // 1 second
-    this.tokens = capacity;
-    this.lastRefill = new Date();
-  }
-
-  /**
-   * Try to consume tokens from bucket
-   */
-  consume(tokens: number = 1): boolean {
-    this.refill();
-    
-    if (this.tokens >= tokens) {
-      this.tokens -= tokens;
-      return true;
-    }
-    
-    return false;
-  }
-
-  /**
-   * Get current token count
-   */
-  getTokens(): number {
-    this.refill();
-    return this.tokens;
-  }
-
-  /**
-   * Get time until next token is available
-   */
-  getTimeUntilNextToken(): number {
-    this.refill();
-    
-    if (this.tokens > 0) {
-      return 0;
-    }
-    
-    // Calculate time for next refill
-    const timeSinceLastRefill = Date.now() - this.lastRefill.getTime();
-    const nextRefillIn = this.refillInterval - (timeSinceLastRefill % this.refillInterval);
-    
-    return nextRefillIn;
-  }
-
-  /**
-   * Refill tokens based on elapsed time
-   */
-  private refill(): void {
-    const now = new Date();
-    const timeSinceLastRefill = now.getTime() - this.lastRefill.getTime();
-    
-    if (timeSinceLastRefill >= this.refillInterval) {
-      const intervalsElapsed = Math.floor(timeSinceLastRefill / this.refillInterval);
-      const tokensToAdd = intervalsElapsed * (this.refillRate * this.refillInterval / 1000);
-      
-      this.tokens = Math.min(this.capacity, this.tokens + tokensToAdd);
-      this.lastRefill = new Date(this.lastRefill.getTime() + (intervalsElapsed * this.refillInterval));
-    }
-  }
-
-  /**
-   * Reset bucket to full capacity
-   */
-  reset(): void {
-    this.tokens = this.capacity;
-    this.lastRefill = new Date();
-  }
-}
-
-/**
- * Quota tracker for daily/hourly limits
- */
-class QuotaTracker {
-  private usage: Map<string, number> = new Map(); // period -> count
-  private resetTimes: Map<string, Date> = new Map(); // period -> reset time
-
-  /**
-   * Record usage for a time period
-   */
-  recordUsage(period: string, count: number = 1): void {
-    const currentUsage = this.usage.get(period) || 0;
-    this.usage.set(period, currentUsage + count);
-  }
-
-  /**
-   * Get current usage for a period
-   */
-  getUsage(period: string): number {
-    this.cleanupExpiredPeriods();
-    return this.usage.get(period) || 0;
-  }
-
-  /**
-   * Check if quota is available
-   */
-  hasQuota(period: string, limit: number, requested: number = 1): boolean {
-    const currentUsage = this.getUsage(period);
-    return (currentUsage + requested) <= limit;
-  }
-
-  /**
-   * Get remaining quota
-   */
-  getRemainingQuota(period: string, limit: number): number {
-    const currentUsage = this.getUsage(period);
-    return Math.max(0, limit - currentUsage);
-  }
-
-  /**
-   * Get quota usage percentage
-   */
-  getUsagePercentage(period: string, limit: number): number {
-    const currentUsage = this.getUsage(period);
-    return limit > 0 ? (currentUsage / limit) * 100 : 0;
-  }
-
-  /**
-   * Set reset time for a period
-   */
-  setResetTime(period: string, resetTime: Date): void {
-    this.resetTimes.set(period, resetTime);
-  }
-
-  /**
-   * Get reset time for a period
-   */
-  getResetTime(period: string): Date | undefined {
-    return this.resetTimes.get(period);
-  }
-
-  /**
-   * Reset quota for a period
-   */
-  resetQuota(period: string): void {
-    this.usage.delete(period);
-    this.resetTimes.delete(period);
-  }
-
-  /**
-   * Clean up expired periods
-   */
-  private cleanupExpiredPeriods(): void {
-    const now = new Date();
-    
-    for (const [period, resetTime] of this.resetTimes.entries()) {
-      if (resetTime <= now) {
-        this.usage.delete(period);
-        this.resetTimes.delete(period);
-      }
-    }
-  }
-}
-
-/**
- * Comprehensive rate limiting and quota management system
+ * Enhanced Rate Limiter with quota management and intelligent scheduling
  */
 export class RateLimitManager {
-  private config: RateLimitConfig;
-  private gupshupConfig: GupshupConfig;
+  private config: GupshupConfig;
   private logger = getGupshupLogger();
 
-  // Token buckets for different time windows
-  private whatsappSecondBucket: TokenBucket;
-  private whatsappMinuteBucket: TokenBucket;
-  private smsSecondBucket: TokenBucket;
-  private smsMinuteBucket: TokenBucket;
+  // Rate limiting tokens
+  private whatsappTokens: number;
+  private smsTokens: number;
+  private lastWhatsappRefill: Date;
+  private lastSmsRefill: Date;
 
-  // Quota trackers
-  private whatsappQuotaTracker = new QuotaTracker();
-  private smsQuotaTracker = new QuotaTracker();
+  // Daily quota tracking
+  private dailyQuotaUsage = {
+    whatsapp: 0,
+    sms: 0,
+    total: 0,
+    date: new Date().toDateString(),
+  };
 
-  // Alert tracking
-  private lastAlerts: Map<string, Date> = new Map();
-  private readonly alertCooldown = 300000; // 5 minutes
+  // Quota alerts
+  private quotaAlerts: QuotaAlert[] = [];
+  private alertThresholds = {
+    warning: 0.75,   // 75%
+    critical: 0.90,  // 90%
+    exceeded: 1.0,   // 100%
+  };
 
-  constructor(config?: RateLimitConfig) {
-    this.gupshupConfig = getGupshupConfig();
-    
-    // Set default rate limit configuration
-    this.config = config || {
-      whatsappPerSecond: this.gupshupConfig.rateLimit.whatsappPerSecond || 10,
-      whatsappPerMinute: 600, // 10 per second * 60
-      whatsappPerHour: 36000, // 10 per second * 3600
-      whatsappPerDay: this.gupshupConfig.rateLimit.dailyLimit || 100000,
-      smsPerSecond: this.gupshupConfig.rateLimit.smsPerSecond || 20,
-      smsPerMinute: 1200, // 20 per second * 60
-      smsPerHour: 72000, // 20 per second * 3600
-      smsPerDay: this.gupshupConfig.rateLimit.dailyLimit || 200000,
-      burstAllowance: 5,
-      quotaWarningThreshold: 80,
-      quotaCriticalThreshold: 95,
-    };
+  // Scheduling optimization
+  private messageScheduleQueue: Array<{
+    messageId: string;
+    channel: 'whatsapp' | 'sms';
+    scheduledFor: Date;
+    priority: 'high' | 'medium' | 'low';
+  }> = [];
 
-    // Initialize token buckets
-    this.whatsappSecondBucket = new TokenBucket(
-      this.config.whatsappPerSecond + this.config.burstAllowance,
-      this.config.whatsappPerSecond
-    );
-    
-    this.whatsappMinuteBucket = new TokenBucket(
-      this.config.whatsappPerMinute,
-      this.config.whatsappPerMinute / 60
-    );
+  // Performance tracking
+  private performanceMetrics = {
+    totalRequests: 0,
+    rateLimitHits: 0,
+    quotaExceeded: 0,
+    averageWaitTime: 0,
+    lastOptimizationAt: new Date(),
+  };
 
-    this.smsSecondBucket = new TokenBucket(
-      this.config.smsPerSecond + this.config.burstAllowance,
-      this.config.smsPerSecond
-    );
-    
-    this.smsMinuteBucket = new TokenBucket(
-      this.config.smsPerMinute,
-      this.config.smsPerMinute / 60
-    );
+  constructor(config?: GupshupConfig) {
+    this.config = config || getGupshupConfig();
+    this.whatsappTokens = this.config.rateLimit.whatsappPerSecond;
+    this.smsTokens = this.config.rateLimit.smsPerSecond;
+    this.lastWhatsappRefill = new Date();
+    this.lastSmsRefill = new Date();
 
-    // Initialize quota reset times
-    this.initializeQuotaResetTimes();
+    // Initialize daily quota tracking
+    this.initializeDailyQuota();
+
+    // Start periodic tasks
+    this.startPeriodicTasks();
 
     this.logger.info('rate_limit_manager_init', 'Rate limit manager initialized', {
-      whatsappPerSecond: this.config.whatsappPerSecond,
-      whatsappPerDay: this.config.whatsappPerDay,
-      smsPerSecond: this.config.smsPerSecond,
-      smsPerDay: this.config.smsPerDay,
-      burstAllowance: this.config.burstAllowance,
+      whatsappPerSecond: this.config.rateLimit.whatsappPerSecond,
+      smsPerSecond: this.config.rateLimit.smsPerSecond,
+      dailyLimit: this.config.rateLimit.dailyLimit,
+      alertThresholds: this.alertThresholds,
     });
   }
 
   /**
-   * Check if message can be sent immediately
+   * Check if WhatsApp API call is allowed with quota validation
    */
-  canSendMessage(channel: 'whatsapp' | 'sms', count: number = 1): boolean {
-    const status = this.getRateLimitStatus(channel);
-    
-    // Check all rate limits
-    return !status.isLimited && 
-           status.remaining.perSecond >= count &&
-           status.remaining.perMinute >= count &&
-           status.remaining.perHour >= count &&
-           status.remaining.perDay >= count;
+  async canSendWhatsApp(): Promise<{ allowed: boolean; rateLimitInfo: RateLimitInfo; recommendation?: SchedulingRecommendation }> {
+    this.refillTokens();
+    this.performanceMetrics.totalRequests++;
+
+    // Check daily quota first
+    const dailyQuotaCheck = this.checkDailyQuota('whatsapp');
+    if (!dailyQuotaCheck.allowed) {
+      this.performanceMetrics.quotaExceeded++;
+      return {
+        allowed: false,
+        rateLimitInfo: this.getWhatsAppRateLimit(),
+        recommendation: {
+          shouldSchedule: true,
+          recommendedDelay: this.getTimeUntilQuotaReset(),
+          reason: 'Daily quota exceeded',
+          priority: 'scheduled',
+          estimatedDeliveryTime: this.getNextQuotaResetTime(),
+        },
+      };
+    }
+
+    // Check rate limit
+    const hasTokens = this.whatsappTokens > 0;
+    if (!hasTokens) {
+      this.performanceMetrics.rateLimitHits++;
+      const waitTime = this.getTimeUntilTokenRefill('whatsapp');
+      
+      return {
+        allowed: false,
+        rateLimitInfo: this.getWhatsAppRateLimit(),
+        recommendation: {
+          shouldSchedule: true,
+          recommendedDelay: waitTime,
+          reason: 'Rate limit exceeded',
+          priority: 'delayed',
+          estimatedDeliveryTime: new Date(Date.now() + waitTime),
+        },
+      };
+    }
+
+    return {
+      allowed: true,
+      rateLimitInfo: this.getWhatsAppRateLimit(),
+    };
   }
 
   /**
-   * Consume rate limit tokens for a message
+   * Check if SMS API call is allowed with quota validation
    */
-  consumeRateLimit(channel: 'whatsapp' | 'sms', count: number = 1): boolean {
-    try {
-      if (!this.canSendMessage(channel, count)) {
-        return false;
-      }
+  async canSendSMS(): Promise<{ allowed: boolean; rateLimitInfo: RateLimitInfo; recommendation?: SchedulingRecommendation }> {
+    this.refillTokens();
+    this.performanceMetrics.totalRequests++;
 
-      // Consume tokens from buckets
-      if (channel === 'whatsapp') {
-        if (!this.whatsappSecondBucket.consume(count) || 
-            !this.whatsappMinuteBucket.consume(count)) {
-          return false;
-        }
-      } else {
-        if (!this.smsSecondBucket.consume(count) || 
-            !this.smsMinuteBucket.consume(count)) {
-          return false;
-        }
-      }
+    // Check daily quota first
+    const dailyQuotaCheck = this.checkDailyQuota('sms');
+    if (!dailyQuotaCheck.allowed) {
+      this.performanceMetrics.quotaExceeded++;
+      return {
+        allowed: false,
+        rateLimitInfo: this.getSMSRateLimit(),
+        recommendation: {
+          shouldSchedule: true,
+          recommendedDelay: this.getTimeUntilQuotaReset(),
+          reason: 'Daily quota exceeded',
+          priority: 'scheduled',
+          estimatedDeliveryTime: this.getNextQuotaResetTime(),
+        },
+      };
+    }
 
-      // Record quota usage
-      const now = new Date();
-      const hourPeriod = this.getHourPeriod(now);
-      const dayPeriod = this.getDayPeriod(now);
+    // Check rate limit
+    const hasTokens = this.smsTokens > 0;
+    if (!hasTokens) {
+      this.performanceMetrics.rateLimitHits++;
+      const waitTime = this.getTimeUntilTokenRefill('sms');
+      
+      return {
+        allowed: false,
+        rateLimitInfo: this.getSMSRateLimit(),
+        recommendation: {
+          shouldSchedule: true,
+          recommendedDelay: waitTime,
+          reason: 'Rate limit exceeded',
+          priority: 'delayed',
+          estimatedDeliveryTime: new Date(Date.now() + waitTime),
+        },
+      };
+    }
 
-      if (channel === 'whatsapp') {
-        this.whatsappQuotaTracker.recordUsage(hourPeriod, count);
-        this.whatsappQuotaTracker.recordUsage(dayPeriod, count);
-      } else {
-        this.smsQuotaTracker.recordUsage(hourPeriod, count);
-        this.smsQuotaTracker.recordUsage(dayPeriod, count);
-      }
+    return {
+      allowed: true,
+      rateLimitInfo: this.getSMSRateLimit(),
+    };
+  }
 
-      // Check for quota alerts
-      this.checkQuotaAlerts(channel);
-
-      this.logger.debug('rate_limit_consumed', 'Rate limit tokens consumed', {
-        channel,
-        count,
-        remaining: this.getRateLimitStatus(channel).remaining,
-      });
-
-      return true;
-
-    } catch (error) {
-      this.logger.error('rate_limit_consume_failed', 'Failed to consume rate limit', {
-        channel,
-        count,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+  /**
+   * Consume a WhatsApp token and update quota
+   */
+  async consumeWhatsAppToken(): Promise<boolean> {
+    const check = await this.canSendWhatsApp();
+    if (!check.allowed) {
       return false;
     }
+
+    this.whatsappTokens--;
+    this.dailyQuotaUsage.whatsapp++;
+    this.dailyQuotaUsage.total++;
+
+    // Check for quota alerts
+    await this.checkAndTriggerQuotaAlerts();
+
+    this.logger.debug('whatsapp_token_consumed', 'WhatsApp token consumed', {
+      remainingTokens: this.whatsappTokens,
+      dailyUsage: this.dailyQuotaUsage.whatsapp,
+      totalDailyUsage: this.dailyQuotaUsage.total,
+    });
+
+    return true;
   }
 
   /**
-   * Get current rate limit status for a channel
+   * Consume an SMS token and update quota
    */
-  getRateLimitStatus(channel: 'whatsapp' | 'sms'): RateLimitStatus {
-    const now = new Date();
-    const hourPeriod = this.getHourPeriod(now);
-    const dayPeriod = this.getDayPeriod(now);
-
-    let secondTokens: number;
-    let minuteTokens: number;
-    let nextSecondReset: Date;
-    let nextMinuteReset: Date;
-    let quotaTracker: QuotaTracker;
-    let hourlyLimit: number;
-    let dailyLimit: number;
-
-    if (channel === 'whatsapp') {
-      secondTokens = this.whatsappSecondBucket.getTokens();
-      minuteTokens = this.whatsappMinuteBucket.getTokens();
-      nextSecondReset = new Date(now.getTime() + this.whatsappSecondBucket.getTimeUntilNextToken());
-      nextMinuteReset = new Date(now.getTime() + this.whatsappMinuteBucket.getTimeUntilNextToken());
-      quotaTracker = this.whatsappQuotaTracker;
-      hourlyLimit = this.config.whatsappPerHour;
-      dailyLimit = this.config.whatsappPerDay;
-    } else {
-      secondTokens = this.smsSecondBucket.getTokens();
-      minuteTokens = this.smsMinuteBucket.getTokens();
-      nextSecondReset = new Date(now.getTime() + this.smsSecondBucket.getTimeUntilNextToken());
-      nextMinuteReset = new Date(now.getTime() + this.smsMinuteBucket.getTimeUntilNextToken());
-      quotaTracker = this.smsQuotaTracker;
-      hourlyLimit = this.config.smsPerHour;
-      dailyLimit = this.config.smsPerDay;
+  async consumeSMSToken(): Promise<boolean> {
+    const check = await this.canSendSMS();
+    if (!check.allowed) {
+      return false;
     }
 
-    const hourlyUsage = quotaTracker.getUsage(hourPeriod);
-    const dailyUsage = quotaTracker.getUsage(dayPeriod);
+    this.smsTokens--;
+    this.dailyQuotaUsage.sms++;
+    this.dailyQuotaUsage.total++;
 
-    const remaining = {
-      perSecond: Math.floor(secondTokens),
-      perMinute: Math.floor(minuteTokens),
-      perHour: Math.max(0, hourlyLimit - hourlyUsage),
-      perDay: Math.max(0, dailyLimit - dailyUsage),
-    };
+    // Check for quota alerts
+    await this.checkAndTriggerQuotaAlerts();
 
-    const isLimited = remaining.perSecond <= 0 || 
-                     remaining.perMinute <= 0 || 
-                     remaining.perHour <= 0 || 
-                     remaining.perDay <= 0;
+    this.logger.debug('sms_token_consumed', 'SMS token consumed', {
+      remainingTokens: this.smsTokens,
+      dailyUsage: this.dailyQuotaUsage.sms,
+      totalDailyUsage: this.dailyQuotaUsage.total,
+    });
 
-    // Calculate next available slot
-    let nextAvailableSlot: Date | undefined;
-    if (isLimited) {
-      const delays = [];
-      if (remaining.perSecond <= 0) delays.push(nextSecondReset.getTime() - now.getTime());
-      if (remaining.perMinute <= 0) delays.push(nextMinuteReset.getTime() - now.getTime());
-      if (remaining.perHour <= 0) delays.push(this.getNextHourReset(now).getTime() - now.getTime());
-      if (remaining.perDay <= 0) delays.push(this.getNextDayReset(now).getTime() - now.getTime());
-      
-      const minDelay = Math.min(...delays);
-      nextAvailableSlot = new Date(now.getTime() + minDelay);
-    }
-
-    return {
-      channel,
-      isLimited,
-      remaining,
-      resetTimes: {
-        perSecond: nextSecondReset,
-        perMinute: nextMinuteReset,
-        perHour: this.getNextHourReset(now),
-        perDay: this.getNextDayReset(now),
-      },
-      quotaUsage: {
-        used: dailyUsage,
-        total: dailyLimit,
-        percentage: quotaTracker.getUsagePercentage(dayPeriod, dailyLimit),
-      },
-      nextAvailableSlot,
-    };
+    return true;
   }
 
   /**
-   * Get intelligent scheduling recommendation
+   * Get intelligent scheduling recommendation for message delivery
    */
-  getSchedulingRecommendation(
+  async getSchedulingRecommendation(
     channel: 'whatsapp' | 'sms',
-    messageCount: number = 1
-  ): SchedulingRecommendation {
-    const status = this.getRateLimitStatus(channel);
-    const alternativeChannel = channel === 'whatsapp' ? 'sms' : 'whatsapp';
-    const alternativeStatus = this.getRateLimitStatus(alternativeChannel);
+    priority: 'high' | 'medium' | 'low' = 'medium'
+  ): Promise<SchedulingRecommendation> {
+    // Validate parameters
+    if (!channel || !['whatsapp', 'sms'].includes(channel)) {
+      throw handleGupshupError(
+        new Error('Invalid channel. Must be "whatsapp" or "sms"'),
+        { channel, priority }
+      );
+    }
 
-    // Can send immediately
-    if (this.canSendMessage(channel, messageCount)) {
+    if (!priority || !['high', 'medium', 'low'].includes(priority)) {
+      throw handleGupshupError(
+        new Error('Invalid priority. Must be "high", "medium", or "low"'),
+        { channel, priority }
+      );
+    }
+    const canSend = channel === 'whatsapp' 
+      ? await this.canSendWhatsApp()
+      : await this.canSendSMS();
+
+    if (canSend.allowed) {
       return {
-        canSendNow: true,
+        shouldSchedule: false,
         recommendedDelay: 0,
-        reason: 'Rate limits allow immediate sending',
-        estimatedQueueTime: 0,
+        reason: 'Can send immediately',
+        priority: 'immediate',
+        estimatedDeliveryTime: new Date(),
       };
     }
 
-    // Calculate recommended delay
-    let recommendedDelay = 0;
-    let reason = '';
-
-    if (status.nextAvailableSlot) {
-      recommendedDelay = status.nextAvailableSlot.getTime() - Date.now();
-      reason = `Rate limit exceeded. Next available slot in ${Math.ceil(recommendedDelay / 1000)} seconds`;
+    // If we have a recommendation from the rate limit check, use it
+    if (canSend.recommendation) {
+      return canSend.recommendation;
     }
 
-    // Check if alternative channel is better
-    if (this.canSendMessage(alternativeChannel, messageCount)) {
+    // Calculate optimal scheduling based on current load and priority
+    const optimalDelay = this.calculateOptimalDelay(channel, priority);
+    
+    return {
+      shouldSchedule: true,
+      recommendedDelay: optimalDelay,
+      reason: 'Optimizing for better delivery success rate',
+      priority: priority === 'high' ? 'delayed' : 'scheduled',
+      estimatedDeliveryTime: new Date(Date.now() + optimalDelay),
+    };
+  }
+
+  /**
+   * Schedule message for optimal delivery time
+   */
+  async scheduleMessage(
+    messageId: string,
+    channel: 'whatsapp' | 'sms',
+    priority: 'high' | 'medium' | 'low' = 'medium'
+  ): Promise<{ scheduled: boolean; scheduledFor: Date; reason: string }> {
+    const recommendation = await this.getSchedulingRecommendation(channel, priority);
+    
+    if (!recommendation.shouldSchedule) {
       return {
-        canSendNow: false,
-        recommendedDelay,
-        reason,
-        alternativeChannel,
-        estimatedQueueTime: 0,
+        scheduled: false,
+        scheduledFor: new Date(),
+        reason: 'Can send immediately',
       };
     }
 
-    // Estimate queue time based on current usage
-    const estimatedQueueTime = this.estimateQueueTime(channel, messageCount);
+    // Add to schedule queue
+    this.messageScheduleQueue.push({
+      messageId,
+      channel,
+      scheduledFor: recommendation.estimatedDeliveryTime,
+      priority,
+    });
+
+    // Sort by scheduled time and priority
+    this.messageScheduleQueue.sort((a, b) => {
+      const timeDiff = a.scheduledFor.getTime() - b.scheduledFor.getTime();
+      if (timeDiff !== 0) return timeDiff;
+      
+      // If same time, prioritize by message priority
+      const priorityOrder = { high: 0, medium: 1, low: 2 };
+      return priorityOrder[a.priority] - priorityOrder[b.priority];
+    });
+
+    this.logger.info('message_scheduled', 'Message scheduled for optimal delivery', {
+      messageId,
+      channel,
+      priority,
+      scheduledFor: recommendation.estimatedDeliveryTime,
+      delay: recommendation.recommendedDelay,
+      reason: recommendation.reason,
+    });
 
     return {
-      canSendNow: false,
-      recommendedDelay,
-      reason,
-      estimatedQueueTime,
+      scheduled: true,
+      scheduledFor: recommendation.estimatedDeliveryTime,
+      reason: recommendation.reason,
     };
+  }
+
+  /**
+   * Get messages ready for delivery
+   */
+  getReadyMessages(): Array<{
+    messageId: string;
+    channel: 'whatsapp' | 'sms';
+    priority: 'high' | 'medium' | 'low';
+  }> {
+    const now = new Date();
+    const readyMessages = this.messageScheduleQueue.filter(msg => msg.scheduledFor <= now);
+    
+    // Remove ready messages from queue
+    this.messageScheduleQueue = this.messageScheduleQueue.filter(msg => msg.scheduledFor > now);
+    
+    return readyMessages.map(msg => ({
+      messageId: msg.messageId,
+      channel: msg.channel,
+      priority: msg.priority,
+    }));
+  }
+
+  /**
+   * Get comprehensive quota usage statistics
+   */
+  getQuotaUsageStats(): QuotaUsageStats {
+    const whatsappUtilization = (this.dailyQuotaUsage.whatsapp / this.config.rateLimit.dailyLimit) * 100;
+    const smsUtilization = (this.dailyQuotaUsage.sms / this.config.rateLimit.dailyLimit) * 100;
+    const totalUtilization = (this.dailyQuotaUsage.total / this.config.rateLimit.dailyLimit) * 100;
+
+    return {
+      whatsapp: {
+        perSecondUsed: this.config.rateLimit.whatsappPerSecond - this.whatsappTokens,
+        perSecondLimit: this.config.rateLimit.whatsappPerSecond,
+        dailyUsed: this.dailyQuotaUsage.whatsapp,
+        dailyLimit: this.config.rateLimit.dailyLimit,
+        utilizationPercentage: whatsappUtilization,
+      },
+      sms: {
+        perSecondUsed: this.config.rateLimit.smsPerSecond - this.smsTokens,
+        perSecondLimit: this.config.rateLimit.smsPerSecond,
+        dailyUsed: this.dailyQuotaUsage.sms,
+        dailyLimit: this.config.rateLimit.dailyLimit,
+        utilizationPercentage: smsUtilization,
+      },
+      daily: {
+        totalUsed: this.dailyQuotaUsage.total,
+        totalLimit: this.config.rateLimit.dailyLimit,
+        utilizationPercentage: totalUtilization,
+      },
+      lastResetAt: new Date(this.dailyQuotaUsage.date),
+      nextResetAt: this.getNextQuotaResetTime(),
+    };
+  }
+
+  /**
+   * Get current quota alerts
+   */
+  getQuotaAlerts(): QuotaAlert[] {
+    return [...this.quotaAlerts];
+  }
+
+  /**
+   * Clear quota alerts
+   */
+  clearQuotaAlerts(): void {
+    this.quotaAlerts = [];
+    this.logger.info('quota_alerts_cleared', 'All quota alerts cleared');
+  }
+
+  /**
+   * Get performance metrics
+   */
+  getPerformanceMetrics() {
+    return {
+      ...this.performanceMetrics,
+      rateLimitHitRate: this.performanceMetrics.totalRequests > 0 
+        ? this.performanceMetrics.rateLimitHits / this.performanceMetrics.totalRequests 
+        : 0,
+      quotaExceededRate: this.performanceMetrics.totalRequests > 0 
+        ? this.performanceMetrics.quotaExceeded / this.performanceMetrics.totalRequests 
+        : 0,
+    };
+  }
+
+  /**
+   * Get WhatsApp rate limit information
+   */
+  getWhatsAppRateLimit(): RateLimitInfo {
+    this.refillTokens();
+    const dailyRemaining = this.config.rateLimit.dailyLimit - this.dailyQuotaUsage.total;
+    
+    return {
+      remaining: this.whatsappTokens,
+      resetTime: new Date(this.lastWhatsappRefill.getTime() + 1000),
+      isLimited: this.whatsappTokens === 0,
+      quotaUsed: this.dailyQuotaUsage.whatsapp,
+      quotaRemaining: Math.max(0, dailyRemaining),
+      dailyQuotaUsed: this.dailyQuotaUsage.total,
+      dailyQuotaRemaining: Math.max(0, dailyRemaining),
+    };
+  }
+
+  /**
+   * Get SMS rate limit information
+   */
+  getSMSRateLimit(): RateLimitInfo {
+    this.refillTokens();
+    const dailyRemaining = this.config.rateLimit.dailyLimit - this.dailyQuotaUsage.total;
+    
+    return {
+      remaining: this.smsTokens,
+      resetTime: new Date(this.lastSmsRefill.getTime() + 1000),
+      isLimited: this.smsTokens === 0,
+      quotaUsed: this.dailyQuotaUsage.sms,
+      quotaRemaining: Math.max(0, dailyRemaining),
+      dailyQuotaUsed: this.dailyQuotaUsage.total,
+      dailyQuotaRemaining: Math.max(0, dailyRemaining),
+    };
+  }
+
+  /**
+   * Reset daily quota (called at midnight)
+   */
+  resetDailyQuota(): void {
+    const previousUsage = { ...this.dailyQuotaUsage };
+    
+    this.dailyQuotaUsage = {
+      whatsapp: 0,
+      sms: 0,
+      total: 0,
+      date: new Date().toDateString(),
+    };
+
+    // Clear quota alerts
+    this.quotaAlerts = [];
+
+    this.logger.info('daily_quota_reset', 'Daily quota reset completed', {
+      previousUsage,
+      newDate: this.dailyQuotaUsage.date,
+    });
+  }
+
+  /**
+   * Initialize daily quota tracking
+   */
+  private initializeDailyQuota(): void {
+    const today = new Date().toDateString();
+    if (this.dailyQuotaUsage.date !== today) {
+      this.resetDailyQuota();
+    }
+  }
+
+  /**
+   * Check daily quota for specific channel
+   */
+  private checkDailyQuota(channel: 'whatsapp' | 'sms'): { allowed: boolean; remaining: number } {
+    const totalRemaining = this.config.rateLimit.dailyLimit - this.dailyQuotaUsage.total;
+    return {
+      allowed: totalRemaining > 0,
+      remaining: Math.max(0, totalRemaining),
+    };
+  }
+
+  /**
+   * Refill tokens based on time elapsed
+   */
+  private refillTokens(): void {
+    const now = new Date();
+    
+    // Refill WhatsApp tokens
+    const whatsappElapsed = now.getTime() - this.lastWhatsappRefill.getTime();
+    if (whatsappElapsed >= 1000) {
+      this.whatsappTokens = this.config.rateLimit.whatsappPerSecond;
+      this.lastWhatsappRefill = now;
+    }
+
+    // Refill SMS tokens
+    const smsElapsed = now.getTime() - this.lastSmsRefill.getTime();
+    if (smsElapsed >= 1000) {
+      this.smsTokens = this.config.rateLimit.smsPerSecond;
+      this.lastSmsRefill = now;
+    }
+  }
+
+  /**
+   * Get time until token refill
+   */
+  private getTimeUntilTokenRefill(channel: 'whatsapp' | 'sms'): number {
+    const now = Date.now();
+    const lastRefill = channel === 'whatsapp' ? this.lastWhatsappRefill : this.lastSmsRefill;
+    const nextRefill = lastRefill.getTime() + 1000;
+    return Math.max(0, nextRefill - now);
+  }
+
+  /**
+   * Get time until daily quota reset
+   */
+  private getTimeUntilQuotaReset(): number {
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    return tomorrow.getTime() - now.getTime();
+  }
+
+  /**
+   * Get next quota reset time
+   */
+  private getNextQuotaResetTime(): Date {
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    return tomorrow;
+  }
+
+  /**
+   * Calculate optimal delay for message delivery
+   */
+  private calculateOptimalDelay(channel: 'whatsapp' | 'sms', priority: 'high' | 'medium' | 'low'): number {
+    const baseDelay = channel === 'whatsapp' ? 1000 : 100; // WhatsApp is more restrictive
+    const priorityMultiplier = { high: 0.5, medium: 1, low: 2 };
+    
+    // Consider current queue length
+    const queueLength = this.messageScheduleQueue.length;
+    const queueDelay = queueLength * 100; // 100ms per queued message
+    
+    return baseDelay * priorityMultiplier[priority] + queueDelay;
   }
 
   /**
    * Check and trigger quota alerts
    */
-  private checkQuotaAlerts(channel: 'whatsapp' | 'sms'): void {
-    const status = this.getRateLimitStatus(channel);
-    const percentage = status.quotaUsage.percentage;
+  private async checkAndTriggerQuotaAlerts(): Promise<void> {
+    const stats = this.getQuotaUsageStats();
+    const alerts: QuotaAlert[] = [];
 
-    let alertType: 'warning' | 'critical' | 'exceeded' | null = null;
-
-    if (percentage >= 100) {
-      alertType = 'exceeded';
-    } else if (percentage >= this.config.quotaCriticalThreshold) {
-      alertType = 'critical';
-    } else if (percentage >= this.config.quotaWarningThreshold) {
-      alertType = 'warning';
+    // Check WhatsApp quota
+    if (stats.whatsapp.utilizationPercentage >= this.alertThresholds.exceeded * 100) {
+      alerts.push(this.createQuotaAlert('exceeded', 'whatsapp', stats.whatsapp.utilizationPercentage, 100));
+    } else if (stats.whatsapp.utilizationPercentage >= this.alertThresholds.critical * 100) {
+      alerts.push(this.createQuotaAlert('critical', 'whatsapp', stats.whatsapp.utilizationPercentage, 100));
+    } else if (stats.whatsapp.utilizationPercentage >= this.alertThresholds.warning * 100) {
+      alerts.push(this.createQuotaAlert('warning', 'whatsapp', stats.whatsapp.utilizationPercentage, 100));
     }
 
-    if (alertType) {
-      const alertKey = `${channel}_${alertType}`;
-      const lastAlert = this.lastAlerts.get(alertKey);
-      const now = new Date();
+    // Check SMS quota
+    if (stats.sms.utilizationPercentage >= this.alertThresholds.exceeded * 100) {
+      alerts.push(this.createQuotaAlert('exceeded', 'sms', stats.sms.utilizationPercentage, 100));
+    } else if (stats.sms.utilizationPercentage >= this.alertThresholds.critical * 100) {
+      alerts.push(this.createQuotaAlert('critical', 'sms', stats.sms.utilizationPercentage, 100));
+    } else if (stats.sms.utilizationPercentage >= this.alertThresholds.warning * 100) {
+      alerts.push(this.createQuotaAlert('warning', 'sms', stats.sms.utilizationPercentage, 100));
+    }
 
-      // Check cooldown period
-      if (!lastAlert || (now.getTime() - lastAlert.getTime()) > this.alertCooldown) {
-        this.triggerQuotaAlert({
-          channel,
-          alertType,
-          currentUsage: status.quotaUsage.used,
-          totalQuota: status.quotaUsage.total,
-          percentage,
-          timestamp: now,
-          estimatedTimeToReset: status.resetTimes.perDay.getTime() - now.getTime(),
+    // Check daily total quota
+    if (stats.daily.utilizationPercentage >= this.alertThresholds.exceeded * 100) {
+      alerts.push(this.createQuotaAlert('exceeded', 'daily', stats.daily.utilizationPercentage, 100));
+    } else if (stats.daily.utilizationPercentage >= this.alertThresholds.critical * 100) {
+      alerts.push(this.createQuotaAlert('critical', 'daily', stats.daily.utilizationPercentage, 100));
+    } else if (stats.daily.utilizationPercentage >= this.alertThresholds.warning * 100) {
+      alerts.push(this.createQuotaAlert('warning', 'daily', stats.daily.utilizationPercentage, 100));
+    }
+
+    // Add new alerts (avoid duplicates)
+    for (const alert of alerts) {
+      const existingAlert = this.quotaAlerts.find(
+        a => a.type === alert.type && a.channel === alert.channel
+      );
+      
+      if (!existingAlert) {
+        this.quotaAlerts.push(alert);
+        this.logger.warn('quota_alert_triggered', 'Quota alert triggered', {
+          type: alert.type,
+          channel: alert.channel,
+          usage: alert.currentUsage,
+          threshold: alert.threshold,
+          message: alert.message,
         });
-
-        this.lastAlerts.set(alertKey, now);
       }
     }
   }
 
   /**
-   * Trigger quota alert
+   * Create quota alert
    */
-  private triggerQuotaAlert(alert: QuotaAlert): void {
-    this.logger.warn('quota_alert_triggered', 'Quota alert triggered', {
-      channel: alert.channel,
-      alertType: alert.alertType,
-      percentage: alert.percentage.toFixed(1),
-      currentUsage: alert.currentUsage,
-      totalQuota: alert.totalQuota,
-      timeToReset: Math.ceil(alert.estimatedTimeToReset / 1000 / 60), // minutes
-    });
-
-    // TODO: Integrate with external alerting system (email, Slack, etc.)
-    // This could be extended to send notifications to administrators
-  }
-
-  /**
-   * Estimate queue time for messages
-   */
-  private estimateQueueTime(channel: 'whatsapp' | 'sms', messageCount: number): number {
-    const status = this.getRateLimitStatus(channel);
+  private createQuotaAlert(
+    type: 'warning' | 'critical' | 'exceeded',
+    channel: 'whatsapp' | 'sms' | 'daily',
+    currentUsage: number,
+    maxQuota: number
+  ): QuotaAlert {
+    const threshold = this.alertThresholds[type] * 100;
     
-    // Simple estimation based on rate limits
-    const ratePerSecond = channel === 'whatsapp' 
-      ? this.config.whatsappPerSecond 
-      : this.config.smsPerSecond;
-
-    // If we have remaining capacity, estimate based on that
-    if (status.remaining.perSecond > 0) {
-      return Math.ceil(messageCount / Math.min(status.remaining.perSecond, ratePerSecond)) * 1000;
+    let message: string;
+    switch (type) {
+      case 'warning':
+        message = `${channel.toUpperCase()} quota usage is at ${currentUsage.toFixed(1)}% (warning threshold: ${threshold}%)`;
+        break;
+      case 'critical':
+        message = `${channel.toUpperCase()} quota usage is at ${currentUsage.toFixed(1)}% (critical threshold: ${threshold}%)`;
+        break;
+      case 'exceeded':
+        message = `${channel.toUpperCase()} quota has been exceeded (${currentUsage.toFixed(1)}%)`;
+        break;
     }
 
-    // Otherwise, wait for next reset plus processing time
-    const nextReset = status.nextAvailableSlot?.getTime() || Date.now();
-    const processingTime = Math.ceil(messageCount / ratePerSecond) * 1000;
-    
-    return (nextReset - Date.now()) + processingTime;
-  }
-
-  /**
-   * Initialize quota reset times
-   */
-  private initializeQuotaResetTimes(): void {
-    const now = new Date();
-    
-    // Set hourly reset times
-    const nextHour = this.getNextHourReset(now);
-    this.whatsappQuotaTracker.setResetTime(this.getHourPeriod(now), nextHour);
-    this.smsQuotaTracker.setResetTime(this.getHourPeriod(now), nextHour);
-    
-    // Set daily reset times
-    const nextDay = this.getNextDayReset(now);
-    this.whatsappQuotaTracker.setResetTime(this.getDayPeriod(now), nextDay);
-    this.smsQuotaTracker.setResetTime(this.getDayPeriod(now), nextDay);
-  }
-
-  /**
-   * Get hour period key
-   */
-  private getHourPeriod(date: Date): string {
-    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}-${date.getHours()}`;
-  }
-
-  /**
-   * Get day period key
-   */
-  private getDayPeriod(date: Date): string {
-    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-  }
-
-  /**
-   * Get next hour reset time
-   */
-  private getNextHourReset(date: Date): Date {
-    const nextHour = new Date(date);
-    nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0);
-    return nextHour;
-  }
-
-  /**
-   * Get next day reset time
-   */
-  private getNextDayReset(date: Date): Date {
-    const nextDay = new Date(date);
-    nextDay.setDate(nextDay.getDate() + 1);
-    nextDay.setHours(0, 0, 0, 0);
-    return nextDay;
-  }
-
-  /**
-   * Reset all rate limits (for testing/maintenance)
-   */
-  resetAllLimits(): void {
-    this.whatsappSecondBucket.reset();
-    this.whatsappMinuteBucket.reset();
-    this.smsSecondBucket.reset();
-    this.smsMinuteBucket.reset();
-    
-    // Clear quota trackers
-    this.whatsappQuotaTracker = new QuotaTracker();
-    this.smsQuotaTracker = new QuotaTracker();
-    
-    // Reinitialize reset times
-    this.initializeQuotaResetTimes();
-    
-    this.logger.info('rate_limits_reset', 'All rate limits have been reset');
-  }
-
-  /**
-   * Update rate limit configuration
-   */
-  updateConfig(newConfig: Partial<RateLimitConfig>): void {
-    this.config = { ...this.config, ...newConfig };
-    
-    // Recreate token buckets with new limits
-    this.whatsappSecondBucket = new TokenBucket(
-      this.config.whatsappPerSecond + this.config.burstAllowance,
-      this.config.whatsappPerSecond
-    );
-    
-    this.whatsappMinuteBucket = new TokenBucket(
-      this.config.whatsappPerMinute,
-      this.config.whatsappPerMinute / 60
-    );
-
-    this.smsSecondBucket = new TokenBucket(
-      this.config.smsPerSecond + this.config.burstAllowance,
-      this.config.smsPerSecond
-    );
-    
-    this.smsMinuteBucket = new TokenBucket(
-      this.config.smsPerMinute,
-      this.config.smsPerMinute / 60
-    );
-
-    this.logger.info('rate_limit_config_updated', 'Rate limit configuration updated', newConfig);
-  }
-
-  /**
-   * Get current configuration
-   */
-  getConfig(): RateLimitConfig {
-    return { ...this.config };
-  }
-
-  /**
-   * Get comprehensive rate limit statistics
-   */
-  getStatistics(): {
-    whatsapp: RateLimitStatus;
-    sms: RateLimitStatus;
-    config: RateLimitConfig;
-    alerts: { channel: string; lastAlert: Date }[];
-  } {
-    const alerts = Array.from(this.lastAlerts.entries()).map(([key, date]) => ({
-      channel: key,
-      lastAlert: date,
-    }));
-
     return {
-      whatsapp: this.getRateLimitStatus('whatsapp'),
-      sms: this.getRateLimitStatus('sms'),
-      config: this.getConfig(),
-      alerts,
+      id: `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type,
+      channel,
+      threshold,
+      currentUsage,
+      maxQuota,
+      timestamp: new Date(),
+      message,
     };
+  }
+
+  /**
+   * Start periodic tasks
+   */
+  private startPeriodicTasks(): void {
+    // Check for daily quota reset every hour
+    setInterval(() => {
+      this.initializeDailyQuota();
+    }, 3600000); // 1 hour
+
+    // Performance optimization every 5 minutes
+    setInterval(() => {
+      this.optimizePerformance();
+    }, 300000); // 5 minutes
+
+    // Clean up old alerts every hour
+    setInterval(() => {
+      this.cleanupOldAlerts();
+    }, 3600000); // 1 hour
+  }
+
+  /**
+   * Optimize performance based on usage patterns
+   */
+  private optimizePerformance(): void {
+    const stats = this.getQuotaUsageStats();
+    
+    // Adjust alert thresholds based on usage patterns
+    if (stats.daily.utilizationPercentage > 80) {
+      // More aggressive throttling when approaching limits
+      this.alertThresholds.warning = 0.65;
+      this.alertThresholds.critical = 0.80;
+    } else {
+      // Normal thresholds
+      this.alertThresholds.warning = 0.75;
+      this.alertThresholds.critical = 0.90;
+    }
+
+    this.performanceMetrics.lastOptimizationAt = new Date();
+    
+    this.logger.debug('performance_optimization', 'Performance optimization completed', {
+      dailyUtilization: stats.daily.utilizationPercentage,
+      adjustedThresholds: this.alertThresholds,
+      queueLength: this.messageScheduleQueue.length,
+    });
+  }
+
+  /**
+   * Clean up old alerts (older than 24 hours)
+   */
+  private cleanupOldAlerts(): void {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const initialCount = this.quotaAlerts.length;
+    
+    this.quotaAlerts = this.quotaAlerts.filter(alert => alert.timestamp > oneDayAgo);
+    
+    const removedCount = initialCount - this.quotaAlerts.length;
+    if (removedCount > 0) {
+      this.logger.debug('quota_alerts_cleanup', 'Old quota alerts cleaned up', {
+        removedCount,
+        remainingCount: this.quotaAlerts.length,
+      });
+    }
   }
 }
 

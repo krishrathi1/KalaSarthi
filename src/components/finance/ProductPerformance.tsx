@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, TrendingDown, Package, Star, AlertCircle } from 'lucide-react';
+import { EnhancedDigitalKhataService } from '@/lib/services/EnhancedDigitalKhataService';
+import { useAuth } from '@/context/auth-context';
 
 interface ProductPerformanceProps {
   timeRange: 'week' | 'month' | 'quarter' | 'year';
@@ -32,6 +34,7 @@ export default function ProductPerformance({ timeRange, className = '' }: Produc
   const [sortBy, setSortBy] = useState<'revenue' | 'units' | 'growth' | 'margin'>('revenue');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { userProfile } = useAuth();
 
   useEffect(() => {
     fetchProductData();
@@ -42,62 +45,65 @@ export default function ProductPerformance({ timeRange, className = '' }: Produc
       setLoading(true);
       setError(null);
 
-      // Mock data for demonstration
-      const mockData = generateMockProductData();
-      setProductData(mockData);
+      // Map timeRange to API parameters
+      const rangeMap = {
+        'week': '7d',
+        'month': '30d', 
+        'quarter': '90d',
+        'year': '1y'
+      };
+
+      const range = rangeMap[timeRange];
+      const sortParam = sortBy === 'revenue' ? 'best' : 'best'; // API only supports best/worst for now
+
+      // Fetch product performance data from finance API
+      const response = await fetch(`/api/finance/products/performance?range=${range}&sort=${sortParam}&limit=20&artisanId=dev_bulchandani_001`);
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        // Convert API data to component format
+        const productDataWithRankings: ProductData[] = result.data.map((item: any) => ({
+          id: item.productId,
+          name: item.productName,
+          category: item.category,
+          revenue: item.revenue,
+          units: item.units,
+          orders: item.orders,
+          margin: item.marginPercentage / 100, // Convert percentage to decimal
+          growth: item.revenueGrowth || 0,
+          rank: item.rank
+        }));
+
+        // Sort by selected criteria (client-side sorting for now)
+        const sortedData = productDataWithRankings.sort((a, b) => {
+          switch (sortBy) {
+            case 'revenue':
+              return b.revenue - a.revenue;
+            case 'units':
+              return b.units - a.units;
+            case 'growth':
+              return b.growth - a.growth;
+            case 'margin':
+              return b.margin - a.margin;
+            default:
+              return b.revenue - a.revenue;
+          }
+        }).map((product, index) => ({ ...product, rank: index + 1 }));
+
+        setProductData(sortedData);
+      } else {
+        throw new Error(result.error || 'Failed to fetch product data');
+      }
 
     } catch (err) {
+      console.error('Error fetching product data:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch product data');
     } finally {
       setLoading(false);
     }
   };
 
-  const generateMockProductData = (): ProductData[] => {
-    const products = [
-      { name: 'Handcrafted Teak Dining Table', category: 'Furniture' },
-      { name: 'Carved Wooden Door Set', category: 'Doors' },
-      { name: 'Traditional Wall Art', category: 'Decorative' },
-      { name: 'Wooden Storage Chest', category: 'Furniture' },
-      { name: 'Decorative Mirror Frame', category: 'Decorative' },
-      { name: 'Custom Kitchen Cabinet', category: 'Furniture' },
-      { name: 'Ornate Room Divider', category: 'Decorative' },
-      { name: 'Handmade Jewelry Box', category: 'Accessories' },
-    ];
 
-    return products.map((product, index) => {
-      const baseRevenue = 50000 - (index * 5000) + (Math.random() * 10000);
-      const units = Math.round(baseRevenue / (2000 + Math.random() * 3000));
-      const orders = Math.round(units * (0.7 + Math.random() * 0.3));
-      const margin = 0.15 + Math.random() * 0.25; // 15-40% margin
-      const growth = (Math.random() - 0.5) * 40; // -20% to +20% growth
-
-      return {
-        id: `product_${index + 1}`,
-        name: product.name,
-        category: product.category,
-        revenue: Math.round(baseRevenue),
-        units,
-        orders,
-        margin: Math.round(margin * 100) / 100,
-        growth: Math.round(growth * 10) / 10,
-        rank: index + 1
-      };
-    }).sort((a, b) => {
-      switch (sortBy) {
-        case 'revenue':
-          return b.revenue - a.revenue;
-        case 'units':
-          return b.units - a.units;
-        case 'growth':
-          return b.growth - a.growth;
-        case 'margin':
-          return b.margin - a.margin;
-        default:
-          return b.revenue - a.revenue;
-      }
-    }).map((product, index) => ({ ...product, rank: index + 1 }));
-  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
