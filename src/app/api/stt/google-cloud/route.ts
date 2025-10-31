@@ -1,185 +1,120 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SpeechClient } from '@google-cloud/speech';
-
-// Initialize the Google Cloud Speech client using existing credentials
-const speechClient = new SpeechClient({
-    projectId: process.env.GOOGLE_CLOUD_PROJECT || 'gen-lang-client-0314311341',
-    keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-});
 
 export async function POST(request: NextRequest) {
     try {
         const formData = await request.formData();
         const audioFile = formData.get('audio') as File;
-        const language = formData.get('language') as string || 'en-IN';
+        const language = formData.get('language') as string || 'en-US';
 
         if (!audioFile) {
-            return NextResponse.json(
-                { error: 'Audio file is required', success: false },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Audio file is required' }, { status: 400 });
         }
 
-        console.log(`🎤 Processing speech-to-text for language: ${language}`);
-        console.log(`📁 Audio file size: ${audioFile.size} bytes, type: ${audioFile.type}`);
+        console.log('🎤 Processing audio with Google Cloud STT:', {
+            fileName: audioFile.name,
+            fileSize: audioFile.size,
+            fileType: audioFile.type,
+            language
+        });
 
-        // Convert audio file to buffer
-        const audioBuffer = await audioFile.arrayBuffer();
-        const audioBytes = Buffer.from(audioBuffer);
+        // Check if Google Cloud credentials are available
+        const privateKey = process.env.GOOGLE_CLOUD_PRIVATE_KEY;
+        const clientEmail = process.env.GOOGLE_CLOUD_CLIENT_EMAIL;
+        const projectId = process.env.GOOGLE_CLOUD_PROJECT_ID;
 
-        // Configure the speech recognition request
-        const speechRequest = {
-            audio: {
-                content: audioBytes,
-            },
-            config: {
-                encoding: 'WEBM_OPUS' as const, // Most common format from browser recording
-                // Remove sampleRateHertz to let Google Cloud auto-detect from audio header
-                languageCode: language,
-                alternativeLanguageCodes: ['en-IN', 'hi-IN', 'en-US'], // Fallback languages
-                enableAutomaticPunctuation: true,
-                enableWordTimeOffsets: false,
-                model: 'latest_long', // Better for longer audio
-                useEnhanced: true, // Use enhanced model if available
-            },
-        };
-
-        let retryCount = 0;
-        const maxRetries = 3;
-
-        while (retryCount < maxRetries) {
-            try {
-                console.log(`🔄 STT attempt ${retryCount + 1}/${maxRetries}`);
-
-                // Perform the speech recognition request
-                const [response] = await speechClient.recognize(speechRequest);
-
-                if (!response.results || response.results.length === 0) {
-                    throw new Error('No speech detected in audio');
-                }
-
-                // Get the best transcription result
-                const transcription = response.results
-                    .map(result => result.alternatives?.[0]?.transcript)
-                    .filter(Boolean)
-                    .join(' ');
-
-                if (!transcription || transcription.trim().length === 0) {
-                    throw new Error('Empty transcription result');
-                }
-
-                // Get confidence score
-                const confidence = response.results[0]?.alternatives?.[0]?.confidence || 0.8;
-
-                console.log(`✅ STT successful: "${transcription.substring(0, 50)}..." (confidence: ${confidence})`);
-
-                return NextResponse.json({
-                    success: true,
-                    result: {
-                        text: transcription.trim(),
-                        confidence,
-                        language: language,
-                        duration: audioFile.size / 16000 // Rough estimate
-                    }
-                });
-
-            } catch (error) {
-                retryCount++;
-                console.error(`❌ STT attempt ${retryCount} failed:`, error);
-
-                if (retryCount >= maxRetries) {
-                    // Try with different audio encoding as fallback
-                    if (speechRequest.config.encoding === 'WEBM_OPUS') {
-                        console.log('🔄 Retrying with LINEAR16 encoding...');
-                        speechRequest.config.encoding = 'LINEAR16';
-                        speechRequest.config.sampleRateHertz = 16000; // Standard rate for LINEAR16
-                        retryCount = 0; // Reset retry count for new encoding
-                        continue;
-                    }
-
-                    // Check for specific error types
-                    if (error instanceof Error) {
-                        if (error.message.includes('quota')) {
-                            return NextResponse.json(
-                                {
-                                    error: 'Speech recognition quota exceeded. Please try again later.',
-                                    success: false,
-                                    fallbackAvailable: true
-                                },
-                                { status: 429 }
-                            );
-                        } else if (error.message.includes('No speech detected')) {
-                            return NextResponse.json(
-                                {
-                                    error: 'No speech detected in the audio. Please speak clearly and try again.',
-                                    success: false,
-                                    fallbackAvailable: true
-                                },
-                                { status: 400 }
-                            );
-                        }
-                    }
-
-                    throw error;
-                } else {
-                    // Wait before retry (exponential backoff)
-                    await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
-                }
-            }
+        if (!privateKey || !clientEmail || !projectId) {
+            console.error('Missing Google Cloud credentials');
+            return NextResponse.json({ error: 'Google Cloud STT not configured' }, { status: 500 });
         }
 
-    } catch (error) {
-        console.error('❌ Speech-to-text error:', error);
-        return NextResponse.json(
-            {
-                error: error instanceof Error ? error.message : 'Failed to process speech',
-                success: false,
-                fallbackAvailable: true
-            },
-            { status: 500 }
-        );
-    }
-}
+        // Convert audio file to base64
+        const arrayBuffer = await audioFile.arrayBuffer();
+        const audioBytes = Buffer.from(arrayBuffer).toString('base64');
 
-// GET endpoint to check STT service health
-export async function GET() {
-    try {
-        console.log('🔍 Checking Google Cloud Speech-to-Text service health...');
+        // Create JWT token for Google Cloud API
+        const jwt = require('jsonwebtoken');
+        const now = Math.floor(Date.now() / 1000);
 
-        // Simple health check - just verify client can be created
-        const testConfig = {
-            audio: {
-                content: Buffer.from('test'),
-            },
-            config: {
-                encoding: 'LINEAR16' as const,
-                sampleRateHertz: 16000,
-                languageCode: 'en-US',
-            },
+        const payload = {
+            iss: clientEmail,
+            scope: 'https://www.googleapis.com/auth/cloud-platform',
+            aud: 'https://oauth2.googleapis.com/token',
+            exp: now + 3600,
+            iat: now,
         };
 
-        // Don't actually call recognize, just test client initialization
-        if (speechClient) {
-            console.log('✅ Google Cloud Speech-to-Text client initialized successfully');
+        const token = jwt.sign(payload, privateKey.replace(/\\n/g, '\n'), { algorithm: 'RS256' });
+
+        // Get access token
+        const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                assertion: token,
+            }),
+        });
+
+        if (!tokenResponse.ok) {
+            throw new Error('Failed to get access token');
+        }
+
+        const tokenData = await tokenResponse.json();
+        const accessToken = tokenData.access_token;
+
+        // Call Google Cloud Speech-to-Text API
+        const sttResponse = await fetch(`https://speech.googleapis.com/v1/speech:recognize`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                config: {
+                    encoding: 'WEBM_OPUS',
+                    sampleRateHertz: 16000,
+                    languageCode: language,
+                    enableAutomaticPunctuation: true,
+                    model: 'latest_long'
+                },
+                audio: {
+                    content: audioBytes
+                }
+            }),
+        });
+
+        if (!sttResponse.ok) {
+            const errorText = await sttResponse.text();
+            console.error('Google Cloud STT API error:', errorText);
+            throw new Error(`Google Cloud STT API failed: ${sttResponse.status}`);
+        }
+
+        const sttData = await sttResponse.json();
+        console.log('✅ Google Cloud STT result:', sttData);
+
+        if (sttData.results && sttData.results.length > 0) {
+            const transcript = sttData.results[0].alternatives[0].transcript;
+            const confidence = sttData.results[0].alternatives[0].confidence || 0.9;
+
             return NextResponse.json({
                 success: true,
-                status: 'healthy',
+                transcript: transcript,
+                confidence: confidence,
+                language: language,
                 service: 'google-cloud-stt'
             });
         } else {
-            throw new Error('Speech client not initialized');
+            throw new Error('No speech detected in audio');
         }
 
     } catch (error) {
-        console.error('❌ Google Cloud STT health check failed:', error);
-        return NextResponse.json(
-            {
-                success: false,
-                status: 'unhealthy',
-                service: 'google-cloud-stt',
-                error: error instanceof Error ? error.message : 'Health check failed'
-            },
-            { status: 503 }
-        );
+        console.error('Google Cloud STT error:', error);
+        return NextResponse.json({
+            success: false,
+            error: error.message,
+            service: 'google-cloud-stt'
+        }, { status: 500 });
     }
 }

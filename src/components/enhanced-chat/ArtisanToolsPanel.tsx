@@ -6,14 +6,14 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Palette, 
-  Wand2, 
-  Image, 
-  Send, 
-  Loader2, 
-  RefreshCw, 
-  Eye, 
+import {
+  Palette,
+  Wand2,
+  Image,
+  Send,
+  Loader2,
+  RefreshCw,
+  Eye,
   Share2,
   Download,
   Edit3,
@@ -29,10 +29,10 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { 
-  GeneratedDesign, 
-  ConversationContext, 
-  DesignGenerationRequest 
+import {
+  GeneratedDesign,
+  ConversationContext,
+  DesignGenerationRequest
 } from '@/lib/services/DesignGenerator';
 
 interface ArtisanToolsPanelProps {
@@ -88,7 +88,7 @@ export default function ArtisanToolsPanel({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ specialization: artisanSpecialization })
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setDesignSuggestions(data.suggestions || []);
@@ -100,7 +100,7 @@ export default function ArtisanToolsPanel({
 
   const generateAutoPrompt = async () => {
     if (isGeneratingPrompt) return;
-    
+
     setIsGeneratingPrompt(true);
     try {
       const response = await fetch('/api/design/auto-prompt', {
@@ -175,10 +175,10 @@ export default function ArtisanToolsPanel({
           isShared: true,
           sharedAt: new Date()
         };
-        
+
         setDesignGallery(prev => [galleryItem, ...prev]);
         onDesignShared(design);
-        
+
         // TODO: Show success toast
       }
     } catch (error) {
@@ -197,8 +197,8 @@ export default function ArtisanToolsPanel({
     document.body.removeChild(link);
   };
 
-  const DesignCard = ({ design, isInGallery = false }: { 
-    design: GeneratedDesign; 
+  const DesignCard = ({ design, isInGallery = false }: {
+    design: GeneratedDesign;
     isInGallery?: boolean;
   }) => (
     <Card className="group hover:shadow-lg transition-shadow">
@@ -235,12 +235,12 @@ export default function ArtisanToolsPanel({
             )}
           </div>
         </div>
-        
+
         <div className="space-y-2">
           <p className="text-sm text-gray-600 line-clamp-2">
             {design.description}
           </p>
-          
+
           <div className="flex flex-wrap gap-1">
             {design.specifications.materials.slice(0, 3).map((material, index) => (
               <Badge key={index} variant="outline" className="text-xs">
@@ -248,12 +248,12 @@ export default function ArtisanToolsPanel({
               </Badge>
             ))}
           </div>
-          
+
           <div className="flex justify-between items-center text-xs text-gray-500">
             <span>{design.specifications.estimatedTime}</span>
             <span>{design.specifications.difficultyLevel}</span>
           </div>
-          
+
           {isInGallery && (design as DesignGalleryItem).isShared && (
             <Badge variant="secondary" className="text-xs">
               Shared {new Date((design as DesignGalleryItem).sharedAt!).toLocaleDateString()}
@@ -363,7 +363,7 @@ export default function ArtisanToolsPanel({
                         Continue the conversation to get AI-generated prompts
                       </div>
                     )}
-                    
+
                     <Button
                       size="sm"
                       variant="outline"
@@ -443,7 +443,7 @@ export default function ArtisanToolsPanel({
                         </div>
                       </div>
                     )}
-                    
+
                     {conversationContext.discussedMaterials.length > 0 && (
                       <div>
                         <p className="text-xs font-medium text-gray-600 mb-1">Materials:</p>
@@ -456,7 +456,7 @@ export default function ArtisanToolsPanel({
                         </div>
                       </div>
                     )}
-                    
+
                     {conversationContext.mentionedColors.length > 0 && (
                       <div>
                         <p className="text-xs font-medium text-gray-600 mb-1">Colors:</p>
@@ -539,13 +539,13 @@ export default function ArtisanToolsPanel({
                 alt={selectedDesign.description}
                 className="w-full rounded-lg"
               />
-              
+
               <div className="space-y-3">
                 <div>
                   <h4 className="font-medium mb-2">Description</h4>
                   <p className="text-sm text-gray-600">{selectedDesign.description}</p>
                 </div>
-                
+
                 <div>
                   <h4 className="font-medium mb-2">Specifications</h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
@@ -569,7 +569,7 @@ export default function ArtisanToolsPanel({
                     </div>
                   </div>
                 </div>
-                
+
                 <div>
                   <h4 className="font-medium mb-2">Materials</h4>
                   <div className="flex flex-wrap gap-1">
@@ -580,7 +580,7 @@ export default function ArtisanToolsPanel({
                     ))}
                   </div>
                 </div>
-                
+
                 <div>
                   <h4 className="font-medium mb-2">Techniques</h4>
                   <div className="flex flex-wrap gap-1">
@@ -592,9 +592,9 @@ export default function ArtisanToolsPanel({
                   </div>
                 </div>
               </div>
-              
+
               <Separator />
-              
+
               <div className="flex gap-2">
                 <Button
                   onClick={() => shareDesign(selectedDesign)}
