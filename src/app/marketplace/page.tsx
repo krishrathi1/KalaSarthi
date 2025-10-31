@@ -52,27 +52,27 @@ export default function MarketplacePage() {
     }, [products, searchQuery, selectedCategory, sortBy, priceRange]);
 
     // Set up voice command listeners
-    useEffect(() => {
-        const voiceService = conversationalProcessor;
+    // useEffect(() => {
+    //     const voiceService = conversationalProcessor;
 
-        // Listen for voice commands from the global voice service
-        const handleVoiceCommand = (command: string) => {
-            processVoiceCommand(command);
-        };
+    //     // Listen for voice commands from the global voice service
+    //     const handleVoiceCommand = (command: string) => {
+    //         processVoiceCommand(command);
+    //     };
 
-        // For now, we'll simulate voice command handling
-        // In production, this would integrate with the global voice service
-        const checkForVoiceCommands = () => {
-            // This is a placeholder for integrating with global voice commands
-            // The actual implementation would listen to voice service events
-        };
+    //     // For now, we'll simulate voice command handling
+    //     // In production, this would integrate with the global voice service
+    //     const checkForVoiceCommands = () => {
+    //         // This is a placeholder for integrating with global voice commands
+    //         // The actual implementation would listen to voice service events
+    //     };
 
-        checkForVoiceCommands();
+    //     checkForVoiceCommands();
 
-        return () => {
-            // Cleanup if needed
-        };
-    }, []);
+    //     return () => {
+    //         // Cleanup if needed
+    //     };
+    // }, []);
 
     const fetchProducts = async () => {
         try {
@@ -217,55 +217,55 @@ export default function MarketplacePage() {
     };
 
     // Voice command processing
-    const processVoiceCommand = async (command: string) => {
-        setIsProcessingVoice(true);
-        setVoiceCommand(command);
+    // const processVoiceCommand = async (command: string) => {
+    //     setIsProcessingVoice(true);
+    //     setVoiceCommand(command);
 
-        try {
-            // Update conversational context
-            conversationalProcessor.updateContext({
-                currentPage: '/marketplace',
-                recentActions: ['voice_search', 'marketplace_browse']
-            });
+    //     try {
+    //         // Update conversational context
+    //         conversationalProcessor.updateContext({
+    //             currentPage: '/marketplace',
+    //             recentActions: ['voice_search', 'marketplace_browse']
+    //         });
 
-            // Create a text-based audio buffer for processing
-            const textBuffer = new ArrayBuffer(command.length * 2);
-            const result = await conversationalProcessor.processVoiceCommand(textBuffer, 'hi');
+    //         // Create a text-based audio buffer for processing
+    //         const textBuffer = new ArrayBuffer(command.length * 2);
+    //         const result = await conversationalProcessor.processVoiceCommand(textBuffer, 'hi');
 
-            // Handle different types of voice commands
-            if (result.intent.type === 'search' || command.toLowerCase().includes('search') || command.toLowerCase().includes('dhundho')) {
-                handleVoiceSearch(command);
-            } else if (result.intent.type === 'action' || command.toLowerCase().includes('filter') || command.toLowerCase().includes('dikhao')) {
-                handleVoiceFilter(command);
-            } else if (result.intent.type === 'navigate' || command.toLowerCase().includes('go to') || command.toLowerCase().includes('show') || command.toLowerCase().includes('jao')) {
-                handleVoiceNavigation(command);
-            } else if (command.toLowerCase().includes('help') || command.toLowerCase().includes('madad') || command.toLowerCase().includes('samajh')) {
-                handleVoiceHelp(command);
-            } else if (command.toLowerCase().includes('clear') || command.toLowerCase().includes('reset') || command.toLowerCase().includes('saaf')) {
-                handleVoiceClearFilters(command);
-            } else {
-                // Try to handle as a general search or provide help
-                const lowerCommand = command.toLowerCase();
-                if (lowerCommand.length > 2) {
-                    // If it's a substantial command, try search
-                    handleVoiceSearch(command);
-                } else {
-                    handleVoiceHelp(command);
-                }
-            }
+    //         // Handle different types of voice commands
+    //         if (result.intent.type === 'search' || command.toLowerCase().includes('search') || command.toLowerCase().includes('dhundho')) {
+    //             handleVoiceSearch(command);
+    //         } else if (result.intent.type === 'action' || command.toLowerCase().includes('filter') || command.toLowerCase().includes('dikhao')) {
+    //             handleVoiceFilter(command);
+    //         } else if (result.intent.type === 'navigate' || command.toLowerCase().includes('go to') || command.toLowerCase().includes('show') || command.toLowerCase().includes('jao')) {
+    //             handleVoiceNavigation(command);
+    //         } else if (command.toLowerCase().includes('help') || command.toLowerCase().includes('madad') || command.toLowerCase().includes('samajh')) {
+    //             handleVoiceHelp(command);
+    //         } else if (command.toLowerCase().includes('clear') || command.toLowerCase().includes('reset') || command.toLowerCase().includes('saaf')) {
+    //             handleVoiceClearFilters(command);
+    //         } else {
+    //             // Try to handle as a general search or provide help
+    //             const lowerCommand = command.toLowerCase();
+    //             if (lowerCommand.length > 2) {
+    //                 // If it's a substantial command, try search
+    //                 handleVoiceSearch(command);
+    //             } else {
+    //                 handleVoiceHelp(command);
+    //             }
+    //         }
 
-            // Provide voice feedback
-            if (result.response) {
-                speakFeedback(result.response);
-            }
+    //         // Provide voice feedback
+    //         if (result.response) {
+    //             speakFeedback(result.response);
+    //         }
 
-        } catch (error) {
-            console.error('Voice command processing failed:', error);
-            speakFeedback('Sorry, I had trouble understanding that. Please try again.');
-        } finally {
-            setIsProcessingVoice(false);
-        }
-    };
+    //     } catch (error) {
+    //         console.error('Voice command processing failed:', error);
+    //         speakFeedback('Sorry, I had trouble understanding that. Please try again.');
+    //     } finally {
+    //         setIsProcessingVoice(false);
+    //     }
+    // };
 
     const handleVoiceSearch = (command: string) => {
         // Extract search terms from voice command

@@ -935,10 +935,6 @@ export const menuItems: MenuItem[] = [
       or: 'ଟ୍ରେଣ୍ଡ ସ୍ପଟର',
       ur: 'ٹرینڈ سپاٹر',
     },
-<<<<<<< HEAD
-
-=======
->>>>>>> 9a9fe0fa807a32ce6fddf5b2a6df011c8773083e
     icon: Palette,
     path: "/trend-spotter",
   },
@@ -959,7 +955,7 @@ export const menuItems: MenuItem[] = [
       ur: 'ڈیزائن جنریٹر',
     },
     icon: Sparkles,
-    path: "/ai-image-generator",
+    path: "/ai-design-generator",
   },
   {
     label: {
@@ -1252,7 +1248,7 @@ export const features: Feature[] = [
     title: { en: 'Design Generator', hi: 'डिज़ाइन जेनरेटर', ta: 'வடிவமைப்பு உருவாக்கி', bn: 'ডিজাইন জেনারেটর', te: 'డిజైన్ జనరేటర్' },
     description: { en: "Generate stunning product images using AI with custom styles, colors, and artistic effects.", hi: "कस्टम स्टाइल, रंग और कलात्मक प्रभावों के साथ AI का उपयोग करके शानदार उत्पाद छवियां उत्पन्न करें।", ta: "தனிப்பயன் பாணிகள், நிறங்கள் மற்றும் கலை விளைவுகளுடன் AI ஐப் பயன்படுத்தி அற்புதமான தயாரிப்பு படங்களை உருவாக்கவும்।", bn: "কাস্টম স্টাইল, রঙ এবং শৈল্পিক প্রভাব সহ AI ব্যবহার করে চমৎকার পণ্যের ছবি তৈরি করুন।", te: "కస్టమ్ స్టైల్‌లు, రంగులు మరియు కళాత్మక ప్రభావాలతో AI ని ఉపయోగించి అద్భుతమైన ఉత్పత్తి చిత్రాలను రూపొందించండి." },
     icon: Sparkles,
-    path: "/ai-image-generator",
+    path: "/ai-design-generator",
     color: "text-purple-500",
   },
   // Voice Demo removed - converted to text-only chat

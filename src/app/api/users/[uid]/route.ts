@@ -3,17 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
     request: NextRequest,
-<<<<<<< HEAD
-    context: { params: Promise<{ uid: string }> } // 👈 make params async
+    context: { params: Promise<{ uid: string }> }
 ) {
     try {
-        const { uid } = await context.params; // 👈 await it
-=======
-    { params }: { params: Promise<{ uid: string }> }
-) {
-    try {
-        const { uid } = await params;
->>>>>>> 9a9fe0fa807a32ce6fddf5b2a6df011c8773083e
+        const { uid } = await context.params;
 
         if (!uid) {
             return NextResponse.json(
@@ -47,17 +40,10 @@ export async function GET(
 
 export async function PUT(
     request: NextRequest,
-<<<<<<< HEAD
     context: { params: Promise<{ uid: string }> }
 ) {
     try {
         const { uid } = await context.params;
-=======
-    { params }: { params: Promise<{ uid: string }> }
-) {
-    try {
-        const { uid } = await params;
->>>>>>> 9a9fe0fa807a32ce6fddf5b2a6df011c8773083e
         const updateData = await request.json();
 
         if (!uid) {
@@ -97,17 +83,10 @@ export async function PUT(
 
 export async function DELETE(
     request: NextRequest,
-<<<<<<< HEAD
     context: { params: Promise<{ uid: string }> }
 ) {
     try {
         const { uid } = await context.params;
-=======
-    { params }: { params: Promise<{ uid: string }> }
-) {
-    try {
-        const { uid } = await params;
->>>>>>> 9a9fe0fa807a32ce6fddf5b2a6df011c8773083e
 
         if (!uid) {
             return NextResponse.json(
