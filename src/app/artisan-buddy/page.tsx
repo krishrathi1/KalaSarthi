@@ -7,12 +7,12 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { 
-  MessageCircle, 
-  Send, 
-  Mic, 
-  MicOff, 
-  Volume2, 
+import {
+  MessageCircle,
+  Send,
+  Mic,
+  MicOff,
+  Volume2,
   VolumeX,
   User,
   Bot,
@@ -54,7 +54,7 @@ export default function ArtisanBuddyPage() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -120,7 +120,7 @@ export default function ArtisanBuddyPage() {
       }
 
       const data = await response.json();
-      
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         content: data.response || 'मुझे खुशी होगी आपकी सहायता करने में। कृपया अपना प्रश्न दोबारा पूछें।',
@@ -134,10 +134,46 @@ export default function ArtisanBuddyPage() {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-      
-      // Update session if exists
-      if (data.sessionId) {
-        setCurrentSessionId(data.sessionId);
+
+      // BULLETPROOF VOICE OUTPUT - Speak the AI response
+      if ('speechSynthesis' in window && assistantMessage.content) {
+        try {
+          console.log('🔊 Starting BULLETPROOF TTS for response');
+          setIsSpeaking(true);
+
+          // Use reliable browser TTS (most compatible)
+          speechSynthesis.cancel(); // Clear any existing speech
+
+          const utterance = new SpeechSynthesisUtterance(assistantMessage.content);
+          utterance.lang = 'en-US';
+          utterance.rate = 0.9;
+          utterance.pitch = 1;
+          utterance.volume = 0.8;
+
+          utterance.onstart = () => {
+            console.log('🔊 TTS started successfully');
+            setIsSpeaking(true);
+          };
+
+          utterance.onend = () => {
+            console.log('🔊 TTS finished successfully');
+            setIsSpeaking(false);
+          };
+
+          utterance.onerror = (e) => {
+            console.error('🔊 TTS error:', e);
+            setIsSpeaking(false);
+          };
+
+          // Wait a moment for voices to load, then speak
+          setTimeout(() => {
+            speechSynthesis.speak(utterance);
+          }, 100);
+
+        } catch (error) {
+          console.error('TTS failed:', error);
+          setIsSpeaking(false);
+        }
       }
 
     } catch (error) {
@@ -177,9 +213,9 @@ export default function ArtisanBuddyPage() {
   };
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-IN', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return date.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
@@ -200,11 +236,10 @@ export default function ArtisanBuddyPage() {
           </div>
           <ScrollArea className="h-[calc(100vh-120px)]">
             {sessions.map((session) => (
-              <Card 
+              <Card
                 key={session.id}
-                className={`mb-2 cursor-pointer transition-colors ${
-                  currentSessionId === session.id ? 'bg-orange-100' : 'hover:bg-gray-50'
-                }`}
+                className={`mb-2 cursor-pointer transition-colors ${currentSessionId === session.id ? 'bg-orange-100' : 'hover:bg-gray-50'
+                  }`}
                 onClick={() => setCurrentSessionId(session.id)}
               >
                 <CardContent className="p-3">
@@ -246,6 +281,23 @@ export default function ArtisanBuddyPage() {
               <Badge variant="secondary" className="bg-green-100 text-green-800">
                 Online
               </Badge>
+
+              {/* Voice Service Status */}
+              <div className="flex items-center space-x-1">
+                {isListening && (
+                  <Badge variant="default" className="bg-green-500 text-white animate-pulse">
+                    <Mic className="h-3 w-3 mr-1" />
+                    Recording
+                  </Badge>
+                )}
+                {isSpeaking && (
+                  <Badge variant="default" className="bg-blue-500 text-white animate-pulse">
+                    <Volume2 className="h-3 w-3 mr-1" />
+                    Speaking
+                  </Badge>
+                )}
+              </div>
+
               <Button variant="ghost" size="sm">
                 <Settings className="h-4 w-4" />
               </Button>
@@ -261,30 +313,27 @@ export default function ArtisanBuddyPage() {
                 key={message.id}
                 className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div className={`flex items-start space-x-2 max-w-[80%] ${
-                  message.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''
-                }`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    message.sender === 'user' 
-                      ? 'bg-blue-500' 
-                      : 'bg-gradient-to-r from-orange-400 to-red-400'
+                <div className={`flex items-start space-x-2 max-w-[80%] ${message.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''
                   }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${message.sender === 'user'
+                    ? 'bg-blue-500'
+                    : 'bg-gradient-to-r from-orange-400 to-red-400'
+                    }`}>
                     {message.sender === 'user' ? (
                       <User className="h-4 w-4 text-white" />
                     ) : (
                       <Bot className="h-4 w-4 text-white" />
                     )}
                   </div>
-                  <div className={`rounded-lg p-3 ${
-                    message.sender === 'user'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-white border border-orange-200'
-                  }`}>
+                  <div className={`rounded-lg p-3 ${message.sender === 'user'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-white border border-orange-200'
+                    }`}>
                     <div className="whitespace-pre-wrap">{message.content}</div>
                     <div className="text-xs opacity-70 mt-1">
                       {formatTime(message.timestamp)}
                     </div>
-                    
+
                     {/* Suggestions */}
                     {message.metadata?.suggestions && (
                       <div className="mt-3 space-y-1">
@@ -305,7 +354,7 @@ export default function ArtisanBuddyPage() {
                 </div>
               </div>
             ))}
-            
+
             {isLoading && (
               <div className="flex justify-start">
                 <div className="flex items-center space-x-2">
@@ -321,7 +370,7 @@ export default function ArtisanBuddyPage() {
                 </div>
               </div>
             )}
-            
+
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
@@ -345,12 +394,114 @@ export default function ArtisanBuddyPage() {
                     variant="ghost"
                     size="sm"
                     className="h-8 w-8 p-0"
-                    onClick={() => setIsListening(!isListening)}
+                    onClick={async () => {
+                      try {
+                        if (isListening) {
+                          setIsListening(false);
+                          return;
+                        }
+
+                        // BULLETPROOF Voice Recognition - No more "aborted" errors!
+                        console.log('🎤 Starting BULLETPROOF voice recognition');
+                        setIsListening(true);
+
+                        // Use audio utilities for reliable recording
+                        const { requestMicrophoneAccess, createMediaRecorder, stopAllTracks } = await import('@/lib/utils/audioUtils');
+
+                        const stream = await requestMicrophoneAccess();
+                        const mediaRecorder = createMediaRecorder(stream);
+
+                        const audioChunks: Blob[] = [];
+
+                        mediaRecorder.ondataavailable = (event) => {
+                          if (event.data.size > 0) {
+                            audioChunks.push(event.data);
+                          }
+                        };
+
+                        mediaRecorder.onstop = async () => {
+                          console.log('🎤 Recording complete, processing...');
+                          setIsListening(false);
+
+                          try {
+                            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+
+                            // Use Gemini STT API for most reliable transcription
+                            const formData = new FormData();
+                            formData.append('audio', audioBlob, 'recording.webm');
+                            formData.append('language', 'en-US');
+
+                            const response = await fetch('/api/stt/gemini', {
+                              method: 'POST',
+                              body: formData
+                            });
+
+                            if (response.ok) {
+                              const result = await response.json();
+                              if (result.success && result.result?.text) {
+                                console.log('✅ Gemini STT success:', result.result.text);
+                                setInputMessage(result.result.text);
+                                setTimeout(() => {
+                                  sendMessage(result.result.text);
+                                }, 100);
+                              } else {
+                                throw new Error(result.error || 'No transcript received');
+                              }
+                            } else {
+                              throw new Error('Gemini STT API failed');
+                            }
+                          } catch (error) {
+                            console.error('❌ Voice processing failed:', error);
+                            alert(`Voice processing failed: ${error.message}. Please type your message.`);
+                          }
+
+                          stopAllTracks(stream);
+                        };
+
+                        mediaRecorder.onerror = (event) => {
+                          console.error('❌ MediaRecorder error:', event);
+                          setIsListening(false);
+                          alert('Recording failed. Please try again.');
+                          stopAllTracks(stream);
+                        };
+
+                        mediaRecorder.start();
+                        console.log('🎤 Recording started - speak now!');
+
+                        // Auto-stop after 10 seconds
+                        setTimeout(() => {
+                          if (mediaRecorder.state === 'recording') {
+                            mediaRecorder.stop();
+                          }
+                        }, 10000);
+
+                      } catch (error) {
+                        console.error('❌ Voice setup failed:', error);
+                        setIsListening(false);
+
+                        let errorMessage = "Voice input failed.";
+                        if (error.name === 'NotAllowedError') {
+                          errorMessage = "Microphone access denied. Please allow microphone access and try again.";
+                        } else if (error.name === 'NotFoundError') {
+                          errorMessage = "Microphone not found. Please connect a microphone and try again.";
+                        } else {
+                          errorMessage = `Voice input failed: ${error.message}`;
+                        }
+                        alert(errorMessage);
+                      }
+                    }}
+                    title={isListening ? "Recording... Click to stop" : "Click to start voice input"}
                   >
                     {isListening ? (
-                      <Mic className="h-4 w-4 text-red-500" />
+                      <div className="relative">
+                        <Mic className="h-4 w-4 text-red-500 animate-pulse" />
+                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
+                      </div>
                     ) : (
-                      <MicOff className="h-4 w-4 text-gray-400" />
+                      <div className="relative">
+                        <Mic className="h-4 w-4 text-green-600" />
+                        <div className="absolute -bottom-1 -right-1 text-xs font-bold text-green-600">✓</div>
+                      </div>
                     )}
                   </Button>
                 </div>
@@ -367,7 +518,7 @@ export default function ArtisanBuddyPage() {
                 )}
               </Button>
             </form>
-            
+
             <div className="flex items-center justify-center mt-2 text-xs text-gray-500">
               <span>Powered by AI • Supports Hindi & English • </span>
               <Heart className="h-3 w-3 text-red-400 mx-1" />
