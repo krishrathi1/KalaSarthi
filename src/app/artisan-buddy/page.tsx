@@ -23,8 +23,12 @@ import {
   Heart,
   Share2,
   Pause,
-  Play
+  Play,
+  Wifi,
+  WifiOff,
+  Download
 } from 'lucide-react';
+import { GemmaOfflineService } from '@/lib/services/GemmaOfflineService';
 
 interface Message {
   id: string;
@@ -58,6 +62,12 @@ export default function ArtisanBuddyPage() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
 
+  // Offline AI state
+  const [isOnline, setIsOnline] = useState(true);
+  const [gemmaLoading, setGemmaLoading] = useState(false);
+  const [gemmaReady, setGemmaReady] = useState(false);
+  const gemmaServiceRef = useRef<GemmaOfflineService | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -65,6 +75,60 @@ export default function ArtisanBuddyPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Online/Offline detection
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      console.log('🌐 Back online - using Gemini 2.0 Flash');
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      console.log('📴 Offline - will use Gemma if available');
+
+      // Try to initialize Gemma when going offline
+      if (!gemmaReady && !gemmaLoading) {
+        initializeGemma();
+      }
+    };
+
+    // Set initial state
+    setIsOnline(navigator.onLine);
+
+    // Listen for online/offline events
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [gemmaReady, gemmaLoading]);
+
+  // Initialize Gemma service
+  const initializeGemma = async () => {
+    if (gemmaServiceRef.current) return;
+
+    try {
+      setGemmaLoading(true);
+      console.log('🤖 Initializing Gemma offline AI...');
+
+      gemmaServiceRef.current = GemmaOfflineService.getInstance();
+      const success = await gemmaServiceRef.current.initialize();
+
+      if (success) {
+        setGemmaReady(true);
+        console.log('✅ Gemma ready for offline use!');
+      } else {
+        console.error('❌ Gemma initialization failed');
+      }
+    } catch (error) {
+      console.error('❌ Gemma initialization error:', error);
+    } finally {
+      setGemmaLoading(false);
+    }
+  };
 
   // Initialize with welcome message
   useEffect(() => {
@@ -100,39 +164,57 @@ export default function ArtisanBuddyPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/artisan-buddy/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: content,
-          sessionId: currentSessionId,
-          context: {
-            previousMessages: messages.slice(-5), // Last 5 messages for context
-            userPreferences: {
-              language: 'auto-detect',
-              responseStyle: 'helpful'
-            }
-          }
-        }),
-      });
+      let responseText = '';
+      let isOfflineResponse = false;
 
-      if (!response.ok) {
-        throw new Error('Failed to get response');
+      // Check if we should use offline AI
+      if (!isOnline && gemmaReady && gemmaServiceRef.current) {
+        console.log('🤖 Using Gemma offline AI');
+        isOfflineResponse = true;
+
+        const systemPrompt = gemmaServiceRef.current.getArtisanSystemPrompt('en');
+        responseText = await gemmaServiceRef.current.generateResponse(content, systemPrompt);
+      } else if (!isOnline && !gemmaReady) {
+        // Offline but Gemma not ready
+        responseText = 'You are currently offline and the offline AI is not available. Please connect to the internet to chat with Artisan Buddy.';
+      } else {
+        // Online - use Gemini 2.0 Flash API
+        console.log('🌐 Using Gemini 2.0 Flash API');
+        const response = await fetch('/api/artisan-buddy/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: content,
+            sessionId: currentSessionId,
+            context: {
+              previousMessages: messages.slice(-5), // Last 5 messages for context
+              userPreferences: {
+                language: 'auto-detect',
+                responseStyle: 'helpful'
+              }
+            }
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to get response');
+        }
+
+        const data = await response.json();
+        responseText = data.response || 'मुझे खुशी होगी आपकी सहायता करने में। कृपया अपना प्रश्न दोबारा पूछें।';
       }
 
-      const data = await response.json();
-
+      // Create assistant message
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: data.response || 'मुझे खुशी होगी आपकी सहायता करने में। कृपया अपना प्रश्न दोबारा पूछें।',
+        content: responseText,
         sender: 'assistant',
         timestamp: new Date(),
         metadata: {
-          intent: data.intent,
-          confidence: data.confidence,
-          suggestions: data.suggestions
+          intent: isOfflineResponse ? 'offline_gemma' : 'online_gemini',
+          confidence: isOfflineResponse ? 0.8 : 0.9
         }
       };
 
@@ -309,9 +391,28 @@ export default function ArtisanBuddyPage() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <Badge variant="secondary" className="bg-green-100 text-green-800">
-                Online
-              </Badge>
+              {/* Online/Offline Status */}
+              {isOnline ? (
+                <Badge variant="secondary" className="bg-green-100 text-green-800">
+                  <Wifi className="h-3 w-3 mr-1" />
+                  Online (Gemini 2.0)
+                </Badge>
+              ) : gemmaReady ? (
+                <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                  <WifiOff className="h-3 w-3 mr-1" />
+                  Offline (Gemma AI)
+                </Badge>
+              ) : gemmaLoading ? (
+                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                  <Download className="h-3 w-3 mr-1 animate-pulse" />
+                  Loading AI...
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="bg-red-100 text-red-800">
+                  <WifiOff className="h-3 w-3 mr-1" />
+                  Offline
+                </Badge>
+              )}
 
               {/* Voice Service Status */}
               <div className="flex items-center space-x-1">
@@ -352,6 +453,18 @@ export default function ArtisanBuddyPage() {
                   </div>
                 )}
               </div>
+
+              {!gemmaReady && !gemmaLoading && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={initializeGemma}
+                  title="Load offline AI"
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Load Offline AI
+                </Button>
+              )}
 
               <Button variant="ghost" size="sm">
                 <Settings className="h-4 w-4" />
@@ -507,7 +620,8 @@ export default function ArtisanBuddyPage() {
                             }
                           } catch (error) {
                             console.error('❌ Voice processing failed:', error);
-                            alert(`Voice processing failed: ${error.message}. Please type your message.`);
+                            const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+                            alert(`Voice processing failed: ${errorMsg}. Please type your message.`);
                           }
 
                           stopAllTracks(stream);
@@ -535,12 +649,14 @@ export default function ArtisanBuddyPage() {
                         setIsListening(false);
 
                         let errorMessage = "Voice input failed.";
-                        if (error.name === 'NotAllowedError') {
-                          errorMessage = "Microphone access denied. Please allow microphone access and try again.";
-                        } else if (error.name === 'NotFoundError') {
-                          errorMessage = "Microphone not found. Please connect a microphone and try again.";
-                        } else {
-                          errorMessage = `Voice input failed: ${error.message}`;
+                        if (error instanceof Error) {
+                          if (error.name === 'NotAllowedError') {
+                            errorMessage = "Microphone access denied. Please allow microphone access and try again.";
+                          } else if (error.name === 'NotFoundError') {
+                            errorMessage = "Microphone not found. Please connect a microphone and try again.";
+                          } else {
+                            errorMessage = `Voice input failed: ${error.message}`;
+                          }
                         }
                         alert(errorMessage);
                       }
