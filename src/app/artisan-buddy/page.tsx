@@ -28,7 +28,6 @@ import {
   WifiOff,
   Download
 } from 'lucide-react';
-import { GemmaOfflineService } from '@/lib/services/GemmaOfflineService';
 
 interface Message {
   id: string;
@@ -66,7 +65,7 @@ export default function ArtisanBuddyPage() {
   const [isOnline, setIsOnline] = useState(true);
   const [gemmaLoading, setGemmaLoading] = useState(false);
   const [gemmaReady, setGemmaReady] = useState(false);
-  const gemmaServiceRef = useRef<GemmaOfflineService | null>(null);
+  const gemmaServiceRef = useRef<any>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -113,6 +112,9 @@ export default function ArtisanBuddyPage() {
     try {
       setGemmaLoading(true);
       console.log('🤖 Initializing Gemma offline AI...');
+
+      // Dynamically import to avoid SSR issues
+      const { GemmaOfflineService } = await import('@/lib/services/GemmaOfflineService');
 
       gemmaServiceRef.current = GemmaOfflineService.getInstance();
       const success = await gemmaServiceRef.current.initialize();

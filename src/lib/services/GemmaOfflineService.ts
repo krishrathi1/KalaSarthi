@@ -3,7 +3,7 @@
  * Runs Google Gemma 2B model in the browser for offline AI chat
  */
 
-import { pipeline, Pipeline } from '@xenova/transformers';
+import type { Pipeline } from '@xenova/transformers';
 
 export class GemmaOfflineService {
     private static instance: GemmaOfflineService;
@@ -44,6 +44,9 @@ export class GemmaOfflineService {
         try {
             this.isLoading = true;
             console.log('🤖 Loading Gemma 2B model for offline AI...');
+
+            // Dynamically import transformers to avoid SSR issues
+            const { pipeline } = await import('@xenova/transformers');
 
             // Load the text generation pipeline with Gemma 2B
             this.generator = await pipeline(
