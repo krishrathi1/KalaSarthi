@@ -7,3 +7,6 @@ export interface ChatMessage {
 // Re-export Enhanced Artisan Buddy types
 export * from './types/enhanced-artisan-buddy';
 export * from './utils/profile-utils';
+
+// Re-export AI-Powered Scheme Sahayak types
+export * from './types/scheme-sahayak';

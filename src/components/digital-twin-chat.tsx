@@ -56,13 +56,13 @@ export function DigitalTwinChat() {
     // Load translations
     loadTranslations();
 
-    // Listen for voice input from universal microphone
+    // Voice input removed - text-only mode
     const handleVoiceInput = (event: CustomEvent) => {
       const { transcript, isVoice } = event.detail;
-      console.log('Voice input received:', { transcript, isVoice });
+      console.log('Voice input disabled - text-only mode');
 
       if (transcript && isVoice) {
-        // Add voice input as user message immediately
+        // Voice input disabled
         const voiceMessage: EnhancedChatMessage = {
           id: `voice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           role: 'user',
@@ -501,7 +501,7 @@ export function DigitalTwinChat() {
           <div className="mt-2 space-y-2">
             <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-700">
-                💡 <strong>Tip:</strong> Use the universal microphone button in the header to speak your messages, or type below to chat with me!
+                💡 <strong>Tip:</strong> Type your messages below to chat with me!
               </p>
             </div>
             <div className="p-2 bg-green-50 border border-green-200 rounded-lg">
@@ -656,19 +656,18 @@ export function DigitalTwinChat() {
             variant="outline"
             size="icon"
             onClick={() => {
-              // Voice input will be handled by universal microphone
+              // Voice input disabled
               toast({
-                title: "Voice Input",
-                description: "Click the universal microphone button in the header to speak your message",
+                title: "Voice Input Disabled",
+                description: "Voice features have been removed. Please type your message instead.",
                 duration: 3000,
               });
             }}
-            disabled={loading}
+            disabled={true}
             className={cn(
-              "transition-colors",
-              isListening && "bg-red-100 border-red-300 text-red-600"
+              "transition-colors opacity-50 cursor-not-allowed"
             )}
-            title="Use the universal microphone in the header to speak"
+            title="Voice input disabled - text-only mode"
           >
             {isListening ? (
               <MicOff className="h-4 w-4 animate-pulse" />

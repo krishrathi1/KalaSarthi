@@ -15,14 +15,14 @@ export interface GeminiGeneratedImage {
 export class GeminiImageService {
     private static readonly API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || '';
     private static genAI = new GoogleGenerativeAI(this.API_KEY);
-    
+
     // Vertex AI for Imagen (real image generation)
     private static vertexAI: VertexAI | null = null;
 
     private static initVertexAI() {
         if (!this.vertexAI && process.env.GOOGLE_APPLICATION_CREDENTIALS) {
             this.vertexAI = new VertexAI({
-                project: process.env.GOOGLE_CLOUD_PROJECT|| 'gen-lang-client-0314311341',
+                project: process.env.GOOGLE_CLOUD_PROJECT || 'gen-lang-client-0314311341',
                 location: process.env.GCP_REGION || 'us-central1',
             });
         }
@@ -60,10 +60,10 @@ export class GeminiImageService {
 
             // Try Vertex AI Imagen first (real image generation)
             const vertex = this.initVertexAI();
-            
+
             if (vertex) {
                 console.log('🎨 Using Vertex AI Imagen for real image generation');
-                
+
                 for (const color of colors) {
                     try {
                         const image = await this.generateWithImagen(
@@ -105,7 +105,7 @@ export class GeminiImageService {
         userPrompt: string
     ): Promise<GeminiGeneratedImage> {
         const vertex = this.vertexAI;
-        
+
         if (!vertex) {
             throw new Error('Vertex AI not initialized');
         }
@@ -182,7 +182,7 @@ export class GeminiImageService {
 
         } catch (error) {
             console.error('Imagen generation error:', error);
-            
+
             // Provide helpful error messages
             if (error instanceof Error) {
                 if (error.message.includes('quota')) {
@@ -193,7 +193,7 @@ export class GeminiImageService {
                     throw new Error('Imagen model not found. Please ensure Vertex AI is properly configured.');
                 }
             }
-            
+
             throw error;
         }
     }
@@ -300,7 +300,7 @@ Important guidelines:
         prompt: string
     ): GeminiGeneratedImage {
         console.log(`🎭 Creating demo image for ${color} (AI generation unavailable)`);
-        
+
         return {
             id: `demo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             url: originalImageUrl,
@@ -323,8 +323,8 @@ Important guidelines:
         prompt: string
     ): GeminiGeneratedImage[] {
         console.log('🎭 Creating demo images with CSS filters (AI unavailable)');
-        
-        return colors.slice(0, 3).map((color, i) => 
+
+        return colors.slice(0, 3).map((color, i) =>
             this.createSingleDemoImage(originalImageUrl, style, color, prompt)
         );
     }
@@ -361,11 +361,33 @@ Important guidelines:
     }
 
     /**
+     * Analyze image for product details (public method for API use)
+     */
+    static async analyzeImageForProduct(imageUrl: string): Promise<string> {
+        return this.analyzeImage(imageUrl);
+    }
+
+    /**
+     * Generate structured analysis using Gemini
+     */
+    static async generateStructuredAnalysis(prompt: string): Promise<string> {
+        try {
+            const model = this.genAI.getGenerativeModel({ model: "gemini-2.0-flash-001" });
+            const result = await model.generateContent([prompt]);
+            const response = await result.response;
+            return response.text();
+        } catch (error) {
+            console.error('❌ Structured analysis failed:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Test API connection
      */
     static async testConnection(): Promise<boolean> {
         console.log('🔧 Testing API connections...');
-        
+
         // Test Gemini
         if (this.API_KEY) {
             try {
@@ -377,7 +399,7 @@ Important guidelines:
                 console.log('❌ Gemini API: Failed');
             }
         }
-        
+
         // Test Vertex AI
         const vertex = this.initVertexAI();
         if (vertex) {
@@ -389,7 +411,7 @@ Important guidelines:
                 console.log('❌ Vertex AI Imagen: Not available');
             }
         }
-        
+
         return !!this.API_KEY;
     }
 }

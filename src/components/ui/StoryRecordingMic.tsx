@@ -115,10 +115,16 @@ export function StoryRecordingMic({
       try {
         speechServiceRef.current = GeminiSpeechService.getInstance();
 
-        // Check if speech recognition is supported
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          setIsSupported(false);
-          console.warn('Media devices not supported');
+        // Use comprehensive audio diagnostics
+        const { diagnoseAudioSupport } = await import('@/lib/utils/audioUtils');
+        const diagnostics = await diagnoseAudioSupport();
+
+        setIsSupported(diagnostics.isSupported);
+
+        if (!diagnostics.isSupported) {
+          console.warn('Audio recording not supported:', diagnostics.errors);
+        } else {
+          console.log('✅ Audio recording is supported');
         }
 
         // Load available voices
@@ -243,59 +249,18 @@ export function StoryRecordingMic({
   // Debug function to check Google Cloud availability
   const checkGoogleCloudStatus = async () => {
     if (speechServiceRef.current) {
-      console.log('🔍 Checking Google Cloud STT/TTS availability...');
-      
+      console.log('🔍 Checking speech service status...');
+
       const isAvailable = speechServiceRef.current.isGoogleCloudAvailable();
-      console.log('Current Google Cloud status:', isAvailable);
-      
-      // Test direct API calls
-      console.log('🧪 Testing direct API calls...');
-      
-      try {
-        // Test STT API directly
-        const sttResponse = await fetch('/api/google-cloud-stt', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ audioData: 'dGVzdA==', language: 'en-US' })
-        });
-        
-        console.log('Direct STT API test:', {
-          ok: sttResponse.ok,
-          status: sttResponse.status,
-          statusText: sttResponse.statusText
-        });
-        
-        if (!sttResponse.ok) {
-          const errorText = await sttResponse.text();
-          console.error('STT API Error:', errorText);
-        }
-        
-        // Test TTS API directly
-        const ttsResponse = await fetch('/api/google-cloud-tts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: 'test', language: 'en-US' })
-        });
-        
-        console.log('Direct TTS API test:', {
-          ok: ttsResponse.ok,
-          status: ttsResponse.status,
-          statusText: ttsResponse.statusText
-        });
-        
-        if (!ttsResponse.ok) {
-          const errorText = await ttsResponse.text();
-          console.error('TTS API Error:', errorText);
-        }
-        
-      } catch (error) {
-        console.error('Direct API test failed:', error);
-      }
-      
+      console.log('Current speech service status:', isAvailable);
+
+      // Google Cloud TTS/STT APIs have been removed - using browser APIs only
+      console.log('📝 Using browser-based speech recognition and synthesis');
+
       // Force recheck
       const newStatus = await speechServiceRef.current.recheckGoogleCloudAvailability();
       console.log('After recheck Google Cloud status:', newStatus);
-      
+
       toast({
         title: "Google Cloud Status",
         description: `Google Cloud STT/TTS is ${newStatus ? 'available' : 'not available'}. Check console for details.`,
@@ -320,20 +285,14 @@ export function StoryRecordingMic({
       audioChunksRef.current = [];
       setRecordingStartTime(Date.now());
 
-      // Get user media
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 16000
-        }
-      });
+      // Import audio utilities
+      const { requestMicrophoneAccess, createMediaRecorder } = await import('@/lib/utils/audioUtils');
 
-      // Create media recorder
-      mediaRecorderRef.current = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
+      // Get user media with robust error handling
+      const stream = await requestMicrophoneAccess();
+
+      // Create media recorder with optimal settings
+      mediaRecorderRef.current = createMediaRecorder(stream);
 
       mediaRecorderRef.current.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -371,9 +330,14 @@ export function StoryRecordingMic({
     } catch (error) {
       console.error('Failed to start voice recording:', error);
       setIsListening(false);
+
+      // Import error handling utility
+      const { getAudioErrorMessage } = await import('@/lib/utils/audioUtils');
+      const errorMessage = getAudioErrorMessage(error);
+
       toast({
-        title: "Microphone Access Denied",
-        description: "Please allow microphone access to record your story.",
+        title: "Recording Failed",
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -427,9 +391,9 @@ export function StoryRecordingMic({
             detectedLanguage,
             googleCloudAvailable: speechServiceRef.current.isGoogleCloudAvailable()
           });
-          
+
           const transcription = await speechServiceRef.current.speechToText(arrayBuffer, { language: detectedLanguage });
-          
+
           console.log('🎤 STT Response:', {
             hasText: !!transcription?.text,
             textLength: transcription?.text?.length || 0,
@@ -641,34 +605,24 @@ export function StoryRecordingMic({
       setIsGeneratingAudio(true);
       toast({
         title: "Generating Audio",
-        description: "Creating audio story with selected voice...",
+        description: "Creating audio story with Google Cloud TTS narration...",
       });
 
-      const response = await fetch('/api/tts/enhanced', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          text: finalizedStory,
+      // Use GeminiSpeechService for TTS (Enhanced TTS API removed)
+      if (speechServiceRef.current) {
+        const audioBuffer = await speechServiceRef.current.textToSpeech(finalizedStory, {
           language: detectedLanguage || 'en-US',
           voice: selectedVoiceForAudio,
           speed: 1.0,
-          pitch: 0.0,
-          volume: 1.0
-        })
-      });
+          pitch: 1.0
+        });
 
-      const data = await response.json();
-      console.log('🎵 TTS Response:', data);
+        console.log('🎵 Google Cloud TTS successful');
+        console.log('Audio buffer size:', audioBuffer.byteLength, 'bytes');
 
-      if (data.success && data.audio?.data) {
-        console.log('🎵 Audio generation successful');
-        console.log('Audio data length:', data.audio.data.length);
-
-        // Convert base64 to blob
-        const audioBlob = new Blob([Uint8Array.from(atob(data.audio.data), c => c.charCodeAt(0))], {
-          type: 'audio/mpeg'
+        // Convert ArrayBuffer to blob
+        const audioBlob = new Blob([audioBuffer], {
+          type: 'audio/wav'
         });
         console.log('Audio blob size:', audioBlob.size, 'bytes');
 
@@ -686,7 +640,7 @@ export function StoryRecordingMic({
 
         toast({
           title: "🎵 Audio Generated!",
-          description: "Your story is ready to play!",
+          description: "Your story has been narrated with Google Cloud TTS voice!",
         });
 
         // Call parent callback with final story, audio, and summary
@@ -694,8 +648,8 @@ export function StoryRecordingMic({
           onFinalizedStory(finalizedStory, audioBlob, summary);
         }
       } else {
-        console.error('❌ TTS API Error:', data);
-        throw new Error(data.error || data.message || 'Audio generation failed');
+        console.error('❌ Speech service not available');
+        throw new Error('Speech service not available');
       }
     } catch (error) {
       console.error('❌ Error generating audio:', error);
@@ -1050,18 +1004,8 @@ export function StoryRecordingMic({
 
   return (
     <div className="relative">
-      {/* Debug button for Google Cloud status */}
-      {(process.env.NODE_ENV === 'development' || !speechServiceRef.current?.isGoogleCloudAvailable()) && (
-        <Button
-          onClick={checkGoogleCloudStatus}
-          size="sm"
-          variant="outline"
-          className="absolute -top-10 sm:-top-12 left-0 text-xs px-2 py-1"
-        >
-          🔍 Debug
-        </Button>
-      )}
-      
+
+
       {/* Main recording button */}
       <Button
         onClick={handleClick}
@@ -1448,8 +1392,8 @@ export function StoryRecordingMic({
                         <div
                           key={voice.name}
                           className={`p-3 border rounded-lg cursor-pointer transition-all ${selectedVoiceForAudio === voice.name
-                              ? 'border-blue-500 bg-blue-100'
-                              : 'border-gray-200 hover:border-blue-300'
+                            ? 'border-blue-500 bg-blue-100'
+                            : 'border-gray-200 hover:border-blue-300'
                             }`}
                           onClick={() => setSelectedVoiceForAudio(voice.name)}
                         >

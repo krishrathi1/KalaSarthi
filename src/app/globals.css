@@ -260,3 +260,190 @@
     @apply w-5 h-5 bg-orange-500 rounded-full cursor-pointer border-0 shadow-lg;
   }
 }
+/* Ac
+cessibility Styles - WCAG 2.1 AA Compliance */
+
+/* Screen Reader Only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* High Contrast Mode */
+.high-contrast {
+  --background: 0 0% 100%;
+  --foreground: 0 0% 0%;
+  --primary: 0 0% 0%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 20%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 0 0% 90%;
+  --muted-foreground: 0 0% 10%;
+  --accent: 0 0% 10%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 0% 0%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 0%;
+  --input: 0 0% 0%;
+  --ring: 0 0% 0%;
+}
+
+.high-contrast * {
+  border-width: 2px !important;
+  outline-width: 2px !important;
+}
+
+/* Focus Indicators */
+.show-focus *:focus {
+  outline: 3px solid hsl(var(--primary)) !important;
+  outline-offset: 2px !important;
+}
+
+.show-focus *:focus-visible {
+  outline: 3px solid hsl(var(--primary)) !important;
+  outline-offset: 2px !important;
+}
+
+/* Keyboard Navigation Mode */
+.keyboard-nav *:focus {
+  outline: 3px solid hsl(var(--primary)) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px hsla(var(--primary), 0.2) !important;
+}
+
+/* Reduced Motion */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Touch Target Sizes (minimum 44x44px for WCAG 2.1 AA) */
+button,
+a,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+[role="button"],
+[role="link"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Skip Link */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #000;
+  color: #fff;
+  padding: 8px;
+  text-decoration: none;
+  z-index: 100;
+  transition: top 0.2s;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* Font Size Adjustments */
+[data-font-size="large"] {
+  font-size: 18px !important;
+}
+
+[data-font-size="extra-large"] {
+  font-size: 20px !important;
+}
+
+/* Ensure sufficient color contrast */
+@media (prefers-contrast: high) {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+  }
+}
+
+/* Focus within for better keyboard navigation */
+*:focus-within {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+/* Improve link visibility */
+a {
+  text-decoration-skip-ink: auto;
+}
+
+a:hover,
+a:focus {
+  text-decoration: underline;
+}
+
+/* Better form control visibility */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
+/* Ensure buttons have visible focus */
+button:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
+/* Improve table accessibility */
+table {
+  border-collapse: collapse;
+}
+
+th {
+  text-align: left;
+  font-weight: 600;
+}
+
+/* Better list styling for screen readers */
+ul[role="list"],
+ol[role="list"] {
+  list-style: none;
+  padding: 0;
+}
+
+/* Ensure images have proper alt text handling */
+img:not([alt]) {
+  outline: 3px solid red;
+}
+
+/* Better error message visibility */
+[aria-invalid="true"] {
+  border-color: hsl(var(--destructive));
+}
+
+[role="alert"] {
+  padding: 1rem;
+  border-left: 4px solid hsl(var(--destructive));
+}
+
+/* Loading states for screen readers */
+[aria-busy="true"] {
+  cursor: wait;
+}
+
+/* Disabled state clarity */
+[disabled],
+[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

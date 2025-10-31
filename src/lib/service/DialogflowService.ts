@@ -1,4 +1,5 @@
-import { SessionsClient } from '@google-cloud/dialogflow-cx';
+// Optional import - will be loaded dynamically if available
+let SessionsClient: any;
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { VectorStoreService } from './VectorStoreService';
 
@@ -184,11 +185,9 @@ export class DialogflowService {
   ];
 
   private constructor() {
-    // Initialize Dialogflow CX client
-    this.sessionsClient = new SessionsClient({
-      projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
-      keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-    });
+    // Disable Dialogflow CX for now - using fallback intent detection only
+    console.warn('Dialogflow CX disabled, using fallback intent detection');
+    this.sessionsClient = null;
 
     // Initialize configuration
     this.config = {
@@ -239,6 +238,10 @@ export class DialogflowService {
    * Detect intent using Dialogflow CX
    */
   private async detectIntentWithCX(message: string, sessionId: string, languageCode: string = 'en'): Promise<DialogflowResponse> {
+    if (!this.sessionsClient) {
+      throw new Error('Dialogflow CX client not available');
+    }
+    
     const sessionPath = this.sessionsClient.projectLocationAgentSessionPath(
       this.config.projectId,
       this.config.location,

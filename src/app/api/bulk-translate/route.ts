@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { translationService } from '@/lib/translation-service';
+import { CulturalContextTranslator } from '@/lib/services/CulturalContextTranslator';
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,17 +21,22 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Initialize translator
+    const translator = CulturalContextTranslator.getInstance();
+
     // Batch translate all texts
     const translationPromises = texts.map(async (text: string) => {
       try {
-        const translated = await translationService.translateWithCache(
+        const result = await translator.translateText({
           text,
+          sourceLanguage,
           targetLanguage,
-          sourceLanguage
-        );
+          craftCategory: 'general',
+          preserveCulturalTerms: true
+        });
         return {
           original: text,
-          translated,
+          translated: result.translatedText,
           success: true
         };
       } catch (error) {

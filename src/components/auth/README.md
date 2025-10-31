@@ -33,7 +33,7 @@ The main authentication guard that protects routes based on user authentication 
   * `/arth-saarthi` - Government scheme advisor
   * `/price-engine` - Pricing suggestions
   * `/smart-product-creator` - Smart product creation with AI
-  * `/yojana-mitra` - Scheme recommendations
+  * `/scheme-sahayak` - Scheme recommendations
 
 **Shared Routes (Both Roles):**
 
@@ -195,7 +195,7 @@ const buyerRestrictedRoutes = [
   '/arth-saarthi',
   '/price-engine',
   '/smart-product-creator',
-  '/yojana-mitra',
+  '/scheme-sahayak',
   '/your-new-artisan-tool'  // Add here
 ];
 ```

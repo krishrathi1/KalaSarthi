@@ -18,7 +18,7 @@ import {
   Download,
   Edit3,
   Sparkles,
-  Gallery,
+  Images,
   Plus,
   X
 } from 'lucide-react';
@@ -307,7 +307,7 @@ export default function ArtisanToolsPanel({
               Designs
             </TabsTrigger>
             <TabsTrigger value="shared" className="text-xs">
-              <Gallery className="w-4 h-4 mr-1" />
+              <Images className="w-4 h-4 mr-1" />
               Shared
             </TabsTrigger>
           </TabsList>
@@ -507,7 +507,7 @@ export default function ArtisanToolsPanel({
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-center">
-                  <Gallery className="w-12 h-12 text-gray-400 mb-4" />
+                  <Images className="w-12 h-12 text-gray-400 mb-4" />
                   <p className="text-sm text-gray-500 mb-2">No shared designs yet</p>
                   <p className="text-xs text-gray-400">
                     Share designs from the gallery to see them here

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import React from "react";
 import { Toaster } from "@/components/ui/toaster"
 import { LanguageProvider } from "@/context/language-context";
-import { GlobalTranslationProvider } from "@/components/global-translation-provider";
+import { TranslationProvider } from "@/context/TranslationContext";
 import { AuthProvider } from "@/context/auth-context";
 import LayoutWrapper from "@/components/layout/LayoutWrapper";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -76,10 +76,11 @@ console.log('₽'.charCodeAt(0)); // Should show 8381
         <ErrorBoundary>
           <AuthProvider>
             <LanguageProvider>
-              <GlobalTranslationProvider />
-              <LayoutWrapper>
-                {children}
-              </LayoutWrapper>
+              <TranslationProvider defaultLanguage="en" autoDetectLanguage={true}>
+                <LayoutWrapper>
+                  {children}
+                </LayoutWrapper>
+              </TranslationProvider>
             </LanguageProvider>
           </AuthProvider>
         </ErrorBoundary>

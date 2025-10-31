@@ -146,7 +146,7 @@ export function canAccessRoute(pathname: string, userRole?: 'artisan' | 'buyer')
         '/arth-saarthi',
         '/price-engine',
         '/smart-product-creator',
-        '/yojana-mitra',
+        '/scheme-sahayak',
         '/dashboard/inventory',
         '/trend-spotter',
         '/voice-enrollment'
@@ -187,7 +187,7 @@ export function useRouteAccess() {
         '/arth-saarthi', 
         '/price-engine', 
         '/smart-product-creator', 
-        '/yojana-mitra',
+        '/scheme-sahayak',
         '/dashboard/inventory',
         '/trend-spotter',
         '/voice-enrollment'

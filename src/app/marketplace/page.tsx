@@ -9,8 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Search, Filter, Star, Package, ShoppingBag, Mic, MicOff, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import ProductCard from '@/components/marketplace/ProductCard';
-import { VoiceControl } from '@/components/ui/VoiceControl';
-import { ConversationalVoiceProcessor } from '@/lib/service/ConversationalVoiceProcessor';
+// Voice features removed - using new voice navigation system
 import { useToast } from '@/hooks/use-toast';
 import { useOffline } from '@/hooks/use-offline';
 import { offlineStorage } from '@/lib/offline-storage';
@@ -30,7 +29,7 @@ export default function MarketplacePage() {
     const [isVoiceActive, setIsVoiceActive] = useState(false);
     const [voiceCommand, setVoiceCommand] = useState('');
     const [isProcessingVoice, setIsProcessingVoice] = useState(false);
-    const conversationalProcessor = ConversationalVoiceProcessor.getInstance();
+    // Voice processor removed - using new voice navigation system
     const { toast } = useToast();
 
     // Offline support
@@ -370,7 +369,7 @@ export default function MarketplacePage() {
             window.location.href = '/finance/dashboard';
             speakFeedback('Opening finance dashboard');
         } else if (lowerCommand.includes('schemes') || lowerCommand.includes('government') || lowerCommand.includes('sarkar')) {
-            window.location.href = '/yojana-mitra';
+            window.location.href = '/scheme-sahayak';
             speakFeedback('Opening government schemes');
         }
     };
@@ -535,15 +534,7 @@ export default function MarketplacePage() {
                     )}
 
                     {/* Voice Control */}
-                    <div className="flex justify-center mb-4">
-                        <div className="w-full max-w-md">
-                            <VoiceControl
-                                variant="inline"
-                                showSettings={true}
-                                autoStart={false}
-                            />
-                        </div>
-                    </div>
+                    {/* Voice navigation now available in header */}
 
                     {/* Voice Status */}
                     {isVoiceActive && (
