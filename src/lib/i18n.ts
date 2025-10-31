@@ -953,10 +953,6 @@ export const menuItems: MenuItem[] = [
       or: 'ଟ୍ରେଣ୍ଡ ସ୍ପଟର',
       ur: 'ٹرینڈ سپاٹر',
     },
-<<<<<<< HEAD
-
-=======
->>>>>>> 9a9fe0fa807a32ce6fddf5b2a6df011c8773083e
     icon: Palette,
     path: "/trend-spotter",
   },
