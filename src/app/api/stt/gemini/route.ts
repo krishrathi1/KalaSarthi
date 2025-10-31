@@ -1,171 +1,148 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(
-    process.env.GEMINI_API_KEY ||
-    process.env.GOOGLE_AI_API_KEY ||
-    process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY ||
-    ''
-);
-
+/**
+ * POST /api/stt/gemini
+ * Bulletproof Speech-to-Text using Gemini AI
+ */
 export async function POST(request: NextRequest) {
     try {
+        console.log('🎤 Gemini STT API called');
+
         const formData = await request.formData();
         const audioFile = formData.get('audio') as File;
-        const language = formData.get('language') as string || 'hi-IN';
+        const language = formData.get('language') as string || 'en-US';
 
         if (!audioFile) {
             return NextResponse.json(
-                { error: 'Audio file is required', success: false },
+                { success: false, error: 'Audio file is required' },
                 { status: 400 }
             );
         }
 
-        console.log(`🎤 GEMINI STT for language: ${language}`);
-        console.log(`📁 Audio: ${audioFile.size} bytes, type: ${audioFile.type}`);
+        // Get API key
+        const apiKey = process.env.GOOGLE_AI_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY;
+        if (!apiKey) {
+            console.error('❌ No Gemini API key found');
+            return NextResponse.json(
+                { success: false, error: 'Gemini API not configured' },
+                { status: 500 }
+            );
+        }
+
+        // Initialize Gemini
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
 
         // Convert audio to base64
         const audioBuffer = await audioFile.arrayBuffer();
         const audioBase64 = Buffer.from(audioBuffer).toString('base64');
 
-        // Get the model
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+        console.log('🎤 Processing audio with Gemini:', {
+            audioSize: audioBuffer.byteLength,
+            language,
+            audioType: audioFile.type
+        });
 
-        // Create multilingual prompt
+        // Create prompt for speech-to-text
         const prompt = `
-You are a multilingual speech-to-text transcription service. Convert the audio to text.
+You are a speech-to-text transcription service. Convert the following audio to text.
+Language: ${language}
+Context: This is from an artisan/craftsperson talking about their products, business, or crafts.
 
-IMPORTANT INSTRUCTIONS:
-- Listen carefully to the audio and transcribe EXACTLY what is spoken
-- The speaker may use Hindi, English, or mix of both languages (Hinglish)
-- Preserve the original language - if they speak Hindi, write in Hindi (Devanagari script)
-- If they speak English, write in English
-- If they mix languages, preserve the mix exactly as spoken
-- Do NOT translate - just transcribe what you hear
-- Return ONLY the transcribed text, no other commentary
-- If no clear speech is detected, return: "No speech detected"
+Please provide ONLY the transcribed text without any additional commentary, explanations, or formatting.
+If you cannot understand the audio clearly, respond with: "Could not transcribe audio clearly"
 
-Language context: ${language}
-Audio data follows...
-`;
+Audio data provided below.
+    `;
 
-        let retryCount = 0;
-        const maxRetries = 3;
-
-        while (retryCount < maxRetries) {
-            try {
-                console.log(`🔄 Gemini STT attempt ${retryCount + 1}/${maxRetries}`);
-
-                const result = await model.generateContent([
-                    prompt,
+        // Process with Gemini
+        const result = await model.generateContent({
+            contents: [{
+                role: 'user',
+                parts: [
+                    { text: prompt },
                     {
                         inlineData: {
                             mimeType: audioFile.type || 'audio/webm',
                             data: audioBase64
                         }
                     }
-                ]);
-
-                const response = await result.response;
-                const transcription = response.text().trim();
-
-                console.log(`📝 Gemini transcription: "${transcription.substring(0, 100)}..."`);
-
-                // Check if transcription is valid
-                if (!transcription ||
-                    transcription.toLowerCase().includes('no speech detected') ||
-                    transcription.toLowerCase().includes('cannot transcribe') ||
-                    transcription.toLowerCase().includes('unable to process')) {
-
-                    if (retryCount < maxRetries - 1) {
-                        retryCount++;
-                        console.log(`⚠️ Poor transcription, retrying...`);
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                        continue;
-                    } else {
-                        return NextResponse.json({
-                            success: false,
-                            error: 'No speech detected in audio. Please speak clearly and try again.',
-                            fallbackAvailable: true
-                        }, { status: 400 });
-                    }
-                }
-
-                // Success!
-                console.log(`✅ Gemini STT successful: ${transcription.length} characters`);
-
-                return NextResponse.json({
-                    success: true,
-                    result: {
-                        text: transcription,
-                        confidence: 0.9, // Gemini doesn't provide confidence, use high value
-                        language: language,
-                        duration: audioFile.size / 16000, // Rough estimate
-                        service: 'gemini'
-                    }
-                });
-
-            } catch (error) {
-                retryCount++;
-                console.error(`❌ Gemini STT attempt ${retryCount} failed:`, error);
-
-                if (retryCount >= maxRetries) {
-                    // Final fallback - return a helpful message
-                    return NextResponse.json({
-                        success: false,
-                        error: 'Speech recognition failed after multiple attempts. Please try again.',
-                        fallbackAvailable: true
-                    }, { status: 500 });
-                }
-
-                // Wait before retry
-                await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+                ]
+            }],
+            generationConfig: {
+                temperature: 0.1,
+                maxOutputTokens: 1000,
             }
+        });
+
+        const response = await result.response;
+        const transcribedText = response.text().trim();
+
+        console.log('✅ Gemini STT successful:', {
+            textLength: transcribedText.length,
+            preview: transcribedText.substring(0, 50) + '...'
+        });
+
+        // Check if transcription was successful
+        if (!transcribedText || transcribedText.includes('Could not transcribe')) {
+            return NextResponse.json({
+                success: false,
+                error: 'No speech detected or audio quality too poor'
+            }, { status: 400 });
         }
+
+        return NextResponse.json({
+            success: true,
+            result: {
+                text: transcribedText,
+                confidence: 0.9, // Gemini doesn't provide confidence scores
+                language: language,
+                duration: audioBuffer.byteLength / 16000 // Rough estimate
+            }
+        });
 
     } catch (error) {
         console.error('❌ Gemini STT error:', error);
+
+        // Handle specific error types
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+        if (errorMessage.includes('429') || errorMessage.includes('quota')) {
+            return NextResponse.json({
+                success: false,
+                error: 'Service temporarily overloaded. Please try again in a moment.'
+            }, { status: 429 });
+        }
+
+        if (errorMessage.includes('400') || errorMessage.includes('invalid')) {
+            return NextResponse.json({
+                success: false,
+                error: 'Invalid audio format. Please try recording again.'
+            }, { status: 400 });
+        }
+
         return NextResponse.json({
-            error: error instanceof Error ? error.message : 'Speech recognition failed',
             success: false,
-            fallbackAvailable: true
+            error: 'Speech recognition failed. Please try again.'
         }, { status: 500 });
     }
 }
 
-// Health check
+/**
+ * GET /api/stt/gemini
+ * Get service status
+ */
 export async function GET() {
-    try {
-        const apiKey = process.env.GEMINI_API_KEY ||
-            process.env.GOOGLE_AI_API_KEY ||
-            process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY;
+    const apiKey = process.env.GOOGLE_AI_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY;
 
-        if (!apiKey) {
-            return NextResponse.json({
-                success: false,
-                status: 'unhealthy',
-                service: 'gemini-stt',
-                error: 'No Gemini API key found'
-            }, { status: 503 });
+    return NextResponse.json({
+        success: true,
+        status: apiKey ? 'available' : 'not_configured',
+        capabilities: {
+            languages: ['en-US', 'hi-IN', 'es-ES', 'fr-FR'],
+            formats: ['audio/webm', 'audio/wav', 'audio/mp3'],
+            maxSize: '10MB'
         }
-
-        // Test Gemini connection
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-        await model.generateContent("test");
-
-        return NextResponse.json({
-            success: true,
-            status: 'healthy',
-            service: 'gemini-stt'
-        });
-
-    } catch (error) {
-        return NextResponse.json({
-            success: false,
-            status: 'unhealthy',
-            service: 'gemini-stt',
-            error: error instanceof Error ? error.message : 'Health check failed'
-        }, { status: 503 });
-    }
+    });
 }

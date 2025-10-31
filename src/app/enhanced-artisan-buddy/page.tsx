@@ -8,12 +8,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { 
-  MessageCircle, 
-  Send, 
-  Mic, 
-  MicOff, 
-  Volume2, 
+import {
+  MessageCircle,
+  Send,
+  Mic,
+  MicOff,
+  Volume2,
   VolumeX,
   User,
   Bot,
@@ -87,7 +87,7 @@ export default function EnhancedArtisanBuddyPage() {
   const [craftAnalysis, setCraftAnalysis] = useState<CraftAnalysis | null>(null);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -125,7 +125,7 @@ Hello! I'm your Enhanced Artisan Buddy with advanced features for craft analysis
       }
     };
     setMessages([welcomeMessage]);
-    
+
     // Load sample business metrics
     loadBusinessMetrics();
   }, []);
@@ -187,7 +187,7 @@ Hello! I'm your Enhanced Artisan Buddy with advanced features for craft analysis
       }
 
       const data = await response.json();
-      
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         content: data.response || 'मुझे खुशी होगी आपकी सहायता करने में। कृपया अपना प्रश्न दोबारा पूछें।',
@@ -204,6 +204,23 @@ Hello! I'm your Enhanced Artisan Buddy with advanced features for craft analysis
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      // REAL VOICE OUTPUT - Speak the AI response
+      if ('speechSynthesis' in window && assistantMessage.content) {
+        try {
+          speechSynthesis.cancel();
+
+          const utterance = new SpeechSynthesisUtterance(assistantMessage.content);
+          utterance.lang = 'en-US';
+          utterance.rate = 0.9;
+          utterance.pitch = 1;
+          utterance.volume = 0.8;
+
+          speechSynthesis.speak(utterance);
+        } catch (error) {
+          console.error('Voice output failed:', error);
+        }
+      }
 
       // Handle special responses
       if (data.analysis && data.analysis.type === 'craft') {
@@ -249,9 +266,9 @@ Hello! I'm your Enhanced Artisan Buddy with advanced features for craft analysis
   };
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-IN', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return date.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
@@ -269,7 +286,7 @@ Hello! I'm your Enhanced Artisan Buddy with advanced features for craft analysis
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -281,7 +298,7 @@ Hello! I'm your Enhanced Artisan Buddy with advanced features for craft analysis
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -293,7 +310,7 @@ Hello! I'm your Enhanced Artisan Buddy with advanced features for craft analysis
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -347,7 +364,7 @@ Hello! I'm your Enhanced Artisan Buddy with advanced features for craft analysis
                 <p className="text-sm text-gray-600">Complexity</p>
                 <Badge variant={
                   craftAnalysis.complexity === 'Beginner' ? 'secondary' :
-                  craftAnalysis.complexity === 'Intermediate' ? 'default' : 'destructive'
+                    craftAnalysis.complexity === 'Intermediate' ? 'default' : 'destructive'
                 }>
                   {craftAnalysis.complexity}
                 </Badge>
@@ -364,7 +381,7 @@ Hello! I'm your Enhanced Artisan Buddy with advanced features for craft analysis
                 </div>
               </div>
             </div>
-            
+
             <div>
               <p className="text-sm text-gray-600 mb-2">Required Materials</p>
               <div className="flex flex-wrap gap-2">
@@ -373,7 +390,7 @@ Hello! I'm your Enhanced Artisan Buddy with advanced features for craft analysis
                 ))}
               </div>
             </div>
-            
+
             <div>
               <p className="text-sm text-gray-600">Price Range</p>
               <p className="font-medium">
@@ -456,30 +473,27 @@ Hello! I'm your Enhanced Artisan Buddy with advanced features for craft analysis
                       key={message.id}
                       className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className={`flex items-start space-x-2 max-w-[80%] ${
-                        message.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''
-                      }`}>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                          message.sender === 'user' 
-                            ? 'bg-blue-500' 
-                            : 'bg-gradient-to-r from-orange-400 to-red-400'
+                      <div className={`flex items-start space-x-2 max-w-[80%] ${message.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''
                         }`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${message.sender === 'user'
+                          ? 'bg-blue-500'
+                          : 'bg-gradient-to-r from-orange-400 to-red-400'
+                          }`}>
                           {message.sender === 'user' ? (
                             <User className="h-4 w-4 text-white" />
                           ) : (
                             <Bot className="h-4 w-4 text-white" />
                           )}
                         </div>
-                        <div className={`rounded-lg p-3 ${
-                          message.sender === 'user'
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-white border border-orange-200'
-                        }`}>
+                        <div className={`rounded-lg p-3 ${message.sender === 'user'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-white border border-orange-200'
+                          }`}>
                           <div className="whitespace-pre-wrap">{message.content}</div>
                           <div className="text-xs opacity-70 mt-1">
                             {formatTime(message.timestamp)}
                           </div>
-                          
+
                           {/* Suggestions */}
                           {message.metadata?.suggestions && (
                             <div className="mt-3 space-y-1">
@@ -500,7 +514,7 @@ Hello! I'm your Enhanced Artisan Buddy with advanced features for craft analysis
                       </div>
                     </div>
                   ))}
-                  
+
                   {isLoading && (
                     <div className="flex justify-start">
                       <div className="flex items-center space-x-2">
@@ -516,7 +530,7 @@ Hello! I'm your Enhanced Artisan Buddy with advanced features for craft analysis
                       </div>
                     </div>
                   )}
-                  
+
                   <div ref={messagesEndRef} />
                 </div>
               </ScrollArea>
@@ -539,7 +553,7 @@ Hello! I'm your Enhanced Artisan Buddy with advanced features for craft analysis
                       </Button>
                     </div>
                   )}
-                  
+
                   <form onSubmit={handleSubmit} className="flex items-center space-x-2">
                     <div className="flex-1 relative">
                       <Input
@@ -565,8 +579,48 @@ Hello! I'm your Enhanced Artisan Buddy with advanced features for craft analysis
                           variant="ghost"
                           size="sm"
                           className="h-8 w-8 p-0"
+                          onClick={async () => {
+                            try {
+                              // REAL WORKING VOICE INPUT
+                              const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+                              if (!SpeechRecognition) {
+                                alert("Voice input not supported in this browser");
+                                return;
+                              }
+
+                              const recognition = new SpeechRecognition();
+                              recognition.continuous = false;
+                              recognition.interimResults = false;
+                              recognition.lang = 'en-US';
+
+                              recognition.onstart = () => {
+                                console.log('🎤 Voice recording started');
+                              };
+
+                              recognition.onresult = (event: any) => {
+                                const transcript = event.results[0][0].transcript;
+                                console.log('🎤 Voice recognized:', transcript);
+                                setInputMessage(transcript);
+
+                                // Auto-send the voice message
+                                setTimeout(() => {
+                                  sendMessage(transcript);
+                                }, 100);
+                              };
+
+                              recognition.onerror = (event: any) => {
+                                console.error('🎤 Voice error:', event.error);
+                                alert(`Voice recognition failed: ${event.error}`);
+                              };
+
+                              recognition.start();
+                            } catch (error) {
+                              console.error('❌ Voice setup failed:', error);
+                              alert("Could not initialize voice input");
+                            }
+                          }}
                         >
-                          <Mic className="h-4 w-4 text-gray-400" />
+                          <Mic className="h-4 w-4 text-gray-600" />
                         </Button>
                       </div>
                     </div>
@@ -582,7 +636,7 @@ Hello! I'm your Enhanced Artisan Buddy with advanced features for craft analysis
                       )}
                     </Button>
                   </form>
-                  
+
                   <input
                     ref={fileInputRef}
                     type="file"

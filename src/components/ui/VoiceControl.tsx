@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './button';
 import { Card, CardContent } from './card';
 import { Mic, MicOff, Volume2, Settings, Languages } from 'lucide-react';
-import { VoiceNavigationService } from '@/lib/service/VoiceNavigationService';
+import { SimpleVoiceService } from '@/lib/services/SimpleVoiceService';
 import { cn } from '@/lib/utils';
 
 interface VoiceControlProps {
@@ -27,7 +27,7 @@ export function VoiceControl({
   const [lastCommand, setLastCommand] = useState<string>('');
   const [showLanguageSelector, setShowLanguageSelector] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState('en-US');
-  const voiceServiceRef = useRef<VoiceNavigationService | null>(null);
+  const voiceServiceRef = useRef<SimpleVoiceService | null>(null);
 
   const sizeClasses = {
     sm: 'h-8 w-8',
@@ -45,7 +45,7 @@ export function VoiceControl({
     // Initialize voice service
     const initVoiceService = async () => {
       try {
-        voiceServiceRef.current = VoiceNavigationService.getInstance({
+        voiceServiceRef.current = SimpleVoiceService.getInstance({
           language: currentLanguage,
           feedbackEnabled: true
         });

@@ -56,7 +56,7 @@ export async function PUT(
         const result = await UserService.updateUser(uid, updateData);
         if (result.success) {
             const updatedUser = await UserService.getUserByUid(uid);
-            
+
             // Prevent caching of user data
             const response = NextResponse.json(
                 { success: true, data: updatedUser, modifiedCount: result.modifiedCount },

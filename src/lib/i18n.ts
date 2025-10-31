@@ -899,7 +899,25 @@ export const menuItems: MenuItem[] = [
     icon: LayoutDashboard,
     path: "/dashboard",
   },
-  // Artisan Buddy and Enhanced Artisan Buddy removed - use Enhanced Chat instead
+  {
+    label: {
+      en: 'Artisan Buddy',
+      hi: 'कारीगर मित्र',
+      ta: 'கைவினைஞர் நண்பர்',
+      bn: 'কারিগর বন্ধু',
+      te: 'కళాకారుల స్నేహితుడు',
+      gu: 'કારીગર મિત્ર',
+      mr: 'कारागीर मित्र',
+      kn: 'ಕುಶಲಕರ್ಮಿ ಸ್ನೇಹಿತ',
+      ml: 'കരകൗശല സുഹൃത്ത്',
+      pa: 'ਕਾਰੀਗਰ ਦੋਸਤ',
+      as: 'শিল্পী বন্ধু',
+      or: 'କାରିଗର ବନ୍ଧୁ',
+      ur: 'کاریگر دوست',
+    },
+    icon: BotMessageSquare,
+    path: "/artisan-buddy",
+  },
   {
     label: {
       en: 'Product Creator',
