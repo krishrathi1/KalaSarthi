@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './card';
 import { Badge } from './badge';
 import { Mic, MicOff, Volume2, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
-import { VoiceNavigationService } from '@/lib/service/VoiceNavigationService';
+import { VoiceNavigationService } from '@/lib/services/VoiceNavigationService';
 import { cn } from '@/lib/utils';
 
 interface VoiceStatusProps {
@@ -58,17 +58,18 @@ export function VoiceStatus({
       addEvent('error', `Error: ${data.error}`, false);
     };
 
-    service.on('listening', handleListening);
-    service.on('command', handleCommand);
-    service.on('action', handleAction);
-    service.on('error', handleError);
+    // cast to any to call event methods that may not be declared on the class type
+    (service as any).on('listening', handleListening);
+    (service as any).on('command', handleCommand);
+    (service as any).on('action', handleAction);
+    (service as any).on('error', handleError);
 
     // Cleanup
     return () => {
-      service.off('listening', handleListening);
-      service.off('command', handleCommand);
-      service.off('action', handleAction);
-      service.off('error', handleError);
+      (service as any).off('listening', handleListening);
+      (service as any).off('command', handleCommand);
+      (service as any).off('action', handleAction);
+      (service as any).off('error', handleError);
     };
   }, []);
 

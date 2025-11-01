@@ -13,19 +13,18 @@ import {
   Session,
   Message,
   MessageMetadata,
-  ConversationContext,
   SessionData,
   MessageEntry,
   ArtisanProfile,
   UserPreferences,
   MAX_CONVERSATION_HISTORY,
   DEFAULT_SESSION_TTL,
-} from '@/lib/types/artisan-buddy';
+} from '@/lib/types/enhanced-artisan-buddy';
 
 export class ConversationManager {
   private static instance: ConversationManager;
 
-  private constructor() {}
+  private constructor() { }
 
   public static getInstance(): ConversationManager {
     if (!ConversationManager.instance) {
@@ -73,9 +72,17 @@ export class ConversationManager {
         startedAt: new Date(sessionData.startedAt),
         lastActivityAt: new Date(sessionData.lastActivityAt),
         context: {
-          recentTopics: [],
-          userPreferences: artisanContext.preferences,
-          pendingActions: [],
+          conversationId: sessionId,
+          userId,
+          entities: {},
+          profileContext: artisanContext.profile,
+          conversationHistory: [],
+          sessionMetadata: {
+            startTime: new Date(sessionData.startedAt),
+            lastActivity: new Date(sessionData.lastActivityAt),
+            messageCount: 0,
+            voiceEnabled: false,
+          },
         },
       };
 
@@ -93,7 +100,7 @@ export class ConversationManager {
   async getSession(sessionId: string): Promise<Session | null> {
     try {
       const sessionData = await redisClient.getSession(sessionId);
-      
+
       if (!sessionData) {
         return null;
       }
@@ -110,9 +117,17 @@ export class ConversationManager {
         startedAt: new Date(sessionData.startedAt),
         lastActivityAt: new Date(sessionData.lastActivityAt),
         context: {
-          recentTopics: await this.extractRecentTopics(sessionId),
-          userPreferences: artisanContext.preferences,
-          pendingActions: [],
+          conversationId: sessionId,
+          userId: sessionData.userId,
+          entities: {},
+          profileContext: artisanContext.profile,
+          conversationHistory: [],
+          sessionMetadata: {
+            startTime: new Date(sessionData.startedAt),
+            lastActivity: new Date(sessionData.lastActivityAt),
+            messageCount: 0,
+            voiceEnabled: false,
+          },
         },
       };
 
@@ -130,10 +145,10 @@ export class ConversationManager {
     try {
       // Clear conversation state
       await conversationContextManager.clearState(sessionId);
-      
+
       // Delete session data
       await redisClient.deleteSession(sessionId);
-      
+
       // Clear messages
       await redisClient.clearMessages(sessionId);
 
@@ -249,7 +264,7 @@ export class ConversationManager {
     try {
       // Get all messages
       const allMessages = await this.getHistory(sessionId, 1000);
-      
+
       // Calculate pagination
       const total = allMessages.length;
       const start = offset;
@@ -286,9 +301,9 @@ export class ConversationManager {
   ): Promise<Message[]> {
     try {
       const allMessages = await this.getHistory(sessionId, 1000);
-      
+
       // Filter messages based on search criteria
-      let filteredMessages = allMessages.filter(msg => 
+      let filteredMessages = allMessages.filter(msg =>
         msg.content.toLowerCase().includes(query.toLowerCase())
       );
 
@@ -358,7 +373,7 @@ export class ConversationManager {
     try {
       const pattern = 'session:*';
       const sessionKeys = await redisClient.keys(pattern);
-      
+
       let cleanedCount = 0;
       const now = Date.now();
       const expirationThreshold = DEFAULT_SESSION_TTL * 1000; // Convert to milliseconds
@@ -369,7 +384,7 @@ export class ConversationManager {
 
         if (sessionData) {
           const age = now - sessionData.lastActivityAt;
-          
+
           if (age > expirationThreshold) {
             await this.endSession(sessionId);
             cleanedCount++;
@@ -407,7 +422,7 @@ export class ConversationManager {
    * Generate context hash for cache invalidation
    */
   private generateContextHash(profile: ArtisanProfile): string {
-    const data = `${profile.id}-${profile.updatedAt.getTime()}`;
+    const data = `${profile.id}-${profile.metadata.updatedAt.getTime()}`;
     return Buffer.from(data).toString('base64');
   }
 
@@ -432,10 +447,10 @@ export class ConversationManager {
   private async extractRecentTopics(sessionId: string): Promise<string[]> {
     try {
       const messages = await this.getHistory(sessionId, 10);
-      
+
       // Simple topic extraction based on message metadata
       const topics = new Set<string>();
-      
+
       messages.forEach(msg => {
         if (msg.metadata?.intent) {
           topics.add(msg.metadata.intent);
@@ -547,7 +562,7 @@ export class ConversationManager {
     try {
       const messages = await this.getHistory(sessionId, 1000);
       const result = await conversationContextManager.handleContextOverflow(sessionId, messages);
-      
+
       console.log(`Conversation Manager: Context overflow handled with action: ${result.action}`);
     } catch (error) {
       console.error('Conversation Manager: Error handling context overflow:', error);

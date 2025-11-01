@@ -179,7 +179,7 @@ Time: 30 minutes to 2 hours per piece, plus drying and firing time.`,
       category: 'technique',
       craftType: 'pottery',
       language: 'en',
-      source: 'Potter's Association of India',
+      source: 'Potter\'s Association of India',
       region: 'Pan-India',
       tags: ['pottery', 'wheel throwing', 'ceramics', 'technique'],
       lastUpdated: new Date()

@@ -5,10 +5,15 @@ import { getFirestore } from 'firebase-admin/firestore';
 // Initialize Firebase Admin
 if (!getApps().length) {
   try {
-    const serviceAccount = require('../../../../../../key.json');
-    initializeApp({
-      credential: cert(serviceAccount)
-    });
+    const firebaseConfig = {
+      apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+      authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+      appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    };
+    initializeApp(firebaseConfig);
   } catch (error) {
     console.error('Firebase Admin initialization error:', error);
   }
@@ -44,7 +49,7 @@ export async function GET(request: NextRequest) {
             .get();
 
           const sales = salesSnapshot.docs.map(doc => doc.data());
-          
+
           const totalRevenue = sales.reduce((sum, sale: any) => sum + sale.totalAmount, 0);
           const unitsSold = sales.reduce((sum, sale: any) => sum + sale.quantity, 0);
           const totalSales = sales.length;
@@ -74,7 +79,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error: any) {
     console.error('Error fetching inventory:', error);
-    
+
     // Return mock data if Firestore fails
     return NextResponse.json({
       success: true,

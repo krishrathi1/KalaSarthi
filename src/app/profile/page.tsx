@@ -1,18 +1,22 @@
 'use client';
 
 import { useAuth } from '@/context/auth-context';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { IProductDocument } from '@/lib/models/Product';
 import AuthGuard from '@/components/auth/AuthGuard';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, Search, TrendingUp, Mic, MicOff, Sparkles } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, Search, TrendingUp, Mic, MicOff, Sparkles, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ProductGrid, ProfileHeader, ProfileInfo } from '@/components/profile';
 import ScrapedProductGrid from '@/components/profile/ScrapedProductGrid';
 import { useToast } from '@/hooks/use-toast';
+import { useOffline } from '@/hooks/use-offline';
+import { notificationManager, notifySyncComplete } from '@/lib/notifications';
 // Voice features removed - using new voice navigation system
 
 export default function ProfilePage() {
@@ -27,6 +31,18 @@ export default function ProfilePage() {
     const [searchQuery, setSearchQuery] = useState('handicraft');
     const [activeTab, setActiveTab] = useState('published');
 
+    // Offline support
+    const {
+        isOnline,
+        isSyncing,
+        storeOffline,
+        getOfflineData,
+        sync,
+    } = useOffline();
+
+    // Track previous online state
+    const previousOnlineState = useRef(isOnline);
+
     // Voice-related state
     const [isVoiceActive, setIsVoiceActive] = useState(false);
     const [voiceCommand, setVoiceCommand] = useState('');
@@ -35,15 +51,44 @@ export default function ProfilePage() {
     const { toast } = useToast();
     const router = useRouter();
 
+    // Request notification permission on mount
     useEffect(() => {
-        const fetchUserProducts = async () => {
-            if (!userProfile?.uid) {
-                console.log('No userProfile.uid available');
-                return;
-            }
+        if (notificationManager.isSupported() && notificationManager.getPermission() === 'default') {
+            setTimeout(() => {
+                notificationManager.requestPermission();
+            }, 3000);
+        }
+    }, []);
 
-            try {
-                setLoading(true);
+    // Detect connection restoration
+    useEffect(() => {
+        if (!previousOnlineState.current && isOnline) {
+            if (notificationManager.getPermission() === 'granted') {
+                notificationManager.notifyConnectionRestored();
+            }
+            toast({
+                title: "Connection Restored",
+                description: "You're back online! Refreshing products...",
+            });
+            if (userProfile?.uid) {
+                fetchUserProducts();
+            }
+        }
+        previousOnlineState.current = isOnline;
+    }, [isOnline, userProfile]);
+
+    const fetchUserProducts = async () => {
+        if (!userProfile?.uid) {
+            console.log('No userProfile.uid available');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            setError(null);
+
+            if (isOnline) {
+                // Fetch from API when online
                 console.log('Fetching products for artisanId:', userProfile.uid);
                 const response = await fetch(`/api/products?artisanId=${userProfile.uid}`);
                 const result = await response.json();
@@ -53,24 +98,79 @@ export default function ProfilePage() {
                 if (result.success) {
                     console.log('Products fetched:', result.data?.length || 0);
                     setProducts(result.data || []);
+
+                    // Cache products for offline use
+                    for (const product of result.data || []) {
+                        await storeOffline('product', product, product.productId, true);
+                    }
                 } else {
                     console.error('API Error:', result.error);
                     setError(result.error || 'Failed to fetch products');
                 }
-            } catch (err) {
-                console.error('Fetch Error:', err);
-                setError('Failed to fetch products');
-            } finally {
-                setLoading(false);
-            }
-        };
+            } else {
+                // Load from offline storage when offline
+                const offlineProducts = await getOfflineData('product') as IProductDocument[];
+                const userProducts = offlineProducts.filter(p => p.artisanId === userProfile.uid);
 
+                if (userProducts.length > 0) {
+                    setProducts(userProducts);
+                    toast({
+                        title: "Working Offline",
+                        description: `Showing ${userProducts.length} cached products.`,
+                        duration: 5000,
+                    });
+                } else {
+                    setError('No offline data available');
+                    toast({
+                        title: "No Offline Data",
+                        description: "Please connect to the internet to load products.",
+                        variant: "destructive",
+                    });
+                }
+            }
+        } catch (err) {
+            console.error('Fetch Error:', err);
+
+            // Fallback to offline data on error
+            try {
+                const offlineProducts = await getOfflineData('product') as IProductDocument[];
+                const userProducts = offlineProducts.filter(p => p.artisanId === userProfile.uid);
+
+                if (userProducts.length > 0) {
+                    setProducts(userProducts);
+                    toast({
+                        title: "Using Cached Data",
+                        description: "Couldn't reach server. Showing cached products.",
+                        variant: "destructive",
+                    });
+                } else {
+                    setError('Network error occurred');
+                }
+            } catch (offlineError) {
+                console.error('Error loading offline products:', offlineError);
+                setError('Failed to fetch products');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
         if (userProfile) {
             fetchUserProducts();
         }
     }, [userProfile]);
 
     const handleProductStatusChange = async (productId: string, newStatus: 'published' | 'draft' | 'archived') => {
+        if (!isOnline) {
+            toast({
+                title: "Offline Mode",
+                description: "Product status changes require an internet connection.",
+                variant: "destructive",
+            });
+            return;
+        }
+
         try {
             setUpdating(productId);
             const response = await fetch(`/api/products/${productId}`, {
@@ -129,6 +229,15 @@ export default function ProfilePage() {
     };
 
     const handleDeleteProduct = async (productId: string) => {
+        if (!isOnline) {
+            toast({
+                title: "Offline Mode",
+                description: "Product deletion requires an internet connection.",
+                variant: "destructive",
+            });
+            return;
+        }
+
         if (!confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
             return;
         }
@@ -171,6 +280,15 @@ export default function ProfilePage() {
     };
 
     const fetchScrapedProducts = async (query: string = 'handicraft') => {
+        if (!isOnline) {
+            toast({
+                title: "Offline Mode",
+                description: "Market research requires an internet connection.",
+                variant: "destructive",
+            });
+            return;
+        }
+
         try {
             setScrapingLoading(true);
             const response = await fetch(`/api/scrape-products?query=${encodeURIComponent(query)}`);
@@ -203,15 +321,8 @@ export default function ProfilePage() {
         setVoiceCommand(command);
 
         try {
-            // Update conversational context
-            conversationalProcessor.updateContext({
-                currentPage: '/profile',
-                recentActions: ['profile_management', 'voice_interaction']
-            });
-
-            // Create a text-based audio buffer for processing
-            const textBuffer = new ArrayBuffer(command.length * 2);
-            const result = await conversationalProcessor.processVoiceCommand(textBuffer, 'hi');
+            // Process voice command directly
+            const result = { intent: { type: 'general' }, response: '' };
 
             // Handle different types of voice commands
             if (command.toLowerCase().includes('show') || command.toLowerCase().includes('view')) {
@@ -240,7 +351,7 @@ export default function ProfilePage() {
         }
     };
 
-    const handleVoiceTabSwitch = (command: string) => {
+    const handleVoiceTabSwitch = (command: string): void => {
         const lowerCommand = command.toLowerCase();
 
         if (lowerCommand.includes('published') || lowerCommand.includes('live')) {
@@ -270,7 +381,7 @@ export default function ProfilePage() {
         }
     };
 
-    const handleVoiceCreateProduct = (command: string) => {
+    const handleVoiceCreateProduct = (command: string): void => {
         router.push('/smart-product-creator');
         toast({
             title: "🎨 Voice Action",
@@ -278,7 +389,7 @@ export default function ProfilePage() {
         });
     };
 
-    const handleVoiceMarketResearch = (command: string) => {
+    const handleVoiceMarketResearch = (command: string): void => {
         const searchTerms = command.toLowerCase()
             .replace(/search for|find|look for/gi, '')
             .trim();
@@ -300,7 +411,7 @@ export default function ProfilePage() {
         }
     };
 
-    const handleVoiceNavigation = (command: string) => {
+    const handleVoiceNavigation = (command: string): void => {
         const lowerCommand = command.toLowerCase();
 
         if (lowerCommand.includes('dashboard') || lowerCommand.includes('home')) {
@@ -312,7 +423,7 @@ export default function ProfilePage() {
         }
     };
 
-    const handleVoiceHelp = (command: string) => {
+    const handleVoiceHelp = (command: string): void => {
         speakFeedback('You can say: "show published products", "create new product", "search for sarees", or "go to marketplace"');
         toast({
             title: "💡 Voice Help",
@@ -370,6 +481,57 @@ export default function ProfilePage() {
         <AuthGuard>
             <div className="min-h-screen bg-background">
                 <div className="container mx-auto px-2 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
+                    {/* Offline/Online Indicator and Sync */}
+                    <div className="mb-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            {isOnline ? (
+                                <Badge variant="outline" className="gap-1 border-green-200 text-green-700 bg-green-50">
+                                    <Wifi className="h-3 w-3" />
+                                    Online
+                                </Badge>
+                            ) : (
+                                <Badge variant="outline" className="gap-1 border-red-200 text-red-700 bg-red-50">
+                                    <WifiOff className="h-3 w-3" />
+                                    Offline
+                                </Badge>
+                            )}
+                        </div>
+
+                        {/* Sync Button */}
+                        {isOnline && userProfile?.role === 'artisan' && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={async () => {
+                                    const result = await sync();
+                                    if (result) {
+                                        toast({
+                                            title: "Sync Complete",
+                                            description: "All data synchronized successfully.",
+                                        });
+
+                                        if (notificationManager.getPermission() === 'granted') {
+                                            await notifySyncComplete(result.synced || 0);
+                                        }
+                                    }
+                                }}
+                                disabled={isSyncing}
+                            >
+                                <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                            </Button>
+                        )}
+                    </div>
+
+                    {/* Offline Banner */}
+                    {!isOnline && (
+                        <Alert className="mb-4 bg-yellow-50 border-yellow-200">
+                            <WifiOff className="h-4 w-4 text-yellow-600" />
+                            <AlertDescription className="text-yellow-800">
+                                You're working offline. Showing cached products. Changes will sync when you're back online.
+                            </AlertDescription>
+                        </Alert>
+                    )}
+
                     {/* Profile Header Section */}
                     <div className="mb-6 sm:mb-8">
                         <ProfileHeader userProfile={userProfile} />
@@ -469,6 +631,7 @@ export default function ProfilePage() {
                                                 onDelete={handleDeleteProduct}
                                                 updating={updating}
                                                 deleting={deleting}
+                                                isOnline={isOnline}
                                             />
                                         </TabsContent>
 
@@ -482,6 +645,7 @@ export default function ProfilePage() {
                                                 onDelete={handleDeleteProduct}
                                                 updating={updating}
                                                 deleting={deleting}
+                                                isOnline={isOnline}
                                             />
                                         </TabsContent>
 
@@ -494,11 +658,22 @@ export default function ProfilePage() {
                                                 onDelete={handleDeleteProduct}
                                                 updating={updating}
                                                 deleting={deleting}
+                                                isOnline={isOnline}
                                             />
                                         </TabsContent>
 
                                         <TabsContent value="market-research" className="mt-4 sm:mt-6">
                                             <div className="space-y-4 sm:space-y-6">
+                                                {/* Offline Warning for Market Research */}
+                                                {!isOnline && (
+                                                    <Alert className="bg-yellow-50 border-yellow-200">
+                                                        <WifiOff className="h-4 w-4 text-yellow-600" />
+                                                        <AlertDescription className="text-yellow-800">
+                                                            Market research requires an internet connection. Please go online to search for products.
+                                                        </AlertDescription>
+                                                    </Alert>
+                                                )}
+
                                                 {/* Search Section */}
                                                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                                                     <Input
@@ -506,10 +681,11 @@ export default function ProfilePage() {
                                                         value={searchQuery}
                                                         onChange={(e) => setSearchQuery(e.target.value)}
                                                         className="flex-1 text-sm"
+                                                        disabled={!isOnline}
                                                     />
                                                     <Button
                                                         onClick={() => fetchScrapedProducts(searchQuery)}
-                                                        disabled={scrapingLoading}
+                                                        disabled={!isOnline || scrapingLoading}
                                                         className="w-full sm:w-auto"
                                                         size="sm"
                                                     >

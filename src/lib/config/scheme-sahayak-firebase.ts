@@ -1,4 +1,4 @@
-/**
+      /**
  * Firebase configuration and Firestore setup for AI-Powered Scheme Sahayak v2.0
  * Defines collections, indexes, and database structure
  */
@@ -507,3 +507,5 @@ export const schemeSahayakBatchOps = {
     }));
   }
 } as const;
+
+export { db };

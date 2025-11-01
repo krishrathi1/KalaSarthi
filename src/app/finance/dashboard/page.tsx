@@ -1,14 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ProductPerformance, ForecastChart, RealtimeDashboard } from '@/components/finance';
 import { useAuth } from '@/context/auth-context';
+import { useOffline } from '@/hooks/use-offline';
+import { notificationManager, notifySyncComplete } from '@/lib/notifications';
+import { useToast } from '@/hooks/use-toast';
 import {
   TrendingUp,
   Package,
@@ -21,7 +25,9 @@ import {
   Download,
   Wifi,
   Zap,
-  FileText
+  FileText,
+  WifiOff,
+  RefreshCw
 } from 'lucide-react';
 
 interface SalesData {
@@ -75,6 +81,43 @@ export default function FinanceDashboard() {
   // Get artisan ID (use Dev Bulchandani as default for demo)
   const artisanId = 'dev_bulchandani_001'; // Fixed artisan ID for sample data
 
+  // Offline support
+  const {
+    isOnline,
+    isSyncing,
+    storeOffline,
+    getOfflineData,
+    sync,
+  } = useOffline();
+
+  // Track previous online state
+  const previousOnlineState = useRef(isOnline);
+  const { toast } = useToast();
+
+  // Request notification permission on mount
+  useEffect(() => {
+    if (notificationManager.isSupported() && notificationManager.getPermission() === 'default') {
+      setTimeout(() => {
+        notificationManager.requestPermission();
+      }, 3000);
+    }
+  }, []);
+
+  // Detect connection restoration
+  useEffect(() => {
+    if (!previousOnlineState.current && isOnline) {
+      if (notificationManager.getPermission() === 'granted') {
+        notificationManager.notifyConnectionRestored();
+      }
+      toast({
+        title: "Connection Restored",
+        description: "You're back online! Refreshing financial data...",
+      });
+      fetchDashboardData();
+    }
+    previousOnlineState.current = isOnline;
+  }, [isOnline]);
+
   useEffect(() => {
     fetchDashboardData();
   }, [timeRange, resolution]);
@@ -84,46 +127,128 @@ export default function FinanceDashboard() {
       setLoading(true);
       setError(null);
 
-      // Fetch sales data
-      const salesResponse = await fetch(
-        `/api/finance/sales?range=${timeRange}&resolution=${resolution}`
-      );
-      const salesResult = await salesResponse.json();
+      if (isOnline) {
+        // Fetch from API when online
+        // Fetch sales data
+        const salesResponse = await fetch(
+          `/api/finance/sales?range=${timeRange}&resolution=${resolution}`
+        );
+        const salesResult = await salesResponse.json();
 
-      if (salesResult.success) {
-        setSalesData(salesResult.data);
-        setSummary({
-          totalRevenue: salesResult.summary.totalRevenue,
-          totalUnits: salesResult.summary.totalUnits,
-          totalOrders: salesResult.summary.totalOrders,
-          averageOrderValue: salesResult.summary.averageOrderValue,
-          growthRate: salesResult.summary.growthRate,
-        });
+        if (salesResult.success) {
+          setSalesData(salesResult.data);
+          setSummary({
+            totalRevenue: salesResult.summary.totalRevenue,
+            totalUnits: salesResult.summary.totalUnits,
+            totalOrders: salesResult.summary.totalOrders,
+            averageOrderValue: salesResult.summary.averageOrderValue,
+            growthRate: salesResult.summary.growthRate,
+          });
+
+          // Cache data for offline use
+          await storeOffline('product', { salesData: salesResult.data, summary: salesResult.summary }, 'finance-sales', true);
+        } else if (salesResult.offline) {
+          // Handle offline response from API
+          throw new Error('Service requires internet connection');
+        }
+
+        // Fetch top products
+        const topProductsResponse = await fetch(
+          `/api/finance/products/performance?range=${timeRange}&sort=best&limit=5`
+        );
+        const topProductsResult = await topProductsResponse.json();
+
+        if (topProductsResult.success) {
+          setTopProducts(topProductsResult.data);
+          await storeOffline('product', topProductsResult.data, 'finance-top-products', true);
+        }
+
+        // Fetch worst products
+        const worstProductsResponse = await fetch(
+          `/api/finance/products/performance?range=${timeRange}&sort=worst&limit=5`
+        );
+        const worstProductsResult = await worstProductsResponse.json();
+
+        if (worstProductsResult.success) {
+          setWorstProducts(worstProductsResult.data);
+          await storeOffline('product', worstProductsResult.data, 'finance-worst-products', true);
+        }
+      } else {
+        // Load from offline storage when offline
+        const offlineData = await getOfflineData('product') as any[];
+        const salesCache = offlineData.find((item: any) => item.id === 'finance-sales');
+        const topProductsCache = offlineData.find((item: any) => item.id === 'finance-top-products');
+        const worstProductsCache = offlineData.find((item: any) => item.id === 'finance-worst-products');
+
+        if (salesCache) {
+          setSalesData(salesCache.salesData || []);
+          setSummary(salesCache.summary || {
+            totalRevenue: 0,
+            totalUnits: 0,
+            totalOrders: 0,
+            averageOrderValue: 0,
+          });
+        }
+
+        if (topProductsCache) {
+          setTopProducts(topProductsCache || []);
+        }
+
+        if (worstProductsCache) {
+          setWorstProducts(worstProductsCache || []);
+        }
+
+        if (salesCache || topProductsCache || worstProductsCache) {
+          toast({
+            title: "Working Offline",
+            description: "Showing cached financial data.",
+            duration: 5000,
+          });
+        } else {
+          setError('No offline data available');
+          toast({
+            title: "No Offline Data",
+            description: "Please connect to the internet to load financial data.",
+            variant: "destructive",
+          });
+        }
       }
 
-      // Fetch top products
-      const topProductsResponse = await fetch(
-        `/api/finance/products/performance?range=${timeRange}&sort=best&limit=5`
-      );
-      const topProductsResult = await topProductsResponse.json();
-
-      if (topProductsResult.success) {
-        setTopProducts(topProductsResult.data);
-      }
-
-      // Fetch worst products
-      const worstProductsResponse = await fetch(
-        `/api/finance/products/performance?range=${timeRange}&sort=worst&limit=5`
-      );
-      const worstProductsResult = await worstProductsResponse.json();
-
-      if (worstProductsResult.success) {
-        setWorstProducts(worstProductsResult.data);
-      }
-
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching dashboard data:', err);
-      setError('Failed to load dashboard data');
+
+      // Fallback to offline data on error
+      try {
+        const offlineData = await getOfflineData('product') as any[];
+        const salesCache = offlineData.find((item: any) => item.id === 'finance-sales');
+        const topProductsCache = offlineData.find((item: any) => item.id === 'finance-top-products');
+        const worstProductsCache = offlineData.find((item: any) => item.id === 'finance-worst-products');
+
+        if (salesCache || topProductsCache || worstProductsCache) {
+          if (salesCache) {
+            setSalesData(salesCache.salesData || []);
+            setSummary(salesCache.summary || {
+              totalRevenue: 0,
+              totalUnits: 0,
+              totalOrders: 0,
+              averageOrderValue: 0,
+            });
+          }
+          if (topProductsCache) setTopProducts(topProductsCache || []);
+          if (worstProductsCache) setWorstProducts(worstProductsCache || []);
+
+          toast({
+            title: "Using Cached Data",
+            description: "Couldn't reach server. Showing cached financial data.",
+            variant: "destructive",
+          });
+        } else {
+          setError('Failed to load dashboard data. Redis connection unavailable.');
+        }
+      } catch (offlineError) {
+        console.error('Error loading offline data:', offlineError);
+        setError('Failed to load dashboard data');
+      }
     } finally {
       setLoading(false);
     }
@@ -324,6 +449,67 @@ export default function FinanceDashboard() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
+      {/* Offline/Online Indicator and Sync */}
+      <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-3">
+          {isOnline ? (
+            <Badge variant="outline" className="gap-1 border-green-200 text-green-700 bg-green-50">
+              <Wifi className="h-3 w-3" />
+              Online
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="gap-1 border-red-200 text-red-700 bg-red-50">
+              <WifiOff className="h-3 w-3" />
+              Offline
+            </Badge>
+          )}
+        </div>
+
+        {/* Sync Button */}
+        {isOnline && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={async () => {
+              const result = await sync();
+              if (result) {
+                toast({
+                  title: "Sync Complete",
+                  description: "All data synchronized successfully.",
+                });
+
+                if (notificationManager.getPermission() === 'granted') {
+                  await notifySyncComplete(result.synced || 0);
+                }
+              }
+            }}
+            disabled={isSyncing}
+          >
+            <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+          </Button>
+        )}
+      </div>
+
+      {/* Offline Banner */}
+      {!isOnline && (
+        <Alert className="mb-4 bg-yellow-50 border-yellow-200">
+          <WifiOff className="h-4 w-4 text-yellow-600" />
+          <AlertDescription className="text-yellow-800">
+            You're working offline. Showing cached financial data. Real-time features require an internet connection.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Redis Connection Error Banner */}
+      {error && error.includes('Redis') && (
+        <Alert className="mb-4 bg-blue-50 border-blue-200">
+          <AlertCircle className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-800">
+            Real-time analytics unavailable (Redis not connected). Showing cached data. This is normal for local development.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -336,7 +522,16 @@ export default function FinanceDashboard() {
           <Button
             variant="outline"
             size="sm"
+            disabled={!isOnline}
             onClick={async () => {
+              if (!isOnline) {
+                toast({
+                  title: "Offline Mode",
+                  description: "Generating sample data requires an internet connection.",
+                  variant: "destructive",
+                });
+                return;
+              }
               try {
                 const response = await fetch('/api/generate-sample-data', { method: 'POST' });
                 const result = await response.json();
@@ -527,7 +722,7 @@ export default function FinanceDashboard() {
                   <FileText className="h-5 w-5" />
                   Generate Reports
                 </h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <Card className="p-4 hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-3 mb-3">
@@ -539,8 +734,8 @@ export default function FinanceDashboard() {
                         <p className="text-sm text-muted-foreground">Comprehensive sales analysis</p>
                       </div>
                     </div>
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       className="w-full"
                       onClick={() => {
                         const reportData = {
@@ -551,7 +746,7 @@ export default function FinanceDashboard() {
                           topProducts: topProducts.slice(0, 10),
                           generatedAt: new Date().toISOString()
                         };
-                        
+
                         const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
@@ -576,8 +771,8 @@ export default function FinanceDashboard() {
                         <p className="text-sm text-muted-foreground">Product performance analysis</p>
                       </div>
                     </div>
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       className="w-full"
                       onClick={() => {
                         const reportData = {
@@ -588,7 +783,7 @@ export default function FinanceDashboard() {
                           totalProducts: topProducts.length + worstProducts.length,
                           generatedAt: new Date().toISOString()
                         };
-                        
+
                         const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
@@ -613,8 +808,8 @@ export default function FinanceDashboard() {
                         <p className="text-sm text-muted-foreground">Complete business analytics</p>
                       </div>
                     </div>
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       className="w-full"
                       onClick={() => {
                         const reportData = {
@@ -630,7 +825,7 @@ export default function FinanceDashboard() {
                           },
                           generatedAt: new Date().toISOString()
                         };
-                        
+
                         const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
@@ -653,39 +848,42 @@ export default function FinanceDashboard() {
                   <Download className="h-5 w-5" />
                   Quick Export
                 </h3>
-                
+
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <Button
                     variant="outline"
                     onClick={() => exportToFile('csv')}
+                    disabled={!isOnline}
                     className="flex flex-col items-center gap-2 h-auto py-4"
                   >
                     <FileText className="h-6 w-6" />
                     <span className="text-sm">Export CSV</span>
                   </Button>
-                  
+
                   <Button
                     variant="outline"
                     onClick={() => exportToFile('json')}
+                    disabled={!isOnline}
                     className="flex flex-col items-center gap-2 h-auto py-4"
                   >
                     <FileText className="h-6 w-6" />
                     <span className="text-sm">Export JSON</span>
                   </Button>
-                  
+
                   <Button
                     variant="outline"
                     onClick={() => exportToFile('excel')}
+                    disabled={!isOnline}
                     className="flex flex-col items-center gap-2 h-auto py-4"
                   >
                     <FileSpreadsheet className="h-6 w-6" />
                     <span className="text-sm">Excel Format</span>
                   </Button>
-                  
+
                   <Button
                     variant="outline"
                     onClick={exportToGoogleSheets}
-                    disabled={exportingToSheets}
+                    disabled={!isOnline || exportingToSheets}
                     className="flex flex-col items-center gap-2 h-auto py-4"
                   >
                     {exportingToSheets ? (
@@ -704,7 +902,7 @@ export default function FinanceDashboard() {
                   <Activity className="h-5 w-5" />
                   Quick Stats
                 </h3>
-                
+
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center p-4 bg-blue-50 rounded-lg">
                     <div className="text-2xl font-bold text-blue-600">{formatCurrency(summary.totalRevenue)}</div>

@@ -115,14 +115,16 @@ export function StoryRecordingMic({
       try {
         speechServiceRef.current = GeminiSpeechService.getInstance();
 
-        // Use comprehensive audio diagnostics
-        const { diagnoseAudioSupport } = await import('@/lib/utils/audioUtils');
-        const diagnostics = await diagnoseAudioSupport();
+        // Check if audio recording is supported
+        const hasMediaDevices = typeof navigator !== 'undefined' && !!navigator.mediaDevices;
+        const hasGetUserMedia = hasMediaDevices && !!navigator.mediaDevices.getUserMedia;
+        const hasMediaRecorder = typeof MediaRecorder !== 'undefined';
 
-        setIsSupported(diagnostics.isSupported);
+        const audioSupported = hasMediaDevices && hasGetUserMedia && hasMediaRecorder;
+        setIsSupported(audioSupported);
 
-        if (!diagnostics.isSupported) {
-          console.warn('Audio recording not supported:', diagnostics.errors);
+        if (!audioSupported) {
+          console.warn('Audio recording not supported in this browser');
         } else {
           console.log('✅ Audio recording is supported');
         }
@@ -331,9 +333,10 @@ export function StoryRecordingMic({
       console.error('Failed to start voice recording:', error);
       setIsListening(false);
 
-      // Import error handling utility
-      const { getAudioErrorMessage } = await import('@/lib/utils/audioUtils');
-      const errorMessage = getAudioErrorMessage(error);
+      // Get error message
+      const errorMessage = error instanceof Error
+        ? error.message
+        : 'Could not access microphone. Please check permissions.';
 
       toast({
         title: "Recording Failed",

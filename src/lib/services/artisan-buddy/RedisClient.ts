@@ -8,10 +8,9 @@ import { createClient, RedisClientType } from 'redis';
 import {
   SessionData,
   MessageEntry,
-  CacheEntry,
   DEFAULT_SESSION_TTL,
   DEFAULT_CACHE_TTL,
-} from '@/lib/types/artisan-buddy';
+} from '@/lib/types/enhanced-artisan-buddy';
 
 export class RedisClient {
   private static instance: RedisClient;

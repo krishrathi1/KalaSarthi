@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, RefreshCw, Package, ShoppingCart, TrendingUp } from 'lucide-react';
+import { Loader2, RefreshCw, Package, ShoppingCart, TrendingUp, Wifi, WifiOff } from 'lucide-react';
 import { IProductDocument } from '@/lib/models/Product';
 import { useOrders } from '@/hooks/use-orders';
 import ProductTable from './product-table';
@@ -14,6 +15,8 @@ import IntegrationsTab from './integration-tag';
 import ProductGrid from '@/components/profile/ProductGrid';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { useOffline } from '@/hooks/use-offline';
+import { notificationManager, notifySyncComplete } from '@/lib/notifications';
 
 interface InventoryDashboardProps {
     artisanId: string;
@@ -38,6 +41,18 @@ export default function InventoryDashboard({ artisanId }: InventoryDashboardProp
     const { toast } = useToast();
     const router = useRouter();
 
+    // Offline support
+    const {
+        isOnline,
+        isSyncing,
+        storeOffline,
+        getOfflineData,
+        sync,
+    } = useOffline();
+
+    // Track previous online state
+    const previousOnlineState = useRef(isOnline);
+
     const {
         orders,
         loading: ordersLoading,
@@ -45,7 +60,31 @@ export default function InventoryDashboard({ artisanId }: InventoryDashboardProp
         fetchOrders
     } = useOrders(artisanId);
 
-    // Fetch products from API
+    // Request notification permission on mount
+    useEffect(() => {
+        if (notificationManager.isSupported() && notificationManager.getPermission() === 'default') {
+            setTimeout(() => {
+                notificationManager.requestPermission();
+            }, 3000);
+        }
+    }, []);
+
+    // Detect connection restoration
+    useEffect(() => {
+        if (!previousOnlineState.current && isOnline) {
+            if (notificationManager.getPermission() === 'granted') {
+                notificationManager.notifyConnectionRestored();
+            }
+            toast({
+                title: "Connection Restored",
+                description: "You're back online! Refreshing inventory...",
+            });
+            fetchProducts();
+        }
+        previousOnlineState.current = isOnline;
+    }, [isOnline]);
+
+    // Fetch products from API with offline support
     const fetchProducts = useCallback(async () => {
         if (!artisanId) {
             console.log('No artisanId provided');
@@ -56,33 +95,80 @@ export default function InventoryDashboard({ artisanId }: InventoryDashboardProp
         setProductError(null);
 
         try {
-            console.log('Fetching products for artisan:', artisanId);
-            const response = await fetch(`/api/products?artisanId=${artisanId}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
+            if (isOnline) {
+                // Fetch from API when online
+                console.log('Fetching products for artisan:', artisanId);
+                const response = await fetch(`/api/products?artisanId=${artisanId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
 
-            const data = await response.json();
-            console.log('Products API response:', data);
+                const data = await response.json();
+                console.log('Products API response:', data);
 
-            if (response.ok && data.success) {
-                setProducts(data.data || []);
-                setLastUpdated(new Date());
-                console.log('Products loaded successfully:', data.data?.length || 0);
+                if (response.ok && data.success) {
+                    setProducts(data.data || []);
+                    setLastUpdated(new Date());
+                    console.log('Products loaded successfully:', data.data?.length || 0);
+
+                    // Cache products for offline use
+                    for (const product of data.data || []) {
+                        await storeOffline('product', product, product.productId, true);
+                    }
+                } else {
+                    const errorMessage = data.error || `Failed to fetch products: ${response.statusText}`;
+                    setProductError(errorMessage);
+                    console.error('Products API error:', errorMessage);
+                }
             } else {
-                const errorMessage = data.error || `Failed to fetch products: ${response.statusText}`;
-                setProductError(errorMessage);
-                console.error('Products API error:', errorMessage);
+                // Load from offline storage when offline
+                const offlineProducts = await getOfflineData('product') as IProductDocument[];
+                const artisanProducts = offlineProducts.filter(p => p.artisanId === artisanId);
+
+                if (artisanProducts.length > 0) {
+                    setProducts(artisanProducts);
+                    toast({
+                        title: "Working Offline",
+                        description: `Showing ${artisanProducts.length} cached products.`,
+                        duration: 5000,
+                    });
+                } else {
+                    setProductError('No offline data available');
+                    toast({
+                        title: "No Offline Data",
+                        description: "Please connect to the internet to load products.",
+                        variant: "destructive",
+                    });
+                }
             }
         } catch (error) {
-            console.error('Network error fetching products:', error);
-            setProductError('Network error occurred while fetching products');
+            console.error('Error fetching products:', error);
+
+            // Fallback to offline data on error
+            try {
+                const offlineProducts = await getOfflineData('product') as IProductDocument[];
+                const artisanProducts = offlineProducts.filter(p => p.artisanId === artisanId);
+
+                if (artisanProducts.length > 0) {
+                    setProducts(artisanProducts);
+                    toast({
+                        title: "Using Cached Data",
+                        description: "Couldn't reach server. Showing cached products.",
+                        variant: "destructive",
+                    });
+                } else {
+                    setProductError('Network error occurred');
+                }
+            } catch (offlineError) {
+                console.error('Error loading offline products:', offlineError);
+                setProductError('Network error occurred while fetching products');
+            }
         } finally {
             setIsLoadingProducts(false);
         }
-    }, [artisanId]);
+    }, [artisanId, isOnline, storeOffline, getOfflineData, toast]);
 
     // Calculate dashboard statistics
     const calculateStats = useCallback((products: IProductDocument[]): DashboardStats => {
@@ -278,23 +364,75 @@ export default function InventoryDashboard({ artisanId }: InventoryDashboardProp
 
     return (
         <div className="space-y-6">
-            {/* Header with refresh button */}
+            {/* Header with refresh button and offline indicator */}
             <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold">Inventory Management</h1>
-                    <p className="text-muted-foreground">
-                        Last updated: {lastUpdated.toLocaleString()}
-                    </p>
+                <div className="flex items-center gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold">Inventory Management</h1>
+                        <p className="text-muted-foreground">
+                            Last updated: {lastUpdated.toLocaleString()}
+                        </p>
+                    </div>
+
+                    {/* Offline/Online Indicator */}
+                    {isOnline ? (
+                        <Badge variant="outline" className="gap-1 border-green-200 text-green-700 bg-green-50">
+                            <Wifi className="h-3 w-3" />
+                            Online
+                        </Badge>
+                    ) : (
+                        <Badge variant="outline" className="gap-1 border-red-200 text-red-700 bg-red-50">
+                            <WifiOff className="h-3 w-3" />
+                            Offline
+                        </Badge>
+                    )}
                 </div>
-                <Button
-                    onClick={refreshData}
-                    variant="outline"
-                    disabled={isLoadingProducts || ordersLoading}
-                >
-                    <RefreshCw className={`h-4 w-4 mr-2 ${(isLoadingProducts || ordersLoading) ? 'animate-spin' : ''}`} />
-                    Refresh
-                </Button>
+
+                <div className="flex items-center gap-2">
+                    {/* Sync Button */}
+                    {isOnline && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={async () => {
+                                const result = await sync();
+                                if (result) {
+                                    toast({
+                                        title: "Sync Complete",
+                                        description: "All data synchronized successfully.",
+                                    });
+
+                                    if (notificationManager.getPermission() === 'granted') {
+                                        await notifySyncComplete(result.synced || 0);
+                                    }
+                                }
+                            }}
+                            disabled={isSyncing}
+                        >
+                            <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                        </Button>
+                    )}
+
+                    <Button
+                        onClick={refreshData}
+                        variant="outline"
+                        disabled={isLoadingProducts || ordersLoading}
+                    >
+                        <RefreshCw className={`h-4 w-4 mr-2 ${(isLoadingProducts || ordersLoading) ? 'animate-spin' : ''}`} />
+                        Refresh
+                    </Button>
+                </div>
             </div>
+
+            {/* Offline Banner */}
+            {!isOnline && (
+                <Alert className="bg-yellow-50 border-yellow-200">
+                    <WifiOff className="h-4 w-4 text-yellow-600" />
+                    <AlertDescription className="text-yellow-800">
+                        You're working offline. Showing cached inventory data. Changes will sync when you're back online.
+                    </AlertDescription>
+                </Alert>
+            )}
 
             {/* Dashboard Stats Cards */}
             {stats && (
@@ -420,6 +558,7 @@ export default function InventoryDashboard({ artisanId }: InventoryDashboardProp
                                     onUpdateAmazonListing={updateAmazonListing}
                                     onStatusChange={handleProductStatusChange}
                                     isLoading={isLoadingProducts}
+                                    isOnline={isOnline}
                                 />
                             )}
                         </CardContent>
@@ -448,6 +587,7 @@ export default function InventoryDashboard({ artisanId }: InventoryDashboardProp
                                     onDelete={handleDeleteProduct}
                                     updating={updating}
                                     deleting={deleting}
+                                    isOnline={isOnline}
                                 />
                             )}
                         </CardContent>
@@ -474,6 +614,7 @@ export default function InventoryDashboard({ artisanId }: InventoryDashboardProp
                                     onEdit={handleEditProduct}
                                     onDelete={handleDeleteProduct}
                                     updating={updating}
+                                    isOnline={isOnline}
                                     deleting={deleting}
                                 />
                             )}
@@ -496,14 +637,14 @@ export default function InventoryDashboard({ artisanId }: InventoryDashboardProp
                                     Loading orders...
                                 </div>
                             ) : (
-                                <OrderTable orders={orders || []} />
+                                <OrderTable orders={orders || []} isOnline={isOnline} />
                             )}
                         </CardContent>
                     </Card>
                 </TabsContent>
 
                 <TabsContent value="integrations">
-                    <IntegrationsTab />
+                    <IntegrationsTab isOnline={isOnline} />
                 </TabsContent>
             </Tabs>
         </div>

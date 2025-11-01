@@ -33,6 +33,7 @@ interface ProductTableProps {
     onUpdateAmazonListing?: (productId: string, listingData: any) => Promise<{ success: boolean; error?: string }>;
     onStatusChange?: (productId: string, newStatus: 'published' | 'draft' | 'archived') => void;
     isLoading?: boolean;
+    isOnline?: boolean;
 }
 
 interface AmazonListingStatus {
@@ -52,7 +53,8 @@ export default function ProductTable({
     onUpdateStock,
     onUpdateAmazonListing,
     onStatusChange,
-    isLoading = false
+    isLoading = false,
+    isOnline = true
 }: ProductTableProps) {
     const mounted = useMounted();
     const [stock, setStock] = useState<Record<string, number>>({});
@@ -120,6 +122,15 @@ export default function ProductTable({
     const handleUpdateStock = async (product: IProductDocument) => {
         if (!onUpdateStock) return;
 
+        if (!isOnline) {
+            toast({
+                title: "Offline Mode",
+                description: "Stock updates require an internet connection.",
+                variant: "destructive",
+            });
+            return;
+        }
+
         const newQuantity = stock[product.productId] ?? product.inventory.quantity;
 
         if (newQuantity === product.inventory.quantity) {
@@ -166,6 +177,15 @@ export default function ProductTable({
 
     // Handle Amazon listing publication
     const handlePublishOnAmazon = async (product: IProductDocument) => {
+        if (!isOnline) {
+            toast({
+                title: 'Offline Mode',
+                description: 'Amazon listing requires an internet connection.',
+                variant: "destructive",
+            });
+            return;
+        }
+
         if (!isAmazonConnected) {
             toast({
                 title: 'Amazon SP-API not connected',
@@ -487,13 +507,14 @@ export default function ProductTable({
                                                 value={stock[product.productId] ?? product.inventory.quantity}
                                                 onChange={(e) => handleStockChange(product.productId, parseInt(e.target.value) || 0)}
                                                 className="w-12 h-6 text-xs p-1"
-                                                disabled={updatingStock[product.productId]}
+                                                disabled={!isOnline || updatingStock[product.productId]}
+                                                placeholder={!isOnline ? "Offline" : ""}
                                             />
                                             <Button
                                                 size="sm"
                                                 className="h-6 w-6 p-0"
                                                 onClick={() => handleUpdateStock(product)}
-                                                disabled={updatingStock[product.productId] ||
+                                                disabled={!isOnline || updatingStock[product.productId] ||
                                                     (stock[product.productId] ?? product.inventory.quantity) === product.inventory.quantity}
                                             >
                                                 {updatingStock[product.productId] ? (
@@ -528,7 +549,7 @@ export default function ProductTable({
                                                 size="sm"
                                                 variant={isListedOnAmazon(product.productId) ? "outline" : "default"}
                                                 onClick={() => handleToggleAmazonListing(product)}
-                                                disabled={product.status !== 'published' || isPublishingToAmazon(product.productId) || !isAmazonConnected || isAmazonLoading}
+                                                disabled={!isOnline || product.status !== 'published' || isPublishingToAmazon(product.productId) || !isAmazonConnected || isAmazonLoading}
                                                 className={`h-6 px-1 text-xs ${!isListedOnAmazon(product.productId) ? "bg-orange-500 hover:bg-orange-600" : ""}`}
                                             >
                                                 {isPublishingToAmazon(product.productId) ? (
@@ -612,13 +633,14 @@ export default function ProductTable({
                                         value={stock[product.productId] ?? product.inventory.quantity}
                                         onChange={(e) => handleStockChange(product.productId, parseInt(e.target.value) || 0)}
                                         className="w-16 h-7 text-xs p-1"
-                                        disabled={updatingStock[product.productId]}
+                                        disabled={!isOnline || updatingStock[product.productId]}
+                                        placeholder={!isOnline ? "Offline" : ""}
                                     />
                                     <Button
                                         size="sm"
                                         className="h-7 px-2 text-xs"
                                         onClick={() => handleUpdateStock(product)}
-                                        disabled={updatingStock[product.productId] ||
+                                        disabled={!isOnline || updatingStock[product.productId] ||
                                             (stock[product.productId] ?? product.inventory.quantity) === product.inventory.quantity}
                                     >
                                         {updatingStock[product.productId] ? (
@@ -654,7 +676,7 @@ export default function ProductTable({
                                         size="sm"
                                         variant={isListedOnAmazon(product.productId) ? "outline" : "default"}
                                         onClick={() => handleToggleAmazonListing(product)}
-                                        disabled={product.status !== 'published' || isPublishingToAmazon(product.productId) || !isAmazonConnected || isAmazonLoading}
+                                        disabled={!isOnline || product.status !== 'published' || isPublishingToAmazon(product.productId) || !isAmazonConnected || isAmazonLoading}
                                         className={`h-7 px-2 text-xs ${!isListedOnAmazon(product.productId) ? "bg-orange-500 hover:bg-orange-600" : ""}`}
                                     >
                                         {isPublishingToAmazon(product.productId) ? (

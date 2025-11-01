@@ -630,9 +630,3 @@ export class SchemeIndexer {
     };
   }
 }
-
-// Export all components
-export {
-  SchemeCategorizer,
-  SchemeIndexer
-};

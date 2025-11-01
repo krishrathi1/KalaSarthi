@@ -8,11 +8,8 @@
 import { redisClient } from './RedisClient';
 import {
   Message,
-  ConversationContext,
-  Action,
-  UserPreferences,
   MAX_CONVERSATION_HISTORY,
-} from '@/lib/types/artisan-buddy';
+} from '@/lib/types/enhanced-artisan-buddy';
 
 export interface ConversationState {
   sessionId: string;

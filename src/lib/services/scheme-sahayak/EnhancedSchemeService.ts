@@ -762,4 +762,3 @@ export class EnhancedSchemeService extends BaseService implements ISchemeService
 }
 
 // Export the enhanced service
-export { EnhancedSchemeService };

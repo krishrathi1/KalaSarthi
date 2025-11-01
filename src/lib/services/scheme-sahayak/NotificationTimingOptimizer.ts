@@ -7,7 +7,6 @@
 
 import { 
   SmartNotification,
-  NotificationAnalytics,
   SCHEME_SAHAYAK_COLLECTIONS 
 } from '../../types/scheme-sahayak';
 import { db } from '../../config/scheme-sahayak-firebase';

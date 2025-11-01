@@ -209,27 +209,23 @@ RESPONSE FORMAT (JSON):
 Find at least 8-12 current schemes. Be accurate and factual.`;
   }
 
-  /**
-   * Build AI prompt for eligibility calculation
-   */
-  private buildEligibilityPrompt(scheme: GovernmentScheme, profile: ArtisanProfile): string {
-    return `You are an expert eligibility assessor for government schemes.
+/**
+ * Build AI prompt for eligibility calculation
+ */
+private buildEligibilityPrompt(scheme: GovernmentScheme, profile: ArtisanProfile): string {
+  const age = this.calculateAge(profile.personalInfo.dateOfBirth);
+  return `You are an expert eligibility assessor for government schemes.
 
 SCHEME: ${scheme.title}
 SCHEME REQUIREMENTS: ${JSON.stringify(scheme.eligibility, null, 2)}
 
 ARTISAN PROFILE:
-- Age: ${profile.age}
+- Age: ${age}
 - Business: ${profile.business.type} (${profile.business.category})
-- Experience: ${profile.business.experience} years
+- Experience: ${profile.business.experienceYears} years
 - Monthly Income: ₹${profile.business.monthlyIncome}
 - Location: ${profile.location.district}, ${profile.location.state}
-- Education: ${profile.personal.education}
-- Caste: ${profile.personal.caste}
-- Gender: ${profile.gender}
-- Documents: ${Object.entries(profile.documents).filter(([_, doc]) => doc.verified).map(([type]) => type).join(', ')}
-
-TASK: Calculate precise eligibility scores based on actual criteria matching:
+- Documents: ${Object.entries(profile.documents).filter(([_, doc]) => doc.status === 'verified').map(([type]) => type).join(', ')}TASK: Calculate precise eligibility scores based on actual criteria matching:
 
 1. ELIGIBILITY MATCH (0-100): How well does the profile match scheme requirements?
 2. BENEFIT POTENTIAL (0-100): How much benefit can this artisan get from this scheme?
@@ -390,7 +386,8 @@ Be precise and factual in your assessment.`;
     if (scheme.eligibility.age) {
       const ageMin = scheme.eligibility.age.min || 0;
       const ageMax = scheme.eligibility.age.max || 100;
-      if (profile.age >= ageMin && profile.age <= ageMax) {
+      const currentAge = this.calculateAge(profile.personalInfo.dateOfBirth);
+      if (currentAge >= ageMin && currentAge <= ageMax) {
         eligibilityMatch += 20;
         reasoning.push(`Age criteria met (${ageMin}-${ageMax})`);
       } else {
@@ -430,7 +427,7 @@ Be precise and factual in your assessment.`;
     benefitPotential = Math.min(100, (maxBenefit / annualIncome) * 20);
 
     // Calculate success probability based on eligibility and profile completeness
-    const documentsVerified = Object.values(profile.documents).filter(doc => doc.verified).length;
+    const documentsVerified = Object.values(profile.documents).filter(doc => doc.status === 'verified').length;
     const totalDocuments = Object.keys(profile.documents).length;
     const documentScore = (documentsVerified / totalDocuments) * 100;
     
@@ -465,6 +462,22 @@ Be precise in eligibility assessments and benefit calculations.`;
   }
 
   /**
+   * Calculate age from date of birth
+   */
+  private calculateAge(dateOfBirth: Date): number {
+    const today = new Date();
+    const birthDate = new Date(dateOfBirth);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    return age;
+  }
+
+  /**
    * Clear cache (useful for testing or forced refresh)
    */
   clearCache(): void {
@@ -493,4 +506,3 @@ Be precise in eligibility assessments and benefit calculations.`;
   }
 }
 
-export { DynamicSchemeService };

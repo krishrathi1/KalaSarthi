@@ -1,11 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useOffline } from '@/hooks/use-offline';
+import { notificationManager, notifySyncComplete } from '@/lib/notifications';
+import { useToast } from '@/hooks/use-toast';
 import {
   Brain,
   FileCheck,
@@ -20,7 +23,9 @@ import {
   Download,
   Eye,
   WifiOff,
-  TrendingUp
+  TrendingUp,
+  Wifi,
+  RefreshCw
 } from 'lucide-react';
 
 interface EnhancedSchemeSahayakV2Props {
@@ -28,14 +33,14 @@ interface EnhancedSchemeSahayakV2Props {
   className?: string;
 }
 
-export function EnhancedSchemeSahayakV2({ 
-  artisanId = 'demo_artisan_v2', 
-  className = '' 
+export function EnhancedSchemeSahayakV2({
+  artisanId = 'demo_artisan_v2',
+  className = ''
 }: EnhancedSchemeSahayakV2Props) {
   const [activeTab, setActiveTab] = useState('ai-recommendations');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // State for different features
   const [aiRecommendations, setAiRecommendations] = useState<any[]>([]);
   const [documentStatus, setDocumentStatus] = useState<any>(null);
@@ -43,28 +48,114 @@ export function EnhancedSchemeSahayakV2({
   const [uploadingDocument, setUploadingDocument] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
+  // Offline support
+  const {
+    isOnline,
+    isSyncing,
+    storeOffline,
+    getOfflineData,
+    sync,
+  } = useOffline();
+
+  // Track previous online state
+  const previousOnlineState = useRef(isOnline);
+  const { toast } = useToast();
+
+  // Request notification permission on mount
+  useEffect(() => {
+    if (notificationManager.isSupported() && notificationManager.getPermission() === 'default') {
+      setTimeout(() => {
+        notificationManager.requestPermission();
+      }, 3000);
+    }
+  }, []);
+
+  // Detect connection restoration
+  useEffect(() => {
+    if (!previousOnlineState.current && isOnline) {
+      if (notificationManager.getPermission() === 'granted') {
+        notificationManager.notifyConnectionRestored();
+      }
+      toast({
+        title: "Connection Restored",
+        description: "You're back online! Refreshing scheme data...",
+      });
+      loadAIRecommendations();
+      loadDocumentStatus();
+      loadNotifications();
+    }
+    previousOnlineState.current = isOnline;
+  }, [isOnline]);
+
   // Load AI recommendations
   const loadAIRecommendations = async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `/api/enhanced-schemes-v2?action=ai_recommendations&artisanId=${artisanId}&riskTolerance=medium&timeHorizon=short_term&maxApplications=5`
-      );
-      const result = await response.json();
+      setError(null);
 
-      if (result.success) {
-        setAiRecommendations(result.data.recommendations);
-        
-        // Automatically send WhatsApp notification for top 3 schemes
-        if (result.data.recommendations.length > 0) {
-          const topSchemes = result.data.recommendations.slice(0, 3);
-          topSchemes.forEach((scheme, index) => {
-            setTimeout(() => sendSchemeNotification(scheme), index * 2000); // Stagger by 2 seconds
+      if (isOnline) {
+        // Fetch from API when online
+        const response = await fetch(
+          `/api/enhanced-schemes-v2?action=ai_recommendations&artisanId=${artisanId}&riskTolerance=medium&timeHorizon=short_term&maxApplications=5`
+        );
+        const result = await response.json();
+
+        if (result.success) {
+          setAiRecommendations(result.data.recommendations);
+
+          // Cache recommendations for offline use
+          for (const rec of result.data.recommendations) {
+            await storeOffline('product', rec, rec.scheme.id, true);
+          }
+
+          // Automatically send WhatsApp notification for top 3 schemes
+          if (result.data.recommendations.length > 0) {
+            const topSchemes = result.data.recommendations.slice(0, 3);
+            topSchemes.forEach((scheme: any, index: number) => {
+              setTimeout(() => sendSchemeNotification(scheme), index * 2000);
+            });
+          }
+        }
+      } else {
+        // Load from offline storage when offline
+        const offlineSchemes = await getOfflineData('product') as any[];
+
+        if (offlineSchemes.length > 0) {
+          setAiRecommendations(offlineSchemes);
+          toast({
+            title: "Working Offline",
+            description: `Showing ${offlineSchemes.length} cached scheme recommendations.`,
+            duration: 5000,
+          });
+        } else {
+          setError('No offline data available');
+          toast({
+            title: "No Offline Data",
+            description: "Please connect to the internet to load schemes.",
+            variant: "destructive",
           });
         }
       }
     } catch (err) {
       console.error('Error loading AI recommendations:', err);
+
+      // Fallback to offline data on error
+      try {
+        const offlineSchemes = await getOfflineData('product') as any[];
+        if (offlineSchemes.length > 0) {
+          setAiRecommendations(offlineSchemes);
+          toast({
+            title: "Using Cached Data",
+            description: "Couldn't reach server. Showing cached schemes.",
+            variant: "destructive",
+          });
+        } else {
+          setError('Network error occurred');
+        }
+      } catch (offlineError) {
+        console.error('Error loading offline schemes:', offlineError);
+        setError('Failed to load schemes');
+      }
     } finally {
       setLoading(false);
     }
@@ -72,10 +163,15 @@ export function EnhancedSchemeSahayakV2({
 
   // Send WhatsApp notification for a scheme
   const sendSchemeNotification = async (recommendation: any) => {
+    if (!isOnline) {
+      console.log('Offline: Skipping WhatsApp notification');
+      return;
+    }
+
     try {
       const urgencyEmoji = recommendation.aiScore >= 90 ? '🔥' : recommendation.aiScore >= 85 ? '⚡' : '💡';
-      const urgencyText = recommendation.aiScore >= 90 
-        ? '\n\n⏰ *Limited time opportunity!* Apply soon for best results.' 
+      const urgencyText = recommendation.aiScore >= 90
+        ? '\n\n⏰ *Limited time opportunity!* Apply soon for best results.'
         : '\n\nYour profile matches perfectly with this scheme.';
 
       const message = `${urgencyEmoji} *New Scheme Alert!*
@@ -108,6 +204,11 @@ export function EnhancedSchemeSahayakV2({
 
   // Send WhatsApp notification for document upload
   const sendDocumentUploadNotification = async (fileName: string, documentType: string) => {
+    if (!isOnline) {
+      console.log('Offline: Skipping WhatsApp notification');
+      return;
+    }
+
     try {
       const message = `📄 *Document Uploaded Successfully!*
 
@@ -184,6 +285,15 @@ Next Steps:
     const file = event.target.files?.[0];
     if (!file) return;
 
+    if (!isOnline) {
+      toast({
+        title: "Offline Mode",
+        description: "Document upload requires an internet connection.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setUploadingDocument(true);
       setUploadProgress(0);
@@ -219,7 +329,7 @@ Next Steps:
         // Reload document status to show the new document
         await loadDocumentStatus();
         setError(null);
-        
+
         // Show detailed success message with next steps
         const ocrData = result.data.ocrData;
         const nextSteps = [
@@ -227,13 +337,13 @@ Next Steps:
           '✓ AI will now use this for better scheme matching',
           '→ Next: Upload remaining documents for higher approval rates'
         ].join('\n');
-        
+
         alert(`✅ Document Uploaded Successfully!\n\n` +
-              `📄 File: ${file.name}\n` +
-              `📋 Type: ${ocrData.documentType}\n` +
-              `🎯 Confidence: ${(ocrData.confidence * 100).toFixed(0)}%\n` +
-              `✓ Status: ${result.data.verificationStatus}\n\n` +
-              `Next Steps:\n${nextSteps}`);
+          `📄 File: ${file.name}\n` +
+          `📋 Type: ${ocrData.documentType}\n` +
+          `🎯 Confidence: ${(ocrData.confidence * 100).toFixed(0)}%\n` +
+          `✓ Status: ${result.data.verificationStatus}\n\n` +
+          `Next Steps:\n${nextSteps}`);
 
         // Send WhatsApp notification about document upload
         sendDocumentUploadNotification(file.name, ocrData.documentType);
@@ -261,6 +371,57 @@ Next Steps:
 
   return (
     <div className={`space-y-4 md:space-y-6 ${className}`}>
+      {/* Offline/Online Indicator and Sync */}
+      <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-3">
+          {isOnline ? (
+            <Badge variant="outline" className="gap-1 border-green-200 text-green-700 bg-green-50">
+              <Wifi className="h-3 w-3" />
+              Online
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="gap-1 border-red-200 text-red-700 bg-red-50">
+              <WifiOff className="h-3 w-3" />
+              Offline
+            </Badge>
+          )}
+        </div>
+
+        {/* Sync Button */}
+        {isOnline && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={async () => {
+              const result = await sync();
+              if (result) {
+                toast({
+                  title: "Sync Complete",
+                  description: "All data synchronized successfully.",
+                });
+
+                if (notificationManager.getPermission() === 'granted') {
+                  await notifySyncComplete(result.synced || 0);
+                }
+              }
+            }}
+            disabled={isSyncing}
+          >
+            <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+          </Button>
+        )}
+      </div>
+
+      {/* Offline Banner */}
+      {!isOnline && (
+        <Alert className="mb-4 bg-yellow-50 border-yellow-200">
+          <WifiOff className="h-4 w-4 text-yellow-600" />
+          <AlertDescription className="text-yellow-800">
+            You're working offline. Showing cached scheme data. Some features require an internet connection.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Enhanced Header - Mobile Responsive */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
@@ -277,6 +438,7 @@ Next Steps:
             size="sm"
             variant="outline"
             className="text-xs"
+            disabled={!isOnline}
             onClick={async () => {
               try {
                 const response = await fetch('/api/notifications/whatsapp?phone=+918630365222');
@@ -358,7 +520,7 @@ Next Steps:
                 AI-Powered Personalized Recommendations
               </CardTitle>
               <CardDescription className="text-xs sm:text-sm">
-                Advanced machine learning algorithms analyze your profile and provide 
+                Advanced machine learning algorithms analyze your profile and provide
                 the most suitable scheme recommendations with success probability predictions.
               </CardDescription>
             </CardHeader>
@@ -375,11 +537,16 @@ Next Steps:
                       <CardContent className="pt-6">
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex-1">
-                            <h3 className="font-semibold text-lg flex items-center gap-2">
+                            <h3 className="font-semibold text-lg flex items-center gap-2 flex-wrap">
                               {rec.scheme.title}
                               <Badge className="bg-blue-100 text-blue-800">
                                 AI Score: {rec.aiScore}%
                               </Badge>
+                              {!isOnline && (
+                                <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                                  Cached
+                                </Badge>
+                              )}
                             </h3>
                             <p className="text-sm text-muted-foreground mt-1">
                               {rec.scheme.description}
@@ -441,9 +608,9 @@ Next Steps:
                         {rec.scheme.applicationUrl && (
                           <div className="mt-3 p-2 bg-blue-50 rounded text-xs">
                             <span className="font-medium text-blue-800">🔗 Portal: </span>
-                            <a 
-                              href={rec.scheme.applicationUrl} 
-                              target="_blank" 
+                            <a
+                              href={rec.scheme.applicationUrl}
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="text-blue-600 hover:underline break-all"
                             >
@@ -453,14 +620,23 @@ Next Steps:
                         )}
 
                         <div className="flex flex-col sm:flex-row gap-2 mt-4">
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             className="flex-1 text-xs sm:text-sm"
+                            disabled={!isOnline}
                             onClick={() => {
+                              if (!isOnline) {
+                                toast({
+                                  title: "Offline Mode",
+                                  description: "Applying to schemes requires an internet connection.",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
                               console.log('Apply Now clicked for scheme:', rec.scheme.id);
                               console.log('Application URL:', rec.scheme.applicationUrl);
                               console.log('Full scheme object:', rec.scheme);
-                              
+
                               // Open government portal in new tab
                               if (rec.scheme.applicationUrl) {
                                 console.log('Opening URL:', rec.scheme.applicationUrl);
@@ -485,8 +661,8 @@ Next Steps:
                             <Target className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                             Apply Now
                           </Button>
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             variant="outline"
                             className="flex-1 text-xs sm:text-sm"
                             onClick={() => setActiveTab('analytics')}
@@ -514,7 +690,7 @@ Next Steps:
                 Smart Document Management
               </CardTitle>
               <CardDescription className="text-xs sm:text-sm">
-                AI-powered document verification, automatic expiry tracking, and intelligent 
+                AI-powered document verification, automatic expiry tracking, and intelligent
                 recommendations for missing documents.
               </CardDescription>
             </CardHeader>
@@ -610,11 +786,10 @@ Next Steps:
                         {documentStatus.documents.map((doc: any, index: number) => (
                           <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg border">
                             <div className="flex items-center gap-3">
-                              <FileCheck className={`h-5 w-5 ${
-                                doc.status === 'verified' ? 'text-green-500' : 
-                                doc.status === 'pending' ? 'text-yellow-500' : 
-                                'text-gray-400'
-                              }`} />
+                              <FileCheck className={`h-5 w-5 ${doc.status === 'verified' ? 'text-green-500' :
+                                  doc.status === 'pending' ? 'text-yellow-500' :
+                                    'text-gray-400'
+                                }`} />
                               <div>
                                 <p className="text-sm font-medium capitalize">{doc.type.replace('_', ' ')}</p>
                                 <p className="text-xs text-muted-foreground">
@@ -624,8 +799,8 @@ Next Steps:
                             </div>
                             <Badge className={
                               doc.status === 'verified' ? 'bg-green-100 text-green-800' :
-                              doc.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-gray-100 text-gray-800'
+                                doc.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-gray-100 text-gray-800'
                             }>
                               {doc.status}
                             </Badge>
@@ -708,12 +883,11 @@ Next Steps:
             <CardContent>
               <div className="space-y-4">
                 {notifications.map((notification) => (
-                  <Card key={notification.id} className={`border-l-4 ${
-                    notification.priority === 'urgent' ? 'border-l-red-500 bg-red-50/50' :
-                    notification.priority === 'high' ? 'border-l-orange-500 bg-orange-50/50' :
-                    notification.priority === 'medium' ? 'border-l-yellow-500 bg-yellow-50/50' :
-                    'border-l-green-500 bg-green-50/50'
-                  }`}>
+                  <Card key={notification.id} className={`border-l-4 ${notification.priority === 'urgent' ? 'border-l-red-500 bg-red-50/50' :
+                      notification.priority === 'high' ? 'border-l-orange-500 bg-orange-50/50' :
+                        notification.priority === 'medium' ? 'border-l-yellow-500 bg-yellow-50/50' :
+                          'border-l-green-500 bg-green-50/50'
+                    }`}>
                     <CardContent className="pt-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -740,15 +914,15 @@ Next Steps:
                           </div>
                         </div>
                         {notification.actionRequired && (
-                          <Button 
+                          <Button
                             size="sm"
                             onClick={() => {
                               console.log('Take Action clicked for notification:', notification.id);
                               console.log('Notification metadata:', notification.metadata);
-                              
+
                               // Determine the correct URL based on scheme type
                               let targetUrl = notification.actionUrl;
-                              
+
                               // Map scheme IDs to actual government websites
                               if (notification.metadata?.schemeId) {
                                 const schemeUrls = {
@@ -760,13 +934,13 @@ Next Steps:
                                   'cgtmse': 'https://www.cgtmse.in/',
                                   'stand_up_india': 'https://www.standupmitra.in/'
                                 };
-                                
+
                                 const schemeUrl = schemeUrls[notification.metadata.schemeId as keyof typeof schemeUrls];
                                 if (schemeUrl) {
                                   targetUrl = schemeUrl;
                                 }
                               }
-                              
+
                               // Handle different notification types
                               if (notification.type === 'deadline_reminder' && targetUrl) {
                                 console.log('Opening scheme URL:', targetUrl);
@@ -823,7 +997,7 @@ Next Steps:
                       </div>
                       <Badge className="bg-green-100 text-green-800">Under Review</Badge>
                     </div>
-                    
+
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
                         <CheckCircle className="h-5 w-5 text-green-500" />
@@ -867,7 +1041,7 @@ Next Steps:
                 <Alert className="border-blue-200 bg-blue-50">
                   <Brain className="h-4 w-4" />
                   <AlertDescription>
-                    Real-time tracking syncs with government portals every 6 hours. 
+                    Real-time tracking syncs with government portals every 6 hours.
                     You'll receive instant notifications for any status changes.
                   </AlertDescription>
                 </Alert>
@@ -934,7 +1108,7 @@ Next Steps:
                 <Alert className="border-blue-200 bg-blue-50">
                   <WifiOff className="h-4 w-4" />
                   <AlertDescription>
-                    All your work is automatically saved locally. When you're back online, 
+                    All your work is automatically saved locally. When you're back online,
                     everything syncs seamlessly with the cloud.
                   </AlertDescription>
                 </Alert>
@@ -988,11 +1162,11 @@ Next Steps:
                     <Brain className="h-5 w-5 text-blue-600" />
                     AI-Powered Insights
                   </h3>
-                  
+
                   <Alert className="border-green-200 bg-green-50">
                     <TrendingUp className="h-4 w-4 text-green-600" />
                     <AlertDescription>
-                      <strong>High Success Probability:</strong> Your profile matches 95% with PM Vishwakarma Scheme. 
+                      <strong>High Success Probability:</strong> Your profile matches 95% with PM Vishwakarma Scheme.
                       Applications similar to yours have an 89% approval rate.
                     </AlertDescription>
                   </Alert>
@@ -1000,7 +1174,7 @@ Next Steps:
                   <Alert className="border-blue-200 bg-blue-50">
                     <Clock className="h-4 w-4 text-blue-600" />
                     <AlertDescription>
-                      <strong>Optimal Timing:</strong> Based on historical data, applications submitted in the 
+                      <strong>Optimal Timing:</strong> Based on historical data, applications submitted in the
                       first week of the month have 23% faster processing times.
                     </AlertDescription>
                   </Alert>
@@ -1008,7 +1182,7 @@ Next Steps:
                   <Alert className="border-orange-200 bg-orange-50">
                     <Target className="h-4 w-4 text-orange-600" />
                     <AlertDescription>
-                      <strong>Improvement Suggestion:</strong> Adding a business plan document could increase 
+                      <strong>Improvement Suggestion:</strong> Adding a business plan document could increase
                       your approval probability by 15% for loan-based schemes.
                     </AlertDescription>
                   </Alert>

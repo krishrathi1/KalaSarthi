@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Settings, Eye, Type, Zap, Keyboard } from 'lucide-react';
+import { Settings as SettingsIcon, Eye, Type, Zap, Keyboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -29,7 +29,10 @@ export function AccessibilitySettings() {
 
   useEffect(() => {
     const unsubscribe = accessibilityManager.subscribe(setSettings);
-    return unsubscribe;
+    return () => {
+      // call unsubscribe and ignore its return value to satisfy EffectCallback's void return
+      unsubscribe();
+    };
   }, []);
 
   const handleColorSchemeChange = (value: ColorScheme) => {
@@ -61,7 +64,7 @@ export function AccessibilitySettings() {
           className="min-h-[3rem] min-w-[3rem]"
           aria-label="Accessibility settings"
         >
-          <Settings className="w-5 h-5" />
+          <SettingsIcon className="w-5 h-5" />
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">

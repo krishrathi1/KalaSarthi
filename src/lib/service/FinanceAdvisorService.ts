@@ -1,4 +1,4 @@
-import { SalesAggregate } from '../models/SalesAggregate';
+import { SalesAggregateHelpers, ISalesAggregate } from '../models/SalesAggregate';
 import connectDB from '../mongodb';
 
 interface TimeSeriesData {
@@ -71,9 +71,10 @@ export class FinanceAdvisorService {
         if (endDate) query.periodStart.$lte = endDate;
       }
 
-      const aggregates = await SalesAggregate.find(query)
-        .sort({ periodStart: 1 })
-        .lean();
+      // TODO: Implement Firestore query for sales aggregates
+      // This would require adding query methods to SalesAggregateHelpers or FirestoreService
+      const aggregates: ISalesAggregate[] = [];
+      console.log('fetchTimeSeries: Firestore implementation pending for query:', query);
 
       return aggregates.map(agg => ({
         date: agg.periodKey,
@@ -125,12 +126,11 @@ export class FinanceAdvisorService {
       if (sortBy === 'units') sortOptions.totalQuantity = -1;
       if (sortBy === 'margin') sortOptions.averageMargin = -1;
 
-      const results = await SalesAggregate.find(query)
-        .sort(sortOptions)
-        .limit(limit)
-        .lean();
+      // TODO: Implement Firestore query for top products
+      const results: ISalesAggregate[] = [];
+      console.log('getTopProducts: Firestore implementation pending for query:', query, 'sortOptions:', sortOptions);
 
-      return results.map((result, index) => ({
+      return results.map((result: ISalesAggregate, index: number) => ({
         productId: result.productId!,
         productName: `Product ${result.productId}`, // Would need to join with Product model
         revenue: result.totalRevenue,
@@ -176,12 +176,11 @@ export class FinanceAdvisorService {
         query.productCategory = category;
       }
 
-      const results = await SalesAggregate.find(query)
-        .sort({ totalRevenue: 1 }) // Sort by lowest revenue
-        .limit(limit)
-        .lean();
+      // TODO: Implement Firestore query for bottom products
+      const results: ISalesAggregate[] = [];
+      console.log('getBottomProducts: Firestore implementation pending for query:', query);
 
-      return results.map((result, index) => ({
+      return results.map((result: ISalesAggregate, index: number) => ({
         productId: result.productId!,
         productName: `Product ${result.productId}`,
         revenue: result.totalRevenue,
@@ -334,28 +333,36 @@ export class FinanceAdvisorService {
 
       const { productId, discountPercent, expectedVolumeIncrease, timeRange } = params;
 
-      // Get current product performance
-      const currentData = await SalesAggregate.findOne({
-        productId,
-        period: timeRange === 'week' ? 'weekly' : timeRange === 'month' ? 'monthly' : 'yearly'
-      }).lean();
+      // TODO: Implement Firestore query for product performance
+      // For now, return early since we don't have Firestore implementation
+      console.log('simulateDiscount: Firestore implementation pending for productId:', productId);
+      
+      return {
+        originalRevenue: 0,
+        discountedRevenue: 0,
+        revenueImpact: 0,
+        marginImpact: 0,
+        volumeIncrease: expectedVolumeIncrease,
+        recommendation: 'Firestore implementation pending - cannot simulate discount'
+      };
 
+      // TODO: When Firestore implementation is ready, replace the above with:
+      /*
+      const currentData: ISalesAggregate | null = await getSalesAggregateForProduct(productId, timeRange);
       if (!currentData) {
         return {
           originalRevenue: 0,
           discountedRevenue: 0,
           revenueImpact: 0,
           marginImpact: 0,
-          volumeIncrease: 0,
+          volumeIncrease: expectedVolumeIncrease,
           recommendation: 'No historical data available for simulation'
         };
       }
 
-      // Handle case where currentData might be an array
-      const data = Array.isArray(currentData) ? currentData[0] : currentData;
-      const originalRevenue = data?.totalRevenue ?? 0;
-      const originalUnits = data?.totalQuantity ?? 0;
-      const originalMargin = data?.averageMargin ?? 0.2; // Default 20% margin
+      const originalRevenue = currentData.totalRevenue;
+      const originalUnits = currentData.totalQuantity;
+      const originalMargin = currentData.averageMargin ?? 0.2;
 
       // Calculate discounted price impact
       const discountFactor = 1 - (discountPercent / 100);
@@ -366,7 +373,7 @@ export class FinanceAdvisorService {
 
       // Calculate margin impact (assuming cost remains the same)
       const originalProfit = originalRevenue * originalMargin;
-      const discountedProfit = discountedRevenue * (originalMargin * discountFactor); // Margin also affected by discount
+      const discountedProfit = discountedRevenue * (originalMargin * discountFactor);
 
       const revenueImpact = ((discountedRevenue - originalRevenue) / originalRevenue) * 100;
       const marginImpact = ((discountedProfit - originalProfit) / originalProfit) * 100;
@@ -388,6 +395,7 @@ export class FinanceAdvisorService {
         volumeIncrease: expectedVolumeIncrease,
         recommendation
       };
+      */
 
     } catch (error) {
       console.error('Error simulating discount:', error);
@@ -436,12 +444,14 @@ export class FinanceAdvisorService {
       const currentQuery: any = { period };
       if (artisanId) currentQuery.artisanId = artisanId;
 
-      const currentData = await SalesAggregate.find(currentQuery).lean();
+      // TODO: Implement Firestore query for sales summary
+      const currentData: ISalesAggregate[] = [];
+      console.log('getSalesSummary: Firestore implementation pending for query:', currentQuery);
 
       const summary = {
-        totalRevenue: currentData.reduce((sum, agg) => sum + agg.totalRevenue, 0),
-        totalOrders: currentData.reduce((sum, agg) => sum + agg.totalOrders, 0),
-        totalUnits: currentData.reduce((sum, agg) => sum + agg.totalQuantity, 0),
+        totalRevenue: currentData.reduce((sum: number, agg: ISalesAggregate) => sum + agg.totalRevenue, 0),
+        totalOrders: currentData.reduce((sum: number, agg: ISalesAggregate) => sum + agg.totalOrders, 0),
+        totalUnits: currentData.reduce((sum: number, agg: ISalesAggregate) => sum + agg.totalQuantity, 0),
         averageOrderValue: 0,
         averageMargin: 0,
         topProduct: '',
@@ -453,7 +463,7 @@ export class FinanceAdvisorService {
       }
 
       if (currentData.length > 0) {
-        summary.averageMargin = currentData.reduce((sum, agg) => sum + (agg.averageMargin || 0), 0) / currentData.length;
+        summary.averageMargin = currentData.reduce((sum: number, agg: ISalesAggregate) => sum + (agg.averageMargin || 0), 0) / currentData.length;
       }
 
       // Add comparisons if requested

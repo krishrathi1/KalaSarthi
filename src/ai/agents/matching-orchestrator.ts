@@ -6,7 +6,7 @@ import { aiMonitoringService } from '../core/monitoring';
 import { vectorStore } from '../core/vector-store';
 import { requirementAnalyzerAgent, RequirementAnalysisOutput } from './requirement-analyzer';
 import { confidenceScorerAgent, ConfidenceScoringOutput } from './confidence-scorer';
-import { User } from '../../lib/models';
+import { UserService } from '../../lib/service/UserService';
 
 // Matching request input schema
 const MatchingRequestInput = z.object({
@@ -247,7 +247,7 @@ export class MatchingOrchestratorAgent {
   private async analyzeRequirements(input: MatchingRequestInput): Promise<RequirementAnalysisOutput> {
     try {
       // Get user profile for context
-      const userProfile = await User.findOne({ uid: input.buyerId }).lean();
+      const userProfile = await UserService.getUserByUid(input.buyerId);
       
       const analysis = await requirementAnalyzerAgent.analyzeRequirements({
         userInput: input.userInput,
@@ -343,42 +343,66 @@ export class MatchingOrchestratorAgent {
     filters?: any
   ): Promise<any[]> {
     try {
-      // Strategy 1: Database query with filters
-      const dbQuery: any = { role: 'artisan' };
+      // Strategy 1: Get all artisans and filter client-side
+      // TODO: Implement more efficient Firestore querying for complex filters
+      console.log('Fetching all artisans for client-side filtering...');
       
-      // Apply filters
-      if (filters?.specializations?.length > 0) {
-        dbQuery['artisanConnectProfile.specializations'] = { $in: filters.specializations };
-      }
+      const allArtisans = await UserService.getAllArtisans();
+      console.log(`Retrieved ${allArtisans.length} total artisans`);
       
-      if (filters?.availability) {
-        dbQuery['artisanConnectProfile.availabilityStatus'] = filters.availability;
-      }
+      // Apply client-side filters
+      let dbCandidates = allArtisans.filter(artisan => {
+        // Apply specializations filter
+        if (filters?.specializations?.length > 0) {
+          const artisanSpecs = artisan.artisanConnectProfile?.specializations || [];
+          if (!filters.specializations.some((spec: string) => 
+            artisanSpecs.some((as: string) => as.toLowerCase().includes(spec.toLowerCase()))
+          )) {
+            return false;
+          }
+        }
+        
+        // Apply availability filter
+        if (filters?.availability && 
+            artisan.artisanConnectProfile?.availabilityStatus !== filters.availability) {
+          return false;
+        }
+        
+        // Apply rating filter
+        if (filters?.rating && 
+            (artisan.artisanConnectProfile?.aiMetrics?.customerSatisfactionScore || 0) < filters.rating) {
+          return false;
+        }
+        
+        // Apply location filter
+        if (filters?.location && 
+            !artisan.address?.city?.toLowerCase().includes(filters.location.toLowerCase())) {
+          return false;
+        }
+        
+        // Apply category-based filtering
+        if (requirements.categories && requirements.categories.length > 0) {
+          const matchesCategory = requirements.categories.some(category => {
+            const catLower = category.toLowerCase();
+            return (
+              artisan.artisticProfession?.toLowerCase().includes(catLower) ||
+              artisan.artisanConnectProfile?.specializations?.some((spec: string) => 
+                spec.toLowerCase().includes(catLower)
+              )
+            );
+          });
+          if (!matchesCategory) {
+            return false;
+          }
+        }
+        
+        return true;
+      });
       
-      if (filters?.rating) {
-        dbQuery['artisanConnectProfile.aiMetrics.customerSatisfactionScore'] = { $gte: filters.rating };
-      }
+      // Limit for performance
+      dbCandidates = dbCandidates.slice(0, 50);
       
-      if (filters?.location) {
-        dbQuery['address.city'] = new RegExp(filters.location, 'i');
-      }
-      
-      // Add category-based filtering
-      if (requirements.categories && requirements.categories.length > 0) {
-        dbQuery.$or = [
-          { artisticProfession: { $in: requirements.categories.map(c => new RegExp(c, 'i')) } },
-          { 'artisanConnectProfile.specializations': { $in: requirements.categories } }
-        ];
-      }
-      
-      console.log('Database query:', JSON.stringify(dbQuery, null, 2));
-      console.log('Categories found:', requirements.categories);
-      
-      const dbCandidates = await User.find(dbQuery)
-        .limit(50) // Limit for performance
-        .lean();
-      
-      console.log(`Database query found ${dbCandidates.length} candidates`);
+      console.log(`Client-side filtering found ${dbCandidates.length} candidates`);
       
       // Strategy 2: Semantic search using vector store (with fallback)
       let semanticCandidates: any[] = [];
@@ -406,7 +430,7 @@ export class MatchingOrchestratorAgent {
       for (const semantic of semanticCandidates) {
         const artisanId = semantic.document.metadata?.artisanId;
         if (artisanId && !allCandidates.has(artisanId)) {
-          const artisan = await User.findOne({ uid: artisanId }).lean();
+          const artisan = await UserService.getUserByUid(artisanId);
           if (artisan) {
             allCandidates.set(artisanId, artisan);
           }

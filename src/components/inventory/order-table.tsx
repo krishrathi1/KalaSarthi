@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { formatPrice, formatDate } from '@/lib/format-utils';
 import {
     Store,
@@ -21,7 +22,8 @@ import {
     Calendar,
     User,
     CreditCard,
-    ShoppingBag
+    ShoppingBag,
+    AlertCircle
 } from 'lucide-react';
 
 // Using the Order interface from your useOrders hook
@@ -85,9 +87,10 @@ interface Order {
 interface OrderTableProps {
     orders: Order[];
     isLoading?: boolean;
+    isOnline?: boolean;
 }
 
-export default function OrderTable({ orders, isLoading = false }: OrderTableProps) {
+export default function OrderTable({ orders, isLoading = false, isOnline = true }: OrderTableProps) {
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [paymentFilter, setPaymentFilter] = useState<string>('all');
     const [searchTerm, setSearchTerm] = useState('');
@@ -208,7 +211,10 @@ export default function OrderTable({ orders, isLoading = false }: OrderTableProp
                 <ShoppingBag className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-medium mb-2">No Orders Found</h3>
                 <p className="text-muted-foreground">
-                    You haven't received any orders yet. Orders will appear here once customers start purchasing.
+                    {!isOnline 
+                        ? "No cached orders available. Orders will load when you're back online."
+                        : "You haven't received any orders yet. Orders will appear here once customers start purchasing."
+                    }
                 </p>
             </div>
         );
@@ -216,6 +222,16 @@ export default function OrderTable({ orders, isLoading = false }: OrderTableProp
 
     return (
         <div className="space-y-6">
+            {/* Offline Warning */}
+            {!isOnline && orders.length > 0 && (
+                <Alert className="bg-yellow-50 border-yellow-200">
+                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                    <AlertDescription className="text-yellow-800">
+                        Viewing cached orders. Order updates require an internet connection.
+                    </AlertDescription>
+                </Alert>
+            )}
+
             {/* Order Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 <Card>
