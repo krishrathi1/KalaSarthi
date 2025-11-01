@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { DigitalKhata } from '@/components/DigitalKhata';
 import { ProductInventory } from '@/components/ProductInventory';
 import { ProductSalesDetail } from '@/components/ProductSalesDetail';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -55,7 +54,6 @@ export default function DigitalKhataPage() {
         </TabsList>
 
         <TabsContent value="overview">
-          <DigitalKhata artisanId={artisanId} />
         </TabsContent>
 
         <TabsContent value="inventory">

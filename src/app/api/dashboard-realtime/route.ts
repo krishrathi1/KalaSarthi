@@ -12,24 +12,34 @@ export async function GET(request: NextRequest) {
     console.log(`📊 Dashboard API called - Mode: ${mode}, ArtisanId: ${artisanId}, ForceRefresh: ${forceRefresh}`);
 
     const cacheService = RedisCacheService.getInstance();
+    let redisAvailable = false;
     
     // Try to connect to Redis (non-blocking)
     try {
       await cacheService.connect();
+      redisAvailable = cacheService.isRedisConnected();
+      if (!redisAvailable) {
+        console.warn('⚠️ Redis not available, skipping cache operations');
+      }
     } catch (error) {
-      console.warn('Redis connection failed, continuing without cache:', error);
+      console.warn('⚠️ Redis connection failed, continuing without cache');
+      redisAvailable = false;
     }
 
     let dashboardData = null;
     let dataSource = 'unknown';
 
-    // In offline mode or when real-time fails, try cache first
-    if (mode === 'offline' || !forceRefresh) {
-      const cachedData = await cacheService.getCachedDashboardData(artisanId);
-      if (cachedData) {
-        dashboardData = cachedData.dashboardData;
-        dataSource = 'cache';
-        console.log(`✅ Using cached data (age: ${Date.now() - cachedData.timestamp}ms)`);
+    // In offline mode or when real-time fails, try cache first (only if Redis is available)
+    if (redisAvailable && (mode === 'offline' || !forceRefresh)) {
+      try {
+        const cachedData = await cacheService.getCachedDashboardData(artisanId);
+        if (cachedData) {
+          dashboardData = cachedData.dashboardData;
+          dataSource = 'cache';
+          console.log(`✅ Using cached data (age: ${Date.now() - cachedData.timestamp}ms)`);
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to read from cache, continuing without it');
       }
     }
 
@@ -124,8 +134,14 @@ export async function GET(request: NextRequest) {
           dataSource = 'realtime';
           console.log(`✅ Fresh data fetched - ${events.length} events, ₹${currentSales.thisYear} total revenue`);
 
-          // Cache the fresh data
-          await cacheService.cacheDashboardData(artisanId, dashboardData);
+          // Cache the fresh data (only if Redis is available)
+          if (redisAvailable) {
+            try {
+              await cacheService.cacheDashboardData(artisanId, dashboardData);
+            } catch (error) {
+              console.warn('⚠️ Failed to cache data, continuing without it');
+            }
+          }
 
         } else {
           throw new Error('No sales data available from API');
@@ -134,14 +150,21 @@ export async function GET(request: NextRequest) {
       } catch (error) {
         console.error('❌ Failed to fetch real-time data:', error);
         
-        // Fallback to cache if real-time fails
+        // Fallback to cache if real-time fails (only if Redis is available)
+        if (!dashboardData && redisAvailable) {
+          try {
+            const cachedData = await cacheService.getCachedDashboardData(artisanId);
+            if (cachedData) {
+              dashboardData = cachedData.dashboardData;
+              dataSource = 'cache_fallback';
+              console.log('⚠️ Using cached data as fallback');
+            }
+          } catch (error) {
+            console.warn('⚠️ Failed to read cache fallback');
+          }
+        }
+        
         if (!dashboardData) {
-          const cachedData = await cacheService.getCachedDashboardData(artisanId);
-          if (cachedData) {
-            dashboardData = cachedData.dashboardData;
-            dataSource = 'cache_fallback';
-            console.log('⚠️ Using cached data as fallback');
-          } else {
             // Last resort: return empty data structure
             dashboardData = {
               currentSales: { today: 0, thisWeek: 0, thisMonth: 0, thisYear: 0 },
@@ -154,7 +177,6 @@ export async function GET(request: NextRequest) {
             };
             dataSource = 'empty';
             console.log('⚠️ No data available, returning empty structure');
-          }
         }
       }
     }
@@ -167,7 +189,8 @@ export async function GET(request: NextRequest) {
         mode,
         dataSource,
         timestamp: new Date().toISOString(),
-        cacheAvailable: cacheService.isRedisConnected()
+        cacheAvailable: redisAvailable,
+        redisStatus: redisAvailable ? 'connected' : 'unavailable'
       }
     });
 

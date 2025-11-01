@@ -300,7 +300,7 @@ export class SmartNotificationSystem implements ISmartNotificationSystem {
   private channelProviders: Map<string, IChannelProvider>;
 
   constructor() {
-    this.channelProviders = new Map([
+    this.channelProviders = new Map<string, IChannelProvider>([
       ['sms', new SMSChannelProvider()],
       ['email', new EmailChannelProvider()],
       ['push', new PushChannelProvider()],

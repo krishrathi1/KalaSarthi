@@ -1,7 +1,7 @@
 import { prepareDocuments, DocumentPrepConfig, DocumentPrepResult } from '@/ai/flows/document-prep-agent';
 import { extractRequirementsFromDocument, OCRConfig, OCRResult } from '@/ai/flows/ocr-agent';
+import { LoanApplicationService } from './LoanApplicationService';
 import connectDB from '../mongodb';
-import LoanApplication from '../models/LoanApplication';
 
 interface DocumentPreparationRequest {
   applicationId: string;
@@ -37,14 +37,16 @@ export class DocumentPreparationService {
       await connectDB();
 
       // Get loan application details
-      const application = await LoanApplication.findOne({ applicationId: request.applicationId });
+      const applicationResult = await LoanApplicationService.getLoanApplicationById(request.applicationId);
 
-      if (!application) {
+      if (!applicationResult.success || !applicationResult.data) {
         return {
           success: false,
           errors: ['Loan application not found']
         };
       }
+
+      const application = applicationResult.data;
 
   let extractedRequirements: OCRResult | null = null;
 

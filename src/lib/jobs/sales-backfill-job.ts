@@ -1,5 +1,6 @@
-import Order, { IOrderDocument } from '../models/Order';
-import { SalesAggregate, ISalesAggregate } from '../models/SalesAggregate';
+import { IOrderDocument } from '../models/Order';
+import { SalesAggregateHelpers, ISalesAggregate } from '../models/SalesAggregate';
+import { OrderService } from '../service/OrderService';
 import connectDB from '../mongodb';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -91,7 +92,7 @@ export class SalesBackfillJob {
         processedCount += orders.length;
         this.state.processedOrders = processedCount;
         this.state.currentChunk++;
-        this.state.lastProcessedOrderId = orders[orders.length - 1]._id.toString();
+        this.state.lastProcessedOrderId = orders[orders.length - 1].id || orders[orders.length - 1].orderId;
         this.state.lastProcessedDate = orders[orders.length - 1].createdAt;
         this.state.updatedAt = new Date();
 
@@ -139,50 +140,77 @@ export class SalesBackfillJob {
    * Get total count of orders to process
    */
   private async getTotalOrdersCount(): Promise<number> {
-    const query: any = {
-      createdAt: {
-        $gte: this.options.startDate,
-        $lte: this.options.endDate
-      },
-      status: { $ne: 'cancelled' } // Exclude cancelled orders
-    };
+    try {
+      // Get all orders and count them client-side since Firestore doesn't have efficient count
+      const result = await OrderService.getAllOrders({
+        startDate: this.options.startDate,
+        endDate: this.options.endDate,
+        limit: 10000 // Large limit to get all orders for counting
+      });
 
-    if (this.options.resumeFromOrderId) {
-      // Resume from specific order ID
-      const resumeOrder = await Order.findById(this.options.resumeFromOrderId);
-      if (resumeOrder) {
-        query.createdAt.$gte = resumeOrder.createdAt;
+      if (!result.success || !result.data) {
+        console.error('Failed to get orders for counting:', result.error);
+        return 0;
       }
-    }
 
-    return await Order.countDocuments(query);
+      // Filter out cancelled orders
+      const validOrders = result.data.filter(order => order.status !== 'cancelled');
+
+      // If resuming from a specific order, filter further
+      if (this.options.resumeFromOrderId) {
+        const resumeIndex = validOrders.findIndex(order => 
+          (order.id || order.orderId) === this.options.resumeFromOrderId
+        );
+        if (resumeIndex >= 0) {
+          return validOrders.length - resumeIndex;
+        }
+      }
+
+      return validOrders.length;
+    } catch (error) {
+      console.error('Error counting orders:', error);
+      return 0;
+    }
   }
 
   /**
    * Get next chunk of orders to process
    */
   private async getNextChunk(lastProcessedOrderId?: string): Promise<IOrderDocument[]> {
-    const query: any = {
-      createdAt: {
-        $gte: this.options.startDate,
-        $lte: this.options.endDate
-      },
-      status: { $ne: 'cancelled' }
-    };
+    try {
+      // Get orders within the date range
+      const result = await OrderService.getAllOrders({
+        startDate: this.options.startDate,
+        endDate: this.options.endDate,
+        limit: this.options.chunkSize! * 2 // Get more to handle filtering
+      });
 
-    if (lastProcessedOrderId) {
-      // Get orders after the last processed one
-      const lastOrder = await Order.findById(lastProcessedOrderId);
-      if (lastOrder) {
-        query.createdAt.$gte = lastOrder.createdAt;
-        query._id = { $gt: lastProcessedOrderId };
+      if (!result.success || !result.data) {
+        console.error('Failed to get orders chunk:', result.error);
+        return [];
       }
-    }
 
-    return await Order.find(query)
-      .sort({ createdAt: 1, _id: 1 })
-      .limit(this.options.chunkSize!)
-      .lean() as unknown as IOrderDocument[];
+      // Filter out cancelled orders and sort by createdAt ascending
+      let orders = result.data
+        .filter(order => order.status !== 'cancelled')
+        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+
+      // If we have a last processed order ID, get orders after it
+      if (lastProcessedOrderId) {
+        const lastProcessedIndex = orders.findIndex(order => 
+          (order.id || order.orderId) === lastProcessedOrderId
+        );
+        if (lastProcessedIndex >= 0) {
+          orders = orders.slice(lastProcessedIndex + 1);
+        }
+      }
+
+      // Limit to chunk size
+      return orders.slice(0, this.options.chunkSize!);
+    } catch (error) {
+      console.error('Error getting next chunk:', error);
+      return [];
+    }
   }
 
   /**
@@ -333,30 +361,23 @@ export class SalesBackfillJob {
    * Bulk upsert aggregates to database
    */
   private async bulkUpsertAggregates(aggregatesMap: Map<string, Partial<ISalesAggregate>>): Promise<void> {
-    const bulkOps = [];
+    const aggregates = Array.from(aggregatesMap.values());
 
-    for (const aggregate of aggregatesMap.values()) {
-      bulkOps.push({
-        updateOne: {
-          filter: {
-            artisanId: aggregate.artisanId,
-            productId: aggregate.productId || null,
-            period: aggregate.period,
-            periodKey: aggregate.periodKey
-          },
-          update: {
-            ...aggregate,
-            lastUpdated: new Date()
-          },
-          upsert: true,
-          setDefaultsOnInsert: true
+    if (aggregates.length > 0) {
+      // TODO: Implement Firestore batch operations for sales aggregates
+      // This would require adding bulk upsert methods to FirestoreService
+      console.log(`💾 Sales backfill: would bulk upsert ${aggregates.length} aggregates (Firestore implementation pending)`);
+      
+      // For now, log the aggregates that would be created/updated
+      console.log(`Aggregates summary:`, {
+        totalAggregates: aggregates.length,
+        periods: [...new Set(aggregates.map(a => a.period))],
+        artisans: [...new Set(aggregates.map(a => a.artisanId))].length,
+        dateRange: {
+          earliest: new Date(Math.min(...aggregates.map(a => a.periodStart?.getTime() || 0))),
+          latest: new Date(Math.max(...aggregates.map(a => a.periodEnd?.getTime() || 0)))
         }
       });
-    }
-
-    if (bulkOps.length > 0) {
-      const result = await SalesAggregate.bulkWrite(bulkOps, { ordered: false });
-      console.log(`💾 Bulk upserted ${result.upsertedCount} new and ${result.modifiedCount} existing aggregates`);
     }
   }
 

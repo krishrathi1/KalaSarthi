@@ -22,7 +22,7 @@ import {
   DetectedObject,
   QualityAssessment,
   TextBlock,
-} from '@/lib/types/artisan-buddy';
+} from '@/lib/types/enhanced-artisan-buddy';
 
 // ============================================================================
 // TYPES AND INTERFACES

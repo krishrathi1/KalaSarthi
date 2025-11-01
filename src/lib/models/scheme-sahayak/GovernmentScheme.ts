@@ -763,8 +763,3 @@ export class SchemeMetadataManager {
 }
 
 // Export all components
-export {
-  SCHEME_CATEGORIES,
-  BUSINESS_TYPES,
-  GOVERNMENT_LEVELS
-};

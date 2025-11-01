@@ -6,36 +6,36 @@
 import { BaseService } from './base/BaseService';
 import { ISchemeService } from './interfaces';
 import { timestampToDate } from '../../firestore';
-import { 
-  schemeSahayakCollections, 
-  schemeSahayakQueries, 
-  schemeSahayakDocRefs 
+import {
+  schemeSahayakCollections,
+  schemeSahayakQueries,
+  schemeSahayakDocRefs
 } from '../../config/scheme-sahayak-firebase';
-import { 
+import {
   GovernmentScheme,
   SCHEME_SAHAYAK_COLLECTIONS,
   SchemeSahayakErrorType
 } from '../../types/scheme-sahayak';
-import { 
-  GovernmentSchemeModel,
-  SchemeCategorization,
+import {
+  GovernmentSchemeValidator,
+  GovernmentSchemeFactory,
   SCHEME_CATEGORIES,
   BUSINESS_TYPES,
-  INDIAN_STATES
+  GOVERNMENT_LEVELS
 } from '../../models/scheme-sahayak/GovernmentScheme';
-import { 
+import {
   SchemeMetadataManager,
   SchemeIndexing,
   SchemePerformanceMetrics,
   SchemeAnalytics
 } from '../../models/scheme-sahayak/SchemeMetadata';
-import { 
-  doc, 
-  getDoc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy, 
+import {
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
   limit,
   collection,
   serverTimestamp,
@@ -116,7 +116,7 @@ export class SchemeService extends BaseService implements ISchemeService {
 
       // Apply client-side filtering for amount if needed
       if (filters?.maxAmount) {
-        return schemes.filter(scheme => 
+        return schemes.filter(scheme =>
           scheme.benefits.amount.min <= filters.maxAmount!
         );
       }
@@ -180,11 +180,11 @@ export class SchemeService extends BaseService implements ISchemeService {
       return searchResults.sort((a, b) => {
         const aScore = a.title.toLowerCase().includes(sanitizedQuery) ? 1 : 0;
         const bScore = b.title.toLowerCase().includes(sanitizedQuery) ? 1 : 0;
-        
+
         if (aScore !== bScore) {
           return bScore - aScore;
         }
-        
+
         return b.metadata.popularity - a.metadata.popularity;
       });
     }, 'Failed to search schemes', 'SEARCH_SCHEMES_FAILED');
@@ -251,10 +251,10 @@ export class SchemeService extends BaseService implements ISchemeService {
       try {
         // Placeholder: In reality, you'd call government APIs here
         // const governmentData = await this.fetchFromGovernmentAPIs();
-        
+
         // For now, just log that sync was attempted
         this.log('info', 'Scheme data synchronization completed');
-        
+
         return result;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -278,12 +278,12 @@ export class SchemeService extends BaseService implements ISchemeService {
       // Get all schemes
       const allSchemesQuery = query(schemeSahayakCollections.schemes);
       const allSchemesSnapshot = await getDocs(allSchemesQuery);
-      
+
       const schemes = allSchemesSnapshot.docs.map(doc => doc.data() as GovernmentScheme);
-      
+
       const totalSchemes = schemes.length;
       const activeSchemes = schemes.filter(scheme => scheme.status === 'active').length;
-      
+
       // Calculate category counts
       const categoryCounts: Record<string, number> = {};
       schemes.forEach(scheme => {
@@ -291,7 +291,7 @@ export class SchemeService extends BaseService implements ISchemeService {
           categoryCounts[scheme.category] = (categoryCounts[scheme.category] || 0) + 1;
         }
       });
-      
+
       // Calculate average success rate
       const activeSchemesList = schemes.filter(scheme => scheme.status === 'active');
       const averageSuccessRate = activeSchemesList.length > 0
@@ -323,8 +323,8 @@ export class SchemeService extends BaseService implements ISchemeService {
 
       // Filter by district if provided (client-side filtering)
       if (district) {
-        schemes = schemes.filter(scheme => 
-          !scheme.eligibility.location.districts || 
+        schemes = schemes.filter(scheme =>
+          !scheme.eligibility.location.districts ||
           scheme.eligibility.location.districts.includes(district)
         );
       }
@@ -373,28 +373,26 @@ export class SchemeService extends BaseService implements ISchemeService {
    */
   async createScheme(schemeData: Partial<GovernmentScheme>): Promise<string> {
     return this.handleAsync(async () => {
-      // Create and validate scheme model
-      const schemeModel = new GovernmentSchemeModel(schemeData);
-      const validation = schemeModel.validate();
-      
+      // Validate scheme data
+      const validation = GovernmentSchemeValidator.validate(schemeData);
+
       if (!validation.isValid) {
-        const errorMessages = validation.errors.map(e => e.message).join(', ');
+        const errorMessages = validation.errors.join(', ');
         throw new Error(`Scheme validation failed: ${errorMessages}`);
       }
-      
+
       // Log warnings if any
       if (validation.warnings.length > 0) {
-        validation.warnings.forEach(warning => {
-          this.log('warn', `Scheme validation warning: ${warning.message}`, { field: warning.field });
+        validation.warnings.forEach((warning: string) => {
+          this.log('warn', `Scheme validation warning: ${warning}`);
         });
       }
-      
-      // Convert to Firestore format and add
-      const firestoreData = schemeModel.toFirestoreData();
-      const docRef = await addDoc(schemeSahayakCollections.schemes, firestoreData);
-      
+
+      // Add to Firestore
+      const docRef = await addDoc(schemeSahayakCollections.schemes, schemeData);
+
       this.log('info', 'New scheme created successfully', { schemeId: docRef.id, title: schemeData.title });
-      
+
       return docRef.id;
     }, 'Failed to create scheme', 'CREATE_SCHEME_FAILED');
   }
@@ -405,28 +403,26 @@ export class SchemeService extends BaseService implements ISchemeService {
   async updateScheme(schemeId: string, updates: Partial<GovernmentScheme>): Promise<void> {
     return this.handleAsync(async () => {
       this.validateSchemeId(schemeId);
-      
+
       // Get existing scheme
       const existingScheme = await this.getSchemeById(schemeId);
       if (!existingScheme) {
         throw new Error(`Scheme not found: ${schemeId}`);
       }
-      
-      // Create updated scheme model
+
+      // Create updated scheme data
       const updatedData = { ...existingScheme, ...updates };
-      const schemeModel = new GovernmentSchemeModel(updatedData);
-      const validation = schemeModel.validate();
-      
+      const validation = GovernmentSchemeValidator.validate(updatedData);
+
       if (!validation.isValid) {
-        const errorMessages = validation.errors.map(e => e.message).join(', ');
+        const errorMessages = validation.errors.join(', ');
         throw new Error(`Scheme validation failed: ${errorMessages}`);
       }
-      
+
       // Update in Firestore
       const docRef = schemeSahayakDocRefs.scheme(schemeId);
-      const firestoreData = schemeModel.toFirestoreData();
-      await updateDoc(docRef, firestoreData);
-      
+      await updateDoc(docRef, updates);
+
       this.log('info', 'Scheme updated successfully', { schemeId, updates: Object.keys(updates) });
     }, 'Failed to update scheme', 'UPDATE_SCHEME_FAILED');
   }
@@ -437,10 +433,10 @@ export class SchemeService extends BaseService implements ISchemeService {
   async deleteScheme(schemeId: string): Promise<void> {
     return this.handleAsync(async () => {
       this.validateSchemeId(schemeId);
-      
+
       const docRef = schemeSahayakDocRefs.scheme(schemeId);
       await deleteDoc(docRef);
-      
+
       this.log('info', 'Scheme deleted successfully', { schemeId });
     }, 'Failed to delete scheme', 'DELETE_SCHEME_FAILED');
   }
@@ -466,61 +462,61 @@ export class SchemeService extends BaseService implements ISchemeService {
     return this.handleAsync(async () => {
       // Start with active schemes
       let schemes = await this.getActiveSchemes();
-      
+
       // Apply filters
       if (filters.categories && filters.categories.length > 0) {
         schemes = schemes.filter(scheme => filters.categories!.includes(scheme.category));
       }
-      
+
       if (filters.subCategories && filters.subCategories.length > 0) {
         schemes = schemes.filter(scheme => filters.subCategories!.includes(scheme.subCategory));
       }
-      
+
       if (filters.states && filters.states.length > 0) {
-        schemes = schemes.filter(scheme => 
-          !scheme.eligibility.location.states || 
+        schemes = schemes.filter(scheme =>
+          !scheme.eligibility.location.states ||
           scheme.eligibility.location.states.some(state => filters.states!.includes(state))
         );
       }
-      
+
       if (filters.businessTypes && filters.businessTypes.length > 0) {
-        schemes = schemes.filter(scheme => 
+        schemes = schemes.filter(scheme =>
           scheme.eligibility.businessType.length === 0 ||
           scheme.eligibility.businessType.some(type => filters.businessTypes!.includes(type))
         );
       }
-      
+
       if (filters.governmentLevels && filters.governmentLevels.length > 0) {
         schemes = schemes.filter(scheme => filters.governmentLevels!.includes(scheme.provider.level));
       }
-      
+
       if (filters.minAmount !== undefined) {
         schemes = schemes.filter(scheme => scheme.benefits.amount.max >= filters.minAmount!);
       }
-      
+
       if (filters.maxAmount !== undefined) {
         schemes = schemes.filter(scheme => scheme.benefits.amount.min <= filters.maxAmount!);
       }
-      
+
       if (filters.minSuccessRate !== undefined) {
         schemes = schemes.filter(scheme => scheme.metadata.successRate >= filters.minSuccessRate!);
       }
-      
+
       if (filters.hasDeadline !== undefined) {
-        schemes = schemes.filter(scheme => 
+        schemes = schemes.filter(scheme =>
           filters.hasDeadline ? !!scheme.application.deadline : !scheme.application.deadline
         );
       }
-      
+
       if (filters.onlineApplication !== undefined) {
         schemes = schemes.filter(scheme => scheme.application.onlineApplication === filters.onlineApplication);
       }
-      
+
       // Apply sorting
       if (filters.sortBy) {
         schemes.sort((a, b) => {
           let aValue: number, bValue: number;
-          
+
           switch (filters.sortBy) {
             case 'popularity':
               aValue = a.metadata.popularity;
@@ -546,17 +542,17 @@ export class SchemeService extends BaseService implements ISchemeService {
               aValue = a.metadata.popularity;
               bValue = b.metadata.popularity;
           }
-          
+
           const order = filters.sortOrder === 'asc' ? 1 : -1;
           return (aValue - bValue) * order;
         });
       }
-      
+
       // Apply limit
       if (filters.limit && filters.limit > 0) {
         schemes = schemes.slice(0, filters.limit);
       }
-      
+
       return schemes;
     }, 'Failed to get advanced schemes', 'GET_ADVANCED_SCHEMES_FAILED');
   }
@@ -587,56 +583,91 @@ export class SchemeService extends BaseService implements ISchemeService {
     return this.handleAsync(async () => {
       // Get all active schemes
       let schemes = await this.getActiveSchemes();
-      
+
       // Filter by categories if specified
       if (options.categories && options.categories.length > 0) {
         schemes = schemes.filter(scheme => options.categories!.includes(scheme.category));
       }
-      
-      // Calculate recommendations
+
+      // Calculate recommendations with simple scoring
       const recommendations = schemes.map(scheme => {
-        const schemeModel = new GovernmentSchemeModel(scheme);
-        const eligibility = schemeModel.isEligibleFor(artisanProfile);
-        const urgencyScore = schemeModel.getUrgencyScore();
-        
-        // Mock performance metrics for recommendation calculation
-        const mockMetrics: SchemePerformanceMetrics = {
-          schemeId: scheme.id,
-          totalApplications: Math.floor(Math.random() * 1000),
-          approvedApplications: Math.floor(Math.random() * 500),
-          rejectedApplications: Math.floor(Math.random() * 300),
-          pendingApplications: Math.floor(Math.random() * 200),
-          successRate: scheme.metadata.successRate,
-          averageProcessingTime: scheme.metadata.averageProcessingTime,
-          averageApprovalAmount: scheme.benefits.amount.max * 0.7,
-          popularityScore: scheme.metadata.popularity,
-          userRating: 4.0,
-          lastUpdated: new Date(),
-          monthlyStats: []
-        };
-        
-        const recommendationScore = SchemeMetadataManager.calculateRecommendationScore(
-          scheme,
-          artisanProfile,
-          mockMetrics
-        );
-        
+        let score = 0;
+        let eligibilityMatch = 0;
+        const reasons: string[] = [];
+
+        // Check age eligibility
+        if (artisanProfile.age) {
+          if (!scheme.eligibility.age.min || artisanProfile.age >= scheme.eligibility.age.min) {
+            if (!scheme.eligibility.age.max || artisanProfile.age <= scheme.eligibility.age.max) {
+              score += 20;
+              eligibilityMatch += 25;
+              reasons.push('Age criteria met');
+            }
+          }
+        }
+
+        // Check income eligibility
+        if (artisanProfile.monthlyIncome) {
+          if (!scheme.eligibility.income.max || artisanProfile.monthlyIncome <= scheme.eligibility.income.max) {
+            score += 20;
+            eligibilityMatch += 25;
+            reasons.push('Income criteria met');
+          }
+        }
+
+        // Check business type
+        if (artisanProfile.businessType && scheme.eligibility.businessType.length > 0) {
+          if (scheme.eligibility.businessType.includes(artisanProfile.businessType)) {
+            score += 25;
+            eligibilityMatch += 25;
+            reasons.push('Business type matches');
+          }
+        } else if (scheme.eligibility.businessType.length === 0) {
+          score += 15;
+          eligibilityMatch += 15;
+        }
+
+        // Check location
+        if (artisanProfile.state) {
+          if (!scheme.eligibility.location.states || scheme.eligibility.location.states.length === 0 ||
+            scheme.eligibility.location.states.includes(artisanProfile.state)) {
+            score += 15;
+            eligibilityMatch += 25;
+            reasons.push('Location eligible');
+          }
+        }
+
+        // Add scheme popularity and success rate to score
+        score += (scheme.metadata.popularity / 100) * 10;
+        score += (scheme.metadata.successRate / 100) * 10;
+
+        // Calculate urgency score based on deadline
+        let urgencyScore = 0;
+        if (scheme.application.deadline) {
+          const daysUntilDeadline = Math.floor((scheme.application.deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+          if (daysUntilDeadline > 0 && daysUntilDeadline <= 30) {
+            urgencyScore = 100 - (daysUntilDeadline / 30) * 100;
+            score += urgencyScore * 0.1;
+            reasons.push(`Deadline in ${daysUntilDeadline} days`);
+          }
+        }
+
         return {
           scheme,
-          score: recommendationScore.score,
-          eligibilityMatch: eligibility.score,
-          reasons: eligibility.reasons.length > 0 ? eligibility.reasons : recommendationScore.explanation,
+          score: Math.min(score, 100),
+          eligibilityMatch: Math.min(eligibilityMatch, 100),
+          reasons,
           urgencyScore
         };
       });
-      
+
       // Filter by minimum score
       const minScore = options.minScore || 50;
       const filteredRecommendations = recommendations.filter(rec => rec.score >= minScore);
-      
+
       // Sort by score (descending)
       filteredRecommendations.sort((a, b) => b.score - a.score);
-      
+
       // Apply limit
       const maxResults = options.maxResults || 10;
       return filteredRecommendations.slice(0, maxResults);
@@ -647,21 +678,35 @@ export class SchemeService extends BaseService implements ISchemeService {
    * Get scheme categories and subcategories
    */
   getSchemeCategories(): Array<{ key: string; name: string; subcategories: string[] }> {
-    return SchemeCategorization.getCategories();
+    return Object.entries(SCHEME_CATEGORIES).map(([key, value]) => ({
+      key,
+      name: value.name,
+      subcategories: Object.values(value.subcategories)
+    }));
   }
 
   /**
    * Get available business types
    */
   getBusinessTypes(): string[] {
-    return [...BUSINESS_TYPES];
+    return Object.keys(BUSINESS_TYPES);
   }
 
   /**
    * Get Indian states
    */
   getIndianStates(): string[] {
-    return [...INDIAN_STATES];
+    // Return common Indian states
+    return [
+      'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+      'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand',
+      'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur',
+      'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab',
+      'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura',
+      'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+      'Andaman and Nicobar Islands', 'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu',
+      'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry'
+    ];
   }
 
   /**
@@ -673,13 +718,12 @@ export class SchemeService extends BaseService implements ISchemeService {
     warnings: Array<{ field: string; message: string }>;
   }> {
     return this.handleAsync(async () => {
-      const schemeModel = new GovernmentSchemeModel(schemeData);
-      const validation = schemeModel.validate();
-      
+      const validation = GovernmentSchemeValidator.validate(schemeData);
+
       return {
         isValid: validation.isValid,
-        errors: validation.errors.map(e => ({ field: e.field, message: e.message })),
-        warnings: validation.warnings.map(w => ({ field: w.field, message: w.message }))
+        errors: validation.errors.map((e: string) => ({ field: 'general', message: e })),
+        warnings: validation.warnings.map((w: string) => ({ field: 'general', message: w }))
       };
     }, 'Failed to validate scheme data', 'VALIDATE_SCHEME_FAILED');
   }
@@ -702,7 +746,7 @@ export class SchemeService extends BaseService implements ISchemeService {
    * Update scheme metadata based on performance data
    */
   async updateSchemeMetadata(
-    schemeId: string, 
+    schemeId: string,
     performanceData: {
       totalApplications?: number;
       approvedApplications?: number;
@@ -714,18 +758,18 @@ export class SchemeService extends BaseService implements ISchemeService {
   ): Promise<void> {
     return this.handleAsync(async () => {
       this.validateSchemeId(schemeId);
-      
+
       const scheme = await this.getSchemeById(schemeId);
       if (!scheme) {
         throw new Error(`Scheme not found: ${schemeId}`);
       }
-      
+
       // Calculate success rate if application data is provided
       let successRate = scheme.metadata.successRate;
       if (performanceData.totalApplications && performanceData.approvedApplications) {
         successRate = (performanceData.approvedApplications / performanceData.totalApplications) * 100;
       }
-      
+
       // Update metadata
       const updatedScheme = SchemeMetadataManager.updateSchemeMetadata(
         scheme,
@@ -741,7 +785,7 @@ export class SchemeService extends BaseService implements ISchemeService {
           viewCount: performanceData.viewCount
         }
       );
-      
+
       // Update in Firestore
       const docRef = schemeSahayakDocRefs.scheme(schemeId);
       await updateDoc(docRef, {
@@ -751,7 +795,7 @@ export class SchemeService extends BaseService implements ISchemeService {
         'metadata.aiFeatures': updatedScheme.metadata.aiFeatures,
         'metadata.lastUpdated': serverTimestamp()
       });
-      
+
       this.log('info', 'Scheme metadata updated successfully', { schemeId, performanceData });
     }, 'Failed to update scheme metadata', 'UPDATE_METADATA_FAILED');
   }
@@ -769,10 +813,10 @@ export class SchemeService extends BaseService implements ISchemeService {
   }> {
     return this.handleAsync(async () => {
       const stats = await this.getSchemeStatistics();
-      
+
       // Get schemes with deadlines in next 30 days
       const upcomingDeadlines = await this.getSchemesWithUpcomingDeadlines(30);
-      
+
       return {
         totalSchemes: stats.totalSchemes,
         activeSchemes: stats.activeSchemes,

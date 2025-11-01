@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { DigitalTwinChat } from '@/components/digital-twin-chat';
+// import { DigitalTwinChat } from '@/components/digital-twin-chat';
 import { Button } from '@/components/ui/button';
 import { Eye, EyeOff } from 'lucide-react';
 
@@ -100,7 +100,7 @@ export default function ArtisanBuddyVoiceTestPage() {
                         {/* Chat Component */}
                         <div className={showDebug ? "lg:col-span-2" : "lg:col-span-3"}>
                             <div className="h-full">
-                                <DigitalTwinChat />
+                                {/* <DigitalTwinChat /> */}
                             </div>
                         </div>
                     </div>

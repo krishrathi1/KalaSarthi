@@ -1,6 +1,6 @@
 import connectDB from '../mongodb';
-import { SalesAggregate } from '../models/SalesAggregate';
-import LoanApplication from '../models/LoanApplication';
+import { LoanApplicationService } from './LoanApplicationService';
+import { SalesEventService } from './SalesEventService';
 
 interface FinancialHistory {
   totalRevenue: number;
@@ -101,7 +101,13 @@ export class LoanEligibilityService {
    */
   private static async getFinancialHistory(userId: string): Promise<FinancialHistory | null> {
     try {
-      // Get monthly revenue data for the last 12 months
+      // TODO: Implement Firestore query for sales aggregates
+      // Need to replace MongoDB SalesAggregate.find() with Firestore service
+      console.log('getFinancialHistory: Using placeholder for user', userId);
+      return null;
+
+      /*
+      // Original MongoDB logic - TODO: Convert to Firestore
       const twelveMonthsAgo = new Date();
       twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
@@ -121,8 +127,8 @@ export class LoanEligibilityService {
       const averageMonthlyRevenue = totalRevenue / revenues.length;
 
       // Calculate trend
-      const recentMonths = revenues.slice(0, 6); // Last 6 months
-      const earlierMonths = revenues.slice(6, 12); // Previous 6 months
+      const recentMonths = revenues.slice(0, 6);
+      const earlierMonths = revenues.slice(6, 12);
 
       let trend: 'increasing' | 'decreasing' | 'stable' = 'stable';
       if (recentMonths.length >= 3 && earlierMonths.length >= 3) {
@@ -134,12 +140,12 @@ export class LoanEligibilityService {
         else if (changePercent < -10) trend = 'decreasing';
       }
 
-      // Calculate volatility (coefficient of variation)
+      // Calculate volatility
       const mean = averageMonthlyRevenue;
       const variance = revenues.reduce((sum, rev) => sum + Math.pow(rev - mean, 2), 0) / revenues.length;
       const volatility = Math.sqrt(variance) / mean;
 
-      // Find best and worst months
+      // Find best and worst months  
       const maxRevenue = Math.max(...revenues);
       const minRevenue = Math.min(...revenues);
       const bestMonthIndex = revenues.indexOf(maxRevenue);
@@ -154,7 +160,7 @@ export class LoanEligibilityService {
         revenue: minRevenue
       };
 
-      // Check consistency (months with revenue > 80% of average)
+      // Check consistency
       const consistentMonths = revenues.filter(rev => rev > averageMonthlyRevenue * 0.8).length;
       const consistentRevenue = consistentMonths / revenues.length > 0.7;
 
@@ -168,6 +174,7 @@ export class LoanEligibilityService {
         worstMonth,
         consistentRevenue
       };
+      */
 
     } catch (error) {
       console.error('Error getting financial history:', error);
@@ -180,6 +187,18 @@ export class LoanEligibilityService {
    */
   private static async getBusinessInfo(userId: string): Promise<any> {
     try {
+      // TODO: Replace with LoanApplicationService.getRecentApplication(userId)
+      console.log('getBusinessInfo: Using placeholder for user', userId);
+      
+      return {
+        businessType: 'unknown',
+        annualTurnover: 0,
+        businessExperience: 0,
+        gstNumber: null
+      };
+
+      /*
+      // Original MongoDB logic - TODO: Convert to Firestore service call
       const recentApplication = await LoanApplication.findOne({ userId })
         .sort({ createdAt: -1 });
 
@@ -191,13 +210,7 @@ export class LoanEligibilityService {
           gstNumber: recentApplication.businessInfo.gstNumber
         };
       }
-
-      return {
-        businessType: 'unknown',
-        annualTurnover: 0,
-        businessExperience: 0,
-        gstNumber: null
-      };
+      */
 
     } catch (error) {
       console.error('Error getting business info:', error);

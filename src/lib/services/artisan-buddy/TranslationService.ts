@@ -467,6 +467,54 @@ export class TranslationService {
   }
 
   // ============================================================================
+  // LANGUAGE DETECTION
+  // ============================================================================
+
+  async detectLanguage(text: string): Promise<{ language: string; confidence: number }> {
+    try {
+      if (!text || text.trim() === '') {
+        return { language: 'en', confidence: 0.5 };
+      }
+
+      // Check rate limit
+      const rateLimitCheck = this.checkRateLimit();
+      if (!rateLimitCheck.allowed) {
+        // Return default detection on rate limit
+        return { language: 'en', confidence: 0.5 };
+      }
+
+      // Call detection API
+      const { fetchApi } = await import('@/lib/utils/url');
+      const response = await fetchApi('/api/detect-language', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Language detection API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      return {
+        language: data.language || 'en',
+        confidence: data.confidence || 0.5
+      };
+    } catch (error) {
+      console.error('[TranslationService] Language detection error:', error);
+      // Return default detection on error
+      return { language: 'en', confidence: 0.5 };
+    }
+  }
+
+  // ============================================================================
   // TRANSLATION OPERATIONS
   // ============================================================================
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SalesAggregate } from '@/lib/models/SalesAggregate';
+import { SalesAggregateHelpers, ISalesAggregate } from '@/lib/models/SalesAggregate';
 import { ForecastService } from '@/lib/service/ForecastService';
 
 export async function POST(request: NextRequest) {
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 30); // Last 30 days for baseline
 
-    const historicalData = await (SalesAggregate as any).findTimeSeries(
+    const historicalData = await SalesAggregateHelpers.findTimeSeries(
       artisanId,
       'daily',
       startDate,

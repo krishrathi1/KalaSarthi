@@ -1,5 +1,6 @@
-import Order, { IOrderDocument } from '../models/Order';
-import { SalesAggregate, ISalesAggregate } from '../models/SalesAggregate';
+import { IOrderDocument } from '../models/Order';
+import { SalesAggregateHelpers, ISalesAggregate } from '../models/SalesAggregate';
+import { OrderService } from '../service/OrderService';
 import connectDB from '../mongodb';
 import { SalesEventService } from '../service/SalesEventService';
 
@@ -110,7 +111,7 @@ export class RealtimeAggregationService {
 
       // Update watermark
       const lastOrder = newOrders[newOrders.length - 1];
-      this.job.watermark.lastProcessedOrderId = lastOrder._id.toString();
+      this.job.watermark.lastProcessedOrderId = lastOrder.id || lastOrder.orderId;
       this.job.watermark.lastProcessedTimestamp = lastOrder.createdAt;
       this.job.watermark.processedCount += newOrders.length;
       this.job.watermark.lastUpdated = new Date();
@@ -132,20 +133,38 @@ export class RealtimeAggregationService {
    * Get new orders since last watermark
    */
   private async getNewOrders(): Promise<IOrderDocument[]> {
-    const query: any = {
-      status: { $ne: 'cancelled' },
-      createdAt: { $gt: this.job.watermark.lastProcessedTimestamp }
-    };
+    try {
+      // Get all orders since the last processed timestamp
+      const result = await OrderService.getAllOrders({
+        startDate: this.job.watermark.lastProcessedTimestamp,
+        limit: 1000 // Safety limit
+      });
 
-    // If we have a last processed order ID, use it to avoid duplicates
-    if (this.job.watermark.lastProcessedOrderId) {
-      query._id = { $gt: this.job.watermark.lastProcessedOrderId };
+      if (!result.success || !result.data) {
+        console.error('Failed to fetch orders:', result.error);
+        return [];
+      }
+
+      // Filter out cancelled orders and sort by createdAt ascending
+      let orders = result.data
+        .filter(order => order.status !== 'cancelled')
+        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+
+      // If we have a last processed order ID, filter to only include orders after it
+      if (this.job.watermark.lastProcessedOrderId) {
+        const lastProcessedIndex = orders.findIndex(order => 
+          (order.id || order.orderId) === this.job.watermark.lastProcessedOrderId
+        );
+        if (lastProcessedIndex >= 0) {
+          orders = orders.slice(lastProcessedIndex + 1);
+        }
+      }
+
+      return orders;
+    } catch (error) {
+      console.error('Error fetching new orders:', error);
+      return [];
     }
-
-    return await Order.find(query)
-      .sort({ createdAt: 1, _id: 1 })
-      .limit(1000) // Safety limit
-      .lean() as unknown as IOrderDocument[];
   }
 
   /**
@@ -242,12 +261,8 @@ export class RealtimeAggregationService {
 
     if (!existing) {
       // Try to find existing aggregate in database
-      const dbAggregate = await SalesAggregate.findOne({
-        artisanId: params.artisanId,
-        productId: params.productId || null,
-        period: params.period,
-        periodKey: params.periodKey
-      }).lean();
+      // TODO: Implement Firestore query for existing aggregate
+      const dbAggregate = null; // Placeholder until Firestore implementation is ready
 
       if (dbAggregate) {
         existing = dbAggregate as Partial<ISalesAggregate>;
@@ -340,8 +355,8 @@ export class RealtimeAggregationService {
     }
 
     if (bulkOps.length > 0) {
-      const result = await SalesAggregate.bulkWrite(bulkOps, { ordered: false });
-      console.log(`💾 Real-time aggregation: upserted ${result.upsertedCount} new and ${result.modifiedCount} existing aggregates`);
+      // TODO: Implement Firestore batch operations for sales aggregates
+      console.log(`💾 Real-time aggregation: would upsert ${bulkOps.length} aggregates (Firestore implementation pending)`);
     }
   }
 
@@ -408,14 +423,9 @@ export class RealtimeAggregationService {
     // In a real implementation, you'd load this from a database collection
     // For now, we'll use a simple approach
     try {
-      const latestAggregate = await SalesAggregate.findOne()
-        .sort({ watermark: -1 })
-        .lean() as ISalesAggregate | null;
-
-      if (latestAggregate && latestAggregate.watermark) {
-        this.job.watermark.lastProcessedTimestamp = latestAggregate.watermark;
-        console.log(`📚 Loaded watermark from ${this.job.watermark.lastProcessedTimestamp}`);
-      }
+      // TODO: Implement Firestore query to find latest aggregate by watermark
+      // const latestAggregate = await firestoreService.getLatestSalesAggregate();
+      console.log(`📚 Watermark loading from Firestore not yet implemented`);
     } catch (error) {
       console.error('Error loading watermark state:', error);
     }

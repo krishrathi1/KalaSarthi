@@ -700,8 +700,3 @@ export class IndexManager {
   }
 }
 
-// Export all components
-export {
-  QueryOptimizer,
-  IndexManager
-};

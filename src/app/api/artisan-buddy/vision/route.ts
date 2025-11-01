@@ -6,10 +6,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { visionService } from '@/lib/services/artisan-buddy';
-import { googleCloudAI } from '@/lib/services/artisan-buddy/GoogleCloudAI';
-
-// Initialize Google Cloud AI
-googleCloudAI.initialize().catch(console.error);
 
 export async function POST(request: NextRequest) {
   try {

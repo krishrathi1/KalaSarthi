@@ -15,7 +15,8 @@ import {
     ExternalLink,
     Settings,
     RefreshCw,
-    Globe
+    Globe,
+    WifiOff
 } from 'lucide-react';
 import { useAmazonSPAPI } from '@/hooks/use-amazon';
 import { useMounted } from '@/hooks/use-mounted';
@@ -33,7 +34,11 @@ interface IntegrationStatus {
     errorMessage?: string;
 }
 
-export default function IntegrationsTab() {
+interface IntegrationsTabProps {
+    isOnline?: boolean;
+}
+
+export default function IntegrationsTab({ isOnline = true }: IntegrationsTabProps = {}) {
     const mounted = useMounted();
     const { toast } = useToast();
     const [syncing, setSyncing] = useState(false);
@@ -70,6 +75,15 @@ export default function IntegrationsTab() {
     }, [mounted, authenticate]);
 
     const handleConnect = async (integrationId: string) => {
+        if (!isOnline) {
+            toast({
+                title: 'Offline Mode',
+                description: 'Integration connections require an internet connection.',
+                variant: 'destructive'
+            });
+            return;
+        }
+
         if (integrationId === 'amazon') {
             try {
                 clearError();
@@ -282,6 +296,16 @@ export default function IntegrationsTab() {
 
     return (
         <div className="space-y-6">
+            {/* Offline Warning */}
+            {!isOnline && (
+                <Alert className="bg-yellow-50 border-yellow-200">
+                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                    <AlertDescription className="text-yellow-800">
+                        You're offline. Integration features require an internet connection.
+                    </AlertDescription>
+                </Alert>
+            )}
+
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
@@ -290,7 +314,7 @@ export default function IntegrationsTab() {
                         Connect your inventory to multiple sales channels and expand your reach.
                     </p>
                 </div>
-                <Button onClick={handleSync} disabled={syncing || !isAmazonConnected} variant="outline">
+                <Button onClick={handleSync} disabled={!isOnline || syncing || !isAmazonConnected} variant="outline">
                     <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
                     {syncing ? 'Syncing...' : 'Sync All'}
                 </Button>
@@ -416,7 +440,7 @@ export default function IntegrationsTab() {
                                 <div className="flex items-center gap-2">
                                     {integration.status === 'connected' && (
                                         <>
-                                            <Button variant="outline" size="sm">
+                                            <Button variant="outline" size="sm" disabled={!isOnline}>
                                                 <Settings className="h-4 w-4 mr-1" />
                                                 Configure
                                             </Button>
@@ -427,6 +451,7 @@ export default function IntegrationsTab() {
                                         <Button
                                             onClick={() => handleConnect(integration.id)}
                                             disabled={
+                                                !isOnline ||
                                                 (isAmazonLoading && integration.id === 'amazon') ||
                                                 (integration.status === 'pending')
                                             }
@@ -497,7 +522,7 @@ export default function IntegrationsTab() {
                             {/* Additional Actions */}
                             {integration.status === 'connected' && (
                                 <div className="mt-4 pt-4 border-t flex items-center gap-2">
-                                    <Button variant="outline" size="sm">
+                                    <Button variant="outline" size="sm" disabled={!isOnline}>
                                         <ExternalLink className="h-4 w-4 mr-1" />
                                         View on {integration.name}
                                     </Button>
@@ -505,7 +530,7 @@ export default function IntegrationsTab() {
                                         variant="outline" 
                                         size="sm" 
                                         onClick={integration.id === 'amazon' ? handleSync : undefined}
-                                        disabled={syncing}
+                                        disabled={!isOnline || syncing}
                                     >
                                         <RefreshCw className={`h-4 w-4 mr-1 ${syncing ? 'animate-spin' : ''}`} />
                                         Sync Now

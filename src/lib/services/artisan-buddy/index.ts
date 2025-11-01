@@ -8,8 +8,8 @@ export { redisClient, RedisClient } from './RedisClient';
 export { contextEngine, ContextEngine } from './ContextEngine';
 export { firestoreRepository, FirestoreRepository } from './FirestoreRepository';
 export { conversationManager, ConversationManager } from './ConversationManager';
-export { 
-  conversationContextManager, 
+export {
+  conversationContextManager,
   ConversationContextManager,
   type ConversationState,
   type ConversationFlowState,
@@ -19,21 +19,14 @@ export {
 export { intentClassifier, IntentClassifier } from './IntentClassifier';
 export { customIntentModel, CustomIntentModel } from './CustomIntentModel';
 export { googleCloudAI, GoogleCloudAI } from './GoogleCloudAI';
-export { 
+export {
   TranslationService,
-  EnhancedTranslationService,
-  LanguageFormatter,
-  CodeMixedTextHandler,
-  LanguagePreferenceManager,
-  TranslationQualityMonitor,
-  BatchTranslationOptimizer,
-  TranslationErrorHandler,
-  LANGUAGE_NAMES,
-  type LanguageCode,
+  translationService,
+  type TranslationRequest,
   type TranslationResult,
-  type LanguageDetection,
   type BatchTranslationResult,
   type TranslationQualityMetrics,
+  type TranslationServiceConfig,
 } from './TranslationService';
 
 // Knowledge Base and RAG Services
@@ -118,14 +111,19 @@ export type {
   Session,
   Message,
   MessageMetadata,
+  SessionData,
+  MessageEntry,
   ConversationContext,
-  ArtisanContext,
   ArtisanProfile,
-  Product,
-  SalesMetrics,
-  InventoryStatus,
-  SchemeRecommendation,
-  BuyerConnection,
   UserPreferences,
-  ContextType,
-} from '@/lib/types/artisan-buddy';
+  PersonalInfo,
+  Skills,
+  Products,
+  Preferences,
+  BusinessInfo,
+  ProfileMetadata,
+  EnhancedChatMessage,
+  SessionMetadata,
+  MessageInput,
+  MessageResponse,
+} from '@/lib/types/enhanced-artisan-buddy';

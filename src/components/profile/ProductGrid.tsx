@@ -24,6 +24,7 @@ interface ProductGridProps {
     onDelete?: (productId: string) => void;
     updating?: string | null;
     deleting?: string | null;
+    isOnline?: boolean;
 }
 
 interface AmazonListingStatus {
@@ -47,7 +48,8 @@ export default function ProductGrid({
     onEdit,
     onDelete,
     updating,
-    deleting
+    deleting,
+    isOnline = true
 }: ProductGridProps) {
     const mounted = useMounted();
     const [reviewProduct, setReviewProduct] = useState<IProductDocument | null>(null);
@@ -107,6 +109,15 @@ export default function ProductGrid({
 
     // Handle Amazon listing publication
     const handlePublishOnAmazon = async (product: IProductDocument) => {
+        if (!isOnline) {
+            toast({
+                title: 'Offline Mode',
+                description: 'Amazon listing requires an internet connection.',
+                variant: "destructive",
+            });
+            return;
+        }
+
         if (!isAmazonConnected) {
             toast({
                 title: 'Amazon SP-API not connected',
@@ -314,6 +325,11 @@ export default function ProductGrid({
                                         Amazon Listed
                                     </Badge>
                                 )}
+                                {!isOnline && (
+                                    <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                                        Cached
+                                    </Badge>
+                                )}
                             </div>
 
                             {/* Availability Badge */}
@@ -397,7 +413,7 @@ export default function ProductGrid({
                                                     variant="default"
                                                     size="sm"
                                                     onClick={() => handlePublishOnAmazon(product)}
-                                                    disabled={!isAmazonConnected || isPublishingToAmazon(product.productId) || isAmazonLoading}
+                                                    disabled={!isOnline || !isAmazonConnected || isPublishingToAmazon(product.productId) || isAmazonLoading}
                                                     className="bg-orange-500 hover:bg-orange-600"
                                                 >
                                                     <ShoppingCart className="h-4 w-4 mr-1" />
@@ -426,7 +442,7 @@ export default function ProductGrid({
                                                         size="sm"
                                                         className="flex-1"
                                                         onClick={() => handleStatusChange(product.productId, 'published')}
-                                                        disabled={updating === product.productId}
+                                                        disabled={!isOnline || updating === product.productId}
                                                     >
                                                         <CheckCircle className="h-4 w-4 mr-1" />
                                                         Publish
@@ -441,7 +457,7 @@ export default function ProductGrid({
                                                         size="sm"
                                                         className="flex-1"
                                                         onClick={() => handleStatusChange(product.productId, 'archived')}
-                                                        disabled={updating === product.productId}
+                                                        disabled={!isOnline || updating === product.productId}
                                                     >
                                                         <Archive className="h-4 w-4 mr-1" />
                                                         Archive
@@ -456,7 +472,7 @@ export default function ProductGrid({
                                                         size="sm"
                                                         className="flex-1"
                                                         onClick={() => handleStatusChange(product.productId, 'published')}
-                                                        disabled={updating === product.productId}
+                                                        disabled={!isOnline || updating === product.productId}
                                                     >
                                                         <RotateCcw className="h-4 w-4 mr-1" />
                                                         Restore
@@ -481,7 +497,7 @@ export default function ProductGrid({
                                                     size="sm"
                                                     className="flex-1"
                                                     onClick={() => onDelete && onDelete(product.productId)}
-                                                    disabled={updating === product.productId || deleting === product.productId}
+                                                    disabled={!isOnline || updating === product.productId || deleting === product.productId}
                                                 >
                                                     <Trash2 className="h-4 w-4 mr-1" />
                                                     {deleting === product.productId ? 'Deleting...' : 'Delete'}

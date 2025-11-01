@@ -1,4 +1,4 @@
-import { SalesAggregate, ISalesAggregate } from '../models/SalesAggregate';
+import { SalesAggregateHelpers, ISalesAggregate } from '../models/SalesAggregate';
 import { Schema, model, models, Document } from 'mongoose';
 
 export interface Alert extends Document {
@@ -129,7 +129,7 @@ export class AnomalyService {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 30); // Last 30 days
 
-      const dailyData = await (SalesAggregate as any).findTimeSeries(
+      const dailyData = await SalesAggregateHelpers.findTimeSeries(
         artisanId,
         'daily',
         startDate,

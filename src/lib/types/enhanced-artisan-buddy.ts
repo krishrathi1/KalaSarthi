@@ -70,6 +70,11 @@ export const ProfileMetadataSchema = z.object({
 
 export type ProfileMetadata = z.infer<typeof ProfileMetadataSchema>;
 
+// Extended Artisan Profile with updatedAt at root level
+export interface ArtisanProfileExtended extends ArtisanProfile {
+    updatedAt: Date;
+}
+
 // Main Artisan Profile Schema and Interface
 export const ArtisanProfileSchema = z.object({
     id: z.string().min(1, 'Profile ID is required'),
@@ -266,4 +271,137 @@ export function validateMessageInput(data: unknown): {
         }
         throw error;
     }
+}
+// =
+// Conversation Manager Types
+// ============================================================================
+
+// Session Data for Redis storage
+export interface SessionData {
+    userId: string;
+    language: string;
+    startedAt: number;
+    lastActivityAt: number;
+    contextHash: string;
+}
+
+// Message Entry for Redis storage
+export interface MessageEntry {
+    id: string;
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+    language: string;
+    timestamp: number;
+    metadata: string; // JSON string
+}
+
+// Session interface
+export interface Session {
+    id: string;
+    userId: string;
+    artisanProfile: ArtisanProfile;
+    language: string;
+    startedAt: Date;
+    lastActivityAt: Date;
+    context: ConversationContext; // Uses the schema-based ConversationContext
+}
+
+// Message interface
+export interface Message {
+    id?: string;
+    sessionId?: string;
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+    language: string;
+    timestamp: Date;
+    metadata?: MessageMetadata;
+}
+
+// Conversation Context
+
+// User Preferences (alias for Preferences)
+export type UserPreferences = Preferences;
+
+// Constants
+export const MAX_CONVERSATION_HISTORY = 50;
+export const DEFAULT_SESSION_TTL = 3600; // 1 hour in seconds
+export const DEFAULT_CACHE_TTL = 1800; // 30 minutes in seconds
+
+// ============================================================================
+// Google Cloud AI Types
+// ============================================================================
+
+// Translation Types
+export interface TranslationResult {
+    translatedText: string;
+    sourceLanguage: string;
+    targetLanguage: string;
+    confidence: number;
+}
+
+export interface LanguageDetection {
+    language: string;
+    confidence: number;
+    alternatives: Array<{ language: string; confidence: number }>;
+}
+
+// Vision API Types
+export interface RGB {
+    red: number;
+    green: number;
+    blue: number;
+}
+
+export interface BoundingBox {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
+export interface Label {
+    description: string;
+    score: number;
+    topicality: number;
+}
+
+export interface ColorInfo {
+    color: RGB;
+    score: number;
+    pixelFraction: number;
+}
+
+export interface DetectedObject {
+    name: string;
+    confidence: number;
+    boundingBox: BoundingBox;
+}
+
+export interface QualityAssessment {
+    sharpness: number;
+    brightness: number;
+    composition: number;
+    overallScore: number;
+    improvements: string[];
+}
+
+export interface ImageAnalysis {
+    labels: Label[];
+    colors: ColorInfo[];
+    objects: DetectedObject[];
+    quality: QualityAssessment;
+    suggestions: string[];
+}
+
+export interface TextBlock {
+    text: string;
+    boundingBox: BoundingBox;
+    confidence: number;
+}
+
+export interface TextExtraction {
+    text: string;
+    language: string;
+    confidence: number;
+    blocks: TextBlock[];
 }

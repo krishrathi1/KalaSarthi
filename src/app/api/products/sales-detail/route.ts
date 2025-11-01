@@ -5,10 +5,15 @@ import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 // Initialize Firebase Admin
 if (!getApps().length) {
   try {
-    const serviceAccount = require('../../../../../../key.json');
-    initializeApp({
-      credential: cert(serviceAccount)
-    });
+    const firebaseConfig = {
+      apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+      authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+      appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    };
+    initializeApp(firebaseConfig);
   } catch (error) {
     console.error('Firebase Admin initialization error:', error);
   }
@@ -31,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch product details
     const productDoc = await db.collection('products').doc(productId).get();
-    
+
     if (!productDoc.exists) {
       return NextResponse.json(
         { success: false, error: 'Product not found' },
@@ -64,7 +69,7 @@ export async function GET(request: NextRequest) {
 
     // Analyze bundles (products ordered together)
     const bundleMap = new Map<string, { count: number; revenue: number; name: string }>();
-    
+
     for (const sale of sales) {
       // Find other products in the same order (using orderId from metadata)
       const orderId = (sale as any).metadata?.orderId;
@@ -78,7 +83,7 @@ export async function GET(request: NextRequest) {
         orderSnapshot.docs.forEach(doc => {
           const otherProduct = doc.data();
           const key = otherProduct.productId;
-          
+
           if (!bundleMap.has(key)) {
             bundleMap.set(key, {
               count: 0,
@@ -86,7 +91,7 @@ export async function GET(request: NextRequest) {
               name: otherProduct.productName
             });
           }
-          
+
           const bundle = bundleMap.get(key)!;
           bundle.count += 1;
           bundle.revenue += otherProduct.totalAmount;
@@ -107,15 +112,15 @@ export async function GET(request: NextRequest) {
 
     // Calculate monthly trend
     const monthlyData = new Map<string, { revenue: number; units: number }>();
-    
+
     sales.forEach((sale: any) => {
       const monthKey = new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' })
         .format(sale.timestamp);
-      
+
       if (!monthlyData.has(monthKey)) {
         monthlyData.set(monthKey, { revenue: 0, units: 0 });
       }
-      
+
       const data = monthlyData.get(monthKey)!;
       data.revenue += sale.totalAmount;
       data.units += sale.quantity;
@@ -134,17 +139,17 @@ export async function GET(request: NextRequest) {
       sales.map(async (sale: any) => {
         const orderId = sale.metadata?.orderId;
         let bundledWith: string[] = [];
-        
+
         if (orderId) {
           const orderSnapshot = await db
             .collection('sales_events')
             .where('metadata.orderId', '==', orderId)
             .where('productId', '!=', productId)
             .get();
-          
+
           bundledWith = orderSnapshot.docs.map(doc => doc.data().productName);
         }
-        
+
         return {
           id: sale.id,
           buyerName: sale.buyerName || 'Anonymous',
@@ -178,7 +183,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error: any) {
     console.error('Error fetching product sales detail:', error);
-    
+
     // Return mock data if Firestore fails
     return NextResponse.json({
       success: true,

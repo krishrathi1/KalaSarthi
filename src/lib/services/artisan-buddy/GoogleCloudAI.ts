@@ -4,9 +4,11 @@
  * Provides wrappers for Google Cloud Translation, Vision, and Natural Language APIs
  */
 
-import { TranslateClient } from '@google-cloud/translate';
+import { v2 as translate } from '@google-cloud/translate';
 import { ImageAnnotatorClient } from '@google-cloud/vision';
 import { LanguageServiceClient } from '@google-cloud/language';
+
+type TranslateClient = translate.Translate;
 import {
   TranslationResult,
   LanguageDetection,
@@ -18,7 +20,7 @@ import {
   QualityAssessment,
   BoundingBox,
   RGB,
-} from '@/lib/types/artisan-buddy';
+} from '@/lib/types/enhanced-artisan-buddy';
 
 export class GoogleCloudAI {
   private static instance: GoogleCloudAI;
@@ -55,7 +57,7 @@ export class GoogleCloudAI {
       };
 
       // Initialize Translation API client
-      this.translateClient = new TranslateClient({
+      this.translateClient = new translate.Translate({
         credentials,
         projectId: credentials.project_id,
       });
@@ -83,9 +85,9 @@ export class GoogleCloudAI {
   /**
    * Ensure clients are initialized
    */
-  private ensureInitialized(): void {
+  private async ensureInitialized(): Promise<void> {
     if (!this.isInitialized) {
-      throw new Error('Google Cloud AI not initialized. Call initialize() first.');
+      await this.initialize();
     }
   }
 
@@ -101,7 +103,7 @@ export class GoogleCloudAI {
     targetLanguage: string,
     sourceLanguage?: string
   ): Promise<TranslationResult> {
-    this.ensureInitialized();
+    await await this.ensureInitialized();
 
     try {
       const [translation] = await this.translateClient!.translate(text, {
@@ -136,7 +138,7 @@ export class GoogleCloudAI {
     targetLanguage: string,
     sourceLanguage?: string
   ): Promise<TranslationResult[]> {
-    this.ensureInitialized();
+    await this.ensureInitialized();
 
     try {
       const [translations] = await this.translateClient!.translate(texts, {
@@ -167,7 +169,7 @@ export class GoogleCloudAI {
    * Detect language
    */
   public async detectLanguage(text: string): Promise<LanguageDetection> {
-    this.ensureInitialized();
+    await this.ensureInitialized();
 
     try {
       const [detections] = await this.translateClient!.detect(text);
@@ -192,7 +194,7 @@ export class GoogleCloudAI {
    * Analyze image
    */
   public async analyzeImage(imageUrl: string): Promise<ImageAnalysis> {
-    this.ensureInitialized();
+    await this.ensureInitialized();
 
     try {
       const [result] = await this.visionClient!.annotateImage({
@@ -257,7 +259,7 @@ export class GoogleCloudAI {
    * Extract text from image (OCR)
    */
   public async extractText(imageUrl: string): Promise<TextExtraction> {
-    this.ensureInitialized();
+    await this.ensureInitialized();
 
     try {
       const [result] = await this.visionClient!.textDetection(imageUrl);
@@ -370,7 +372,7 @@ export class GoogleCloudAI {
    * Analyze entities in text
    */
   public async analyzeEntities(text: string): Promise<any[]> {
-    this.ensureInitialized();
+    await this.ensureInitialized();
 
     try {
       const document = {
@@ -390,7 +392,7 @@ export class GoogleCloudAI {
    * Analyze sentiment
    */
   public async analyzeSentiment(text: string): Promise<any> {
-    this.ensureInitialized();
+    await this.ensureInitialized();
 
     try {
       const document = {
@@ -410,7 +412,7 @@ export class GoogleCloudAI {
    * Analyze syntax
    */
   public async analyzeSyntax(text: string): Promise<any[]> {
-    this.ensureInitialized();
+    await this.ensureInitialized();
 
     try {
       const document = {

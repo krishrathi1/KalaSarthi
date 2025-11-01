@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateGupshupConfig, getConfigSummary } from '../../../../lib/config/gupshup-config';
-import { getDeliveryTracker } from '../../../../lib/services/notifications/DeliveryTracker';
+import { validateGupshupConfig, getConfigSummary } from '@/lib/config/gupshup-config';
+import { getDeliveryTracker } from '@/lib/services/notifications/DeliveryTracker';
 
 /**
  * Production Health Check Endpoint for Gupshup Notification System

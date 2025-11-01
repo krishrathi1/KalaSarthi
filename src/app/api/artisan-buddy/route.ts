@@ -12,7 +12,7 @@ import { navigationRouter } from '@/lib/services/artisan-buddy/NavigationRouter'
 import { translationService } from '@/lib/services/artisan-buddy/TranslationService';
 import { visionService } from '@/lib/services/artisan-buddy/VisionService';
 import { contextEngine } from '@/lib/services/artisan-buddy/ContextEngine';
-import { Message } from '@/lib/types/artisan-buddy';
+import { Message } from '@/lib/types/enhanced-artisan-buddy';
 import { withAuth, AuthContext } from '@/lib/middleware/artisan-buddy-auth';
 import {
   ArtisanBuddyError,
@@ -139,19 +139,29 @@ async function handlePost(request: NextRequest, authContext: AuthContext) {
     // Handle image analysis if image is provided
     if (imageUrl) {
       try {
-        const imageAnalysis = await visionService.analyzeImage(imageUrl);
+        const visionResult = await visionService.analyzeImage(imageUrl, {
+          includeCraftDetection: true,
+          includeTextExtraction: false,
+        });
         
         // Create response with image analysis
-        const analysisResponse = await responseGenerator.generateResponse(
-          {
+        const analysisResponse = await responseGenerator.generateResponse({
+          intent: {
             type: 'image_analysis',
             confidence: 1.0,
             entities: [],
-            parameters: { imageAnalysis },
+            parameters: { 
+              imageAnalysis: visionResult.imageAnalysis,
+              craftDetection: visionResult.craftDetection,
+              processingTime: visionResult.processingTime,
+            },
           },
-          artisanContext,
-          history
-        );
+          context: artisanContext,
+          history,
+          userMessage: message,
+          language: detectedLanguage,
+          sessionId: activeSessionId,
+        });
 
         // Store assistant message
         const assistantMessage: Message = {
@@ -164,8 +174,8 @@ async function handlePost(request: NextRequest, authContext: AuthContext) {
           metadata: {
             intent: 'image_analysis',
             confidence: 1.0,
-            sources: analysisResponse.sources,
-            imageAnalysis,
+            processingTime: Date.now() - startTime,
+            source: 'assistant',
           },
         };
 
@@ -184,40 +194,46 @@ async function handlePost(request: NextRequest, authContext: AuthContext) {
             intent: 'image_analysis',
             confidence: 1.0,
             responseTime,
-            imageAnalysis,
+            imageAnalysis: visionResult.imageAnalysis,
           },
         });
       } catch (error) {
         console.error('Image analysis error:', error);
         // Graceful degradation for vision service
-        const { analysis } = await GracefulDegradation.handleVisionFailure(imageUrl);
-        
-        const fallbackMessage: Message = {
-          id: uuidv4(),
-          sessionId: activeSessionId,
-          role: 'assistant',
-          content: analysis.message,
-          language: detectedLanguage,
-          timestamp: new Date(),
-          metadata: {
-            intent: 'image_analysis',
+        try {
+          const { analysis } = await GracefulDegradation.handleVisionFailure(imageUrl);
+          
+          const fallbackMessage: Message = {
+            id: uuidv4(),
+            sessionId: activeSessionId,
+            role: 'assistant',
+            content: analysis.message,
+            language: detectedLanguage,
+            timestamp: new Date(),
+            metadata: {
+              intent: 'image_analysis',
+              confidence: 0.5,
+              source: 'assistant',
+            },
+          };
+
+          await conversationManager.processMessage(activeSessionId, fallbackMessage);
+
+          return NextResponse.json({
+            response: analysis.message,
+            sessionId: activeSessionId,
+            messageId: fallbackMessage.id,
+            language: detectedLanguage,
             degraded: true,
-          },
-        };
-
-        await conversationManager.processMessage(activeSessionId, fallbackMessage);
-
-        return NextResponse.json({
-          response: analysis.message,
-          sessionId: activeSessionId,
-          messageId: fallbackMessage.id,
-          language: detectedLanguage,
-          degraded: true,
-          metadata: {
-            intent: 'image_analysis',
-            responseTime: Date.now() - startTime,
-          },
-        });
+            metadata: {
+              intent: 'image_analysis',
+              responseTime: Date.now() - startTime,
+            },
+          });
+        } catch (fallbackError) {
+          console.error('Vision fallback error:', fallbackError);
+          // Continue to normal flow if fallback also fails
+        }
       }
     }
 
@@ -225,9 +241,9 @@ async function handlePost(request: NextRequest, authContext: AuthContext) {
     let intent;
     try {
       intent = await intentClassifier.classifyIntent(message, {
-        recentTopics: session.context.recentTopics,
-        userPreferences: session.context.userPreferences,
-        pendingActions: session.context.pendingActions,
+        currentIntent: session.context.currentIntent,
+        entities: session.context.entities,
+        profileContext: session.context.profileContext,
       });
     } catch (error) {
       console.error('Intent classification error:', error);
@@ -256,8 +272,8 @@ async function handlePost(request: NextRequest, authContext: AuthContext) {
           metadata: {
             intent: intent.type,
             confidence: intent.confidence,
-            navigationRoute: navigationResult.route,
-            navigationParameters: navigationResult.parameters,
+            processingTime: Date.now() - startTime,
+            source: 'assistant',
           },
         };
 
@@ -289,11 +305,14 @@ async function handlePost(request: NextRequest, authContext: AuthContext) {
     // Generate response using RAG pipeline with error handling
     let generatedResponse;
     try {
-      generatedResponse = await responseGenerator.generateResponse(
+      generatedResponse = await responseGenerator.generateResponse({
         intent,
-        artisanContext,
-        history
-      );
+        context: artisanContext,
+        history,
+        userMessage: message,
+        language: detectedLanguage,
+        sessionId: activeSessionId,
+      });
     } catch (error) {
       console.error('Response generation error:', error);
       // Graceful degradation for response generation
@@ -313,11 +332,11 @@ async function handlePost(request: NextRequest, authContext: AuthContext) {
     let translationDegraded = false;
     if (detectedLanguage !== 'en' && detectedLanguage !== language) {
       try {
-        const translation = await translationService.translate(
-          generatedResponse.text,
-          detectedLanguage,
-          'en'
-        );
+        const translation = await translationService.translate({
+          text: generatedResponse.text,
+          sourceLanguage: 'en' as any,
+          targetLanguage: detectedLanguage as any
+        });
         finalResponse = translation.translatedText;
       } catch (error) {
         console.error('Translation error:', error);
@@ -342,7 +361,8 @@ async function handlePost(request: NextRequest, authContext: AuthContext) {
       metadata: {
         intent: intent.type,
         confidence: intent.confidence,
-        sources: generatedResponse.sources,
+        processingTime: Date.now() - startTime,
+        source: 'assistant',
       },
     };
 
@@ -362,7 +382,6 @@ async function handlePost(request: NextRequest, authContext: AuthContext) {
         intent: intent.type,
         confidence: intent.confidence,
         responseTime,
-        sources: generatedResponse.sources,
       },
     });
 
