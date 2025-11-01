@@ -85,14 +85,7 @@ export function UnifiedTranslationWrapper({
         </div>
       )}
 
-      {/* Debug info in development */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="fixed bottom-4 left-4 z-50 bg-black/80 text-white text-xs p-2 rounded">
-          <div>Lang: {currentLanguage}</div>
-          <div>Enabled: {isEnabled ? 'Yes' : 'No'}</div>
-          <div>Translated: {translatedCount}</div>
-        </div>
-      )}
+
     </>
   );
 }
