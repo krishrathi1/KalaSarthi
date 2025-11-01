@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { offlineStorage, isOnline, getOfflineStatus } from '@/lib/offline-storage';
 import { syncOfflineData } from '@/lib/offline-sync';
+import { offlineSearch, SearchResult } from '@/lib/offline-search';
 import { useToast } from '@/hooks/use-toast';
 
 export interface OfflineState {
@@ -208,6 +209,39 @@ export function useOffline() {
         }
     }, []);
 
+    // Search offline data
+    const searchOffline = useCallback(async (query: string, options?: {
+        types?: ('product' | 'trend' | 'chat' | 'artisan')[];
+        limit?: number;
+        minScore?: number;
+    }): Promise<SearchResult[]> => {
+        try {
+            // Index current data if not already indexed
+            const products = await offlineStorage.getProducts();
+            const trends = await offlineStorage.getTrendData();
+            const chat = await offlineStorage.getChatMessages();
+
+            await offlineSearch.indexData('product', products);
+            await offlineSearch.indexData('trend', trends);
+            await offlineSearch.indexData('chat', chat);
+
+            return await offlineSearch.search(query, options);
+        } catch (error) {
+            console.error('Failed to search offline data:', error);
+            return [];
+        }
+    }, []);
+
+    // Get search suggestions
+    const getSearchSuggestions = useCallback(async (query: string, limit?: number): Promise<string[]> => {
+        try {
+            return await offlineSearch.getSuggestions(query, limit);
+        } catch (error) {
+            console.error('Failed to get search suggestions:', error);
+            return [];
+        }
+    }, []);
+
     // Event listeners
     useEffect(() => {
         // Only run on client side
@@ -245,6 +279,8 @@ export function useOffline() {
         isDataStale,
         setOfflineSetting,
         getOfflineSetting,
+        searchOffline,
+        getSearchSuggestions,
         updateState
     };
 }
