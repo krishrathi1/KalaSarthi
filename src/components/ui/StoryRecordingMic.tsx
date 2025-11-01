@@ -553,21 +553,24 @@ export function StoryRecordingMic({
       // Normalize language code to uppercase (e.g., hi-in -> hi-IN)
       const normalizedLanguage = language.toUpperCase();
       const response = await fetch(`/api/voices/${normalizedLanguage}`);
+
+      if (!response.ok) {
+        // Silently fail and use default voices
+        return [];
+      }
+
       const data = await response.json();
 
-      if (data.success) {
+      if (data.success && data.voices) {
         setAvailableVoicesForLanguage(data.voices);
         return data.voices;
       } else {
-        throw new Error(data.error || 'Failed to fetch voices');
+        // Silently fail and use default voices
+        return [];
       }
     } catch (error) {
-      console.error('Error fetching voices:', error);
-      toast({
-        title: "Voice Loading Failed",
-        description: "Could not load available voices. Using default voice.",
-        variant: "destructive"
-      });
+      // Silently fail - no error message shown to user
+      console.log('Voice API not available, using default voices');
       return [];
     }
   };
@@ -1230,80 +1233,7 @@ export function StoryRecordingMic({
         <div className="mt-6 w-full max-w-4xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-            {/* Original Story Box - Hide when story is finalized */}
-            {!finalizedStory && (
-              <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                    <span className="font-semibold text-gray-800">Your Original Story</span>
-                    <span className="text-xs text-gray-500">({lastTranscript.length} chars)</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => {
-                        setEditedStory(lastTranscript);
-                        setShowEditStory(true);
-                      }}
-                      size="sm"
-                      variant="outline"
-                      className="h-7 px-3 text-xs"
-                    >
-                      ✏️ Edit
-                    </Button>
-                    {!enhancedStory && (
-                      <Button
-                        onClick={enhanceStory}
-                        size="sm"
-                        className="h-7 px-3 text-xs bg-purple-600 hover:bg-purple-700 text-white"
-                      >
-                        ✨ Enhance It
-                      </Button>
-                    )}
-                    <Button
-                      onClick={clearRecording}
-                      size="sm"
-                      variant="outline"
-                      className="h-7 px-3 text-xs text-red-600 hover:text-red-700"
-                    >
-                      🗑️ Clear
-                    </Button>
-                  </div>
-                </div>
 
-                {showEditStory ? (
-                  <div className="space-y-3">
-                    <Textarea
-                      value={editedStory}
-                      onChange={(e) => setEditedStory(e.target.value)}
-                      className="w-full text-sm resize-none"
-                      rows={6}
-                      placeholder="Edit your story..."
-                    />
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={saveEditedStory}
-                        size="sm"
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        💾 Save Changes
-                      </Button>
-                      <Button
-                        onClick={() => setShowEditStory(false)}
-                        size="sm"
-                        variant="outline"
-                      >
-                        ❌ Cancel
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-gray-700 text-sm leading-relaxed max-h-32 overflow-y-auto">
-                    {lastTranscript}
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Enhanced Story Box - REMOVED TO AVOID DUPLICATION */}
 

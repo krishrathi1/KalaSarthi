@@ -2847,17 +2847,6 @@ Return only the enhanced story, no additional commentary.`;
                     <div className="mt-3 flex gap-2">
                       <Button
                         onClick={() => {
-                          setTranscription(enhancedTranscription);
-                          // Trigger story finalization for audio generation
-                          handleFinalizedStory(enhancedTranscription, null);
-                        }}
-                        size="sm"
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        Use This
-                      </Button>
-                      <Button
-                        onClick={() => {
                           setEnhancedTranscription('');
                           // Trigger story finalization for audio generation with original story
                           handleFinalizedStory(transcription, null);
