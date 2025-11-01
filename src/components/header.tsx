@@ -58,8 +58,9 @@ export function Header() {
   const [searchValue, setSearchValue] = React.useState('');
   const [translatedTitle, setTranslatedTitle] = useState('');
   const [translatedLanguageName, setTranslatedLanguageName] = useState('');
-  const { user, userProfile, loading, logout, isArtisan, isBuyer } = useAuth();
+  const { user, userProfile, loading, logout, isArtisan, isBuyer, demoLogin } = useAuth();
   const router = useRouter();
+  const [demoLoading, setDemoLoading] = useState(false);
 
   // Add cart and wishlist hooks
   const { cart, getCartCount } = useCart(user?.uid || null);
@@ -184,7 +185,7 @@ export function Header() {
     count,
     onClick,
     tooltip,
-    variant = "outline"
+    variant = "ghost"
   }: {
     icon: React.ElementType;
     count: number;
@@ -198,13 +199,13 @@ export function Header() {
           <Button
             variant={variant}
             size="icon"
-            className="relative"
+            className="relative h-10 w-10 hover:bg-muted"
             onClick={onClick}
           >
-            <Icon className="h-4 w-4" />
+            <Icon className="h-5 w-5" />
             {count > 0 && (
               <Badge
-                className="absolute -top-2 -right-2 h-5 w-5 p-0 text-xs flex items-center justify-center bg-red-500 hover:bg-red-500"
+                className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 text-[10px] font-bold flex items-center justify-center bg-red-500 hover:bg-red-500 border-2 border-background shadow-sm"
                 variant="destructive"
               >
                 {count > 99 ? '99+' : count}
@@ -212,7 +213,7 @@ export function Header() {
             )}
           </Button>
         </TooltipTrigger>
-        <TooltipContent>
+        <TooltipContent side="bottom">
           <p>{tooltip} {count > 0 && `(${count})`}</p>
         </TooltipContent>
       </Tooltip>
@@ -222,132 +223,251 @@ export function Header() {
   // Show loading state or login prompt when no user
   if (loading) {
     return (
-      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-8">
-        <SidebarTrigger className="md:hidden" />
-        <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
-          <div className="animate-pulse">
-            <div className="h-8 w-8 bg-gray-300 rounded-full"></div>
+      <header className="sticky top-0 z-50 flex h-16 items-center border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
+        <div className="container flex items-center justify-between gap-4 px-4 sm:px-6 md:px-8">
+          <SidebarTrigger className="md:hidden" />
+          <div className="flex items-center gap-4 ml-auto">
+            <div className="animate-pulse flex items-center gap-3">
+              <div className="h-10 w-10 bg-muted rounded-full"></div>
+              <div className="hidden sm:flex flex-col gap-2">
+                <div className="h-3 w-24 bg-muted rounded"></div>
+                <div className="h-2 w-16 bg-muted rounded"></div>
+              </div>
+            </div>
           </div>
         </div>
       </header>
     );
   }
+
+  // Handle demo login from header
+  const handleHeaderDemoLogin = async () => {
+    setDemoLoading(true);
+    try {
+      const success = await demoLogin('+919876543210');
+
+      if (success) {
+        console.log('Demo login successful from header');
+        // Redirect to dashboard after successful demo login
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 500);
+      } else {
+        console.error('Demo login failed');
+        alert('Demo login failed. Please try the auth page.');
+      }
+    } catch (error) {
+      console.error('Error during demo login:', error);
+      alert('An error occurred. Please try again.');
+    } finally {
+      setDemoLoading(false);
+    }
+  };
 
   if (!user) {
     return (
-      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-8">
-        <SidebarTrigger className="md:hidden" />
-        <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
-          <Button variant="outline" onClick={() => router.push('/auth')}>
-            Sign In
-          </Button>
+      <header className="sticky top-0 z-50 flex h-16 items-center border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
+        <div className="container flex items-center justify-between gap-4 px-4 sm:px-6 md:px-8">
+          {/* Left Section */}
+          <div className="flex items-center gap-3">
+            <SidebarTrigger className="md:hidden" />
+            <div className="hidden sm:flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center">
+                <span className="text-white font-bold text-sm">KS</span>
+              </div>
+              <span className="font-headline font-bold text-lg hidden md:inline">KalaSarthi</span>
+            </div>
+          </div>
+
+          {/* Right Section */}
+          <div className="flex items-center gap-3">
+            {/* Demo Login Button - Prominent for judges */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="default"
+                    onClick={handleHeaderDemoLogin}
+                    disabled={demoLoading}
+                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg transition-all duration-200 gap-2 h-10"
+                  >
+                    {demoLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span className="hidden sm:inline">Loading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        <span className="hidden sm:inline font-medium">Demo Login</span>
+                        <span className="sm:hidden font-medium">Demo</span>
+                      </>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="font-medium">
+                  <p>Quick access for judges - No authentication required</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            {/* Regular Sign In Button */}
+            <Button 
+              variant="outline" 
+              onClick={() => router.push('/auth')}
+              className="h-10 font-medium"
+            >
+              <span className="hidden sm:inline">Sign In</span>
+              <span className="sm:hidden">Login</span>
+            </Button>
+          </div>
         </div>
       </header>
     );
   }
 
-  return (
-    <header className="sticky top-0 z-10 flex h-14 sm:h-16 items-center gap-2 sm:gap-4 border-b bg-background/80 backdrop-blur-sm px-2 sm:px-4 md:px-8">
-      <SidebarTrigger className="md:hidden" />
-      <div className="flex w-full items-center gap-1 sm:gap-2 md:ml-auto md:gap-2 lg:gap-4">
+  // Check if in demo mode
+  const isDemoMode = typeof window !== 'undefined' && localStorage.getItem('demoMode') === 'true';
 
-        {/* Translation Toggle - Always visible but compact on mobile */}
-        <div className="flex-shrink-0">
-          <button
-            onClick={toggleTranslation}
-            className={cn(
-              'p-2 rounded-md transition-colors',
-              isEnabled
-                ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            )}
-            title={isEnabled ? 'Disable translation' : 'Enable translation'}
-          >
-            🌐
-          </button>
+  return (
+    <header className="sticky top-0 z-50 flex h-16 items-center border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
+      <div className="container flex items-center justify-between gap-4 px-4 sm:px-6 md:px-8">
+        {/* Left Section */}
+        <div className="flex items-center gap-3">
+          <SidebarTrigger className="md:hidden" />
+          
+          {/* Demo Mode Indicator */}
+          {isDemoMode && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-0 text-xs px-2.5 py-1 font-semibold shadow-sm">
+                    <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    DEMO
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>Demo Mode - Test Profile Active</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
 
+        {/* Right Section - Actions */}
+        <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
 
-
-        {/* Trending Indicator - Hidden on mobile */}
-        <div className="hidden md:flex flex-shrink-0">
+          {/* Translation Toggle */}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => router.push('/trend-spotter')}
-                  className="flex items-center gap-2"
+                <button
+                  onClick={toggleTranslation}
+                  className={cn(
+                    'h-10 w-10 rounded-lg transition-all duration-200 flex items-center justify-center text-lg',
+                    isEnabled
+                      ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 shadow-sm'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  )}
+                  aria-label={isEnabled ? 'Disable translation' : 'Enable translation'}
                 >
-                  <TrendingUp className="h-4 w-4" />
-                  <span className="hidden lg:inline text-sm">Trends</span>
-                </Button>
+                  🌐
+                </button>
               </TooltipTrigger>
-              <TooltipContent>
-                <p>View trending opportunities</p>
+              <TooltipContent side="bottom">
+                <p>{isEnabled ? 'Disable translation' : 'Enable translation'}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-        </div>
 
-        {/* Cart and Wishlist - Always visible, compact on mobile */}
-        <div className="flex gap-1 sm:gap-2 flex-shrink-0">
-          <CartWishlistButton
-            icon={ShoppingCart}
-            count={cartCount}
-            onClick={handleCartClick}
-            tooltip="Shopping Cart"
-          />
-          <CartWishlistButton
-            icon={Heart}
-            count={wishlistCount}
-            onClick={handleWishlistClick}
-            tooltip="Wishlist"
-          />
-        </div>
-
-        {/* Voice Navigation Microphone */}
-        <div className="flex-shrink-0">
-          <GlobalVoiceNavigation
-            size="sm"
-            position="header"
-            className="h-8 w-8 sm:h-10 sm:w-10"
-          />
-        </div>
-
-        {/* Language Selector - Responsive width */}
-        <div className="hidden md:flex flex-shrink-0">
-          <LanguageSelector
-            currentLanguage={currentLanguage}
-            onLanguageChange={(lang) => {
-              setLanguage(lang);
-              setTranslationLanguage(lang);
-            }}
-            className="w-[120px] lg:w-[180px]"
-            showSearch={true}
-            groupByRegion={true}
-          />
-        </div>
-
-        {/* User Info - Hidden on mobile, visible on larger screens */}
-        <div className="hidden lg:flex flex-1 sm:flex-initial max-w-fit">
-          <div className="relative font-headline text-right">
-            <p className="font-semibold text-sm">{getDisplayName()}</p>
-            <p className="text-xs text-muted-foreground">{translatedTitle}</p>
+          {/* Trending Indicator - Hidden on small screens */}
+          <div className="hidden md:flex">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="default"
+                    onClick={() => router.push('/trend-spotter')}
+                    className="h-10 gap-2 font-medium"
+                  >
+                    <TrendingUp className="h-4 w-4" />
+                    <span className="hidden lg:inline">Trends</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>View trending opportunities</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
-        </div>
 
-        {/* User avatar dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 sm:h-10 sm:w-10 rounded-full flex-shrink-0">
-              <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
-                <AvatarImage src={getUserAvatar() || undefined} alt={getDisplayName()} />
-                <AvatarFallback className="text-xs sm:text-sm">{getUserInitials()}</AvatarFallback>
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
+          {/* Cart and Wishlist */}
+          <div className="flex items-center gap-1.5">
+            <CartWishlistButton
+              icon={ShoppingCart}
+              count={cartCount}
+              onClick={handleCartClick}
+              tooltip="Shopping Cart"
+              variant="ghost"
+            />
+            <CartWishlistButton
+              icon={Heart}
+              count={wishlistCount}
+              onClick={handleWishlistClick}
+              tooltip="Wishlist"
+              variant="ghost"
+            />
+          </div>
+
+          {/* Voice Navigation */}
+          <div className="flex items-center">
+            <GlobalVoiceNavigation
+              size="sm"
+              position="header"
+              className="h-10 w-10"
+            />
+          </div>
+
+          {/* Language Selector - Desktop only */}
+          <div className="hidden lg:flex">
+            <LanguageSelector
+              currentLanguage={currentLanguage}
+              onLanguageChange={(lang) => {
+                setLanguage(lang);
+                setTranslationLanguage(lang);
+              }}
+              className="w-[140px] xl:w-[180px]"
+              showSearch={true}
+              groupByRegion={true}
+            />
+          </div>
+
+          {/* User Info - Large screens only */}
+          <div className="hidden xl:flex items-center gap-3 px-3 py-2 rounded-lg bg-muted/50">
+            <div className="text-right">
+              <p className="font-semibold text-sm leading-tight">{getDisplayName()}</p>
+              <p className="text-xs text-muted-foreground leading-tight">{translatedTitle}</p>
+            </div>
+          </div>
+
+          {/* User Avatar Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                className="relative h-10 w-10 rounded-full ring-2 ring-transparent hover:ring-primary/20 transition-all"
+              >
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={getUserAvatar() || undefined} alt={getDisplayName()} />
+                  <AvatarFallback className="text-sm font-semibold">{getUserInitials()}</AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
@@ -514,6 +634,7 @@ export function Header() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </div>
     </header>
   );

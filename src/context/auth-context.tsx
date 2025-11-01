@@ -43,6 +43,7 @@ interface AuthContextType {
   isArtisan: boolean;
   isBuyer: boolean;
   refreshUserProfile: () => Promise<void>; // Added method to refresh profile
+  demoLogin: (phone: string) => Promise<boolean>; // Demo login for judges/testers
 }
 
 interface AuthProviderProps {
@@ -56,6 +57,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
 
   // Function to fetch user profile
   const fetchUserProfile = async (uid: string): Promise<UserProfile | null> => {
@@ -92,6 +94,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   useEffect(() => {
+    // Skip Firebase auth listener if in demo mode
+    if (isDemoMode) {
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: User | null) => {
       setLoading(true);
       
@@ -115,14 +123,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     });
 
     return unsubscribe;
-  }, []);
+  }, [isDemoMode]);
 
   const logout = async (): Promise<void> => {
     try {
       setLoading(true);
-      await signOut(auth);
-      setUser(null);
-      setUserProfile(null);
+      
+      // If in demo mode, just clear state
+      if (isDemoMode) {
+        setIsDemoMode(false);
+        setUser(null);
+        setUserProfile(null);
+        localStorage.removeItem('demoMode');
+        localStorage.removeItem('demoProfile');
+      } else {
+        await signOut(auth);
+        setUser(null);
+        setUserProfile(null);
+      }
     } catch (error) {
       console.error("Error signing out:", error);
     } finally {
@@ -130,12 +148,90 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  // Demo login function for judges/testers
+  const demoLogin = async (phone: string): Promise<boolean> => {
+    try {
+      setLoading(true);
+      
+      // Fetch user profile by phone number
+      const response = await fetch(`/api/users/demo?phone=${encodeURIComponent(phone)}`);
+      
+      if (!response.ok) {
+        console.error('Demo login failed:', response.status);
+        return false;
+      }
+      
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        // Create a mock Firebase user object
+        const mockUser = {
+          uid: result.data.uid,
+          email: result.data.email || null,
+          phoneNumber: result.data.phone,
+          displayName: result.data.name,
+        } as User;
+        
+        // Set demo mode
+        setIsDemoMode(true);
+        setUser(mockUser);
+        setUserProfile(result.data);
+        
+        // Store in localStorage for persistence
+        localStorage.setItem('demoMode', 'true');
+        localStorage.setItem('demoProfile', JSON.stringify(result.data));
+        
+        console.log('Demo login successful:', result.data);
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Error during demo login:', error);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Check for demo mode on mount
+  useEffect(() => {
+    const checkDemoMode = () => {
+      const demoMode = localStorage.getItem('demoMode');
+      const demoProfile = localStorage.getItem('demoProfile');
+      
+      if (demoMode === 'true' && demoProfile) {
+        try {
+          const profile = JSON.parse(demoProfile);
+          const mockUser = {
+            uid: profile.uid,
+            email: profile.email || null,
+            phoneNumber: profile.phone,
+            displayName: profile.name,
+          } as User;
+          
+          setIsDemoMode(true);
+          setUser(mockUser);
+          setUserProfile(profile);
+        } catch (error) {
+          console.error('Error restoring demo session:', error);
+          localStorage.removeItem('demoMode');
+          localStorage.removeItem('demoProfile');
+        }
+      }
+      setLoading(false);
+    };
+    
+    checkDemoMode();
+  }, []);
+
   const value: AuthContextType = {
     user,
     userProfile,
     loading,
     logout,
     refreshUserProfile,
+    demoLogin,
     isArtisan: userProfile?.role === "artisan",
     isBuyer: userProfile?.role === "buyer",
   };

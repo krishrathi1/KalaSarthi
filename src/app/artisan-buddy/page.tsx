@@ -701,9 +701,9 @@ You can ask me anything in Hindi or English!`,
   };
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-orange-50 to-red-50">
-      {/* Sidebar */}
-      <div className={`${showSidebar ? 'w-80' : 'w-0'} transition-all duration-300 overflow-hidden bg-white border-r border-orange-200`}>
+    <div className="flex h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-red-50">
+      {/* Sidebar - Improved */}
+      <div className={`${showSidebar ? 'w-80' : 'w-0'} transition-all duration-300 overflow-hidden backdrop-blur-sm border-r border-orange-200 shadow-lg`}>
         <div className="p-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-orange-800">Chat History</h2>
@@ -736,66 +736,78 @@ You can ask me anything in Hindi or English!`,
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <div className="bg-white border-b border-orange-200 p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowSidebar(!showSidebar)}
-              >
-                <History className="h-4 w-4" />
-              </Button>
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-gradient-to-r from-orange-400 to-red-400 rounded-full flex items-center justify-center">
-                  <Bot className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-orange-800">Artisan Buddy</h1>
-                  <p className="text-sm text-gray-600">Your AI Craft & Business Assistant</p>
+      <div className="flex-1 flex flex-col max-w-[100vw]">
+        {/* Header - Improved */}
+        <div className="backdrop-blur-sm border-b border-orange-200 shadow-sm">
+          <div className="container mx-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4">
+            <div className="flex items-center justify-between gap-3">
+              {/* Left Section */}
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowSidebar(!showSidebar)}
+                  className="h-9 w-9 p-0 flex-shrink-0"
+                >
+                  <History className="h-4 w-4" />
+                </Button>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
+                    <Bot className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h1 className="text-base sm:text-lg lg:text-xl font-bold text-orange-800 truncate">
+                      Artisan Buddy
+                    </h1>
+                    <p className="text-xs sm:text-sm text-gray-600 truncate hidden sm:block">
+                      Your AI Craft & Business Assistant
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              {/* AI Type and Status */}
-              {isOnline ? (
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
-                  <Wifi className="h-3 w-3 mr-1" />
-                  Online
-                </Badge>
-              ) : gemmaReady ? (
-                <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                  {aiType === 'gemini_nano' && '🚀 Gemini Nano'}
-                  {aiType === 'simple_offline' && '💾 Smart AI'}
-                  {aiType === 'browser_compatible' && '🧠 Enhanced AI'}
-                  {!aiType && '🤖 AI Ready'}
-                </Badge>
-              ) : gemmaLoading ? (
-                <div className="flex items-center space-x-2">
-                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    Loading AI... {Math.round(loadingProgress)}%
-                  </Badge>
-                  {loadingStage && (
-                    <span className="text-xs text-gray-600">{loadingStage}</span>
-                  )}
-                </div>
-              ) : (
-                <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-                  <WifiOff className="h-3 w-3 mr-1" />
-                  Loading Offline AI...
-                </Badge>
-              )}
 
-              {/* Voice Input Status */}
-              {isListening && (
-                <Badge variant="default" className="bg-green-500 text-white animate-pulse">
-                  <Mic className="h-3 w-3 mr-1" />
-                  Recording
-                </Badge>
-              )}
+              {/* Right Section */}
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 flex-wrap justify-end">
+                {/* AI Type and Status */}
+                {isOnline ? (
+                  <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs px-2 py-1 hidden sm:flex items-center gap-1">
+                    <Wifi className="h-3 w-3" />
+                    <span>Online</span>
+                  </Badge>
+                ) : gemmaReady ? (
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs px-2 py-1 flex items-center gap-1">
+                    {aiType === 'gemini_nano' && '🚀 Gemini Nano'}
+                    {aiType === 'simple_offline' && '💾 Smart AI'}
+                    {aiType === 'browser_compatible' && '🧠 Enhanced AI'}
+                    {!aiType && '🤖 AI Ready'}
+                  </Badge>
+                ) : gemmaLoading ? (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 flex items-center gap-1">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span className="hidden sm:inline">Loading... {Math.round(loadingProgress)}%</span>
+                      <span className="sm:hidden">{Math.round(loadingProgress)}%</span>
+                    </Badge>
+                    {loadingStage && (
+                      <span className="text-xs text-gray-600 hidden md:inline truncate max-w-[150px]">
+                        {loadingStage}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <Badge variant="secondary" className="bg-orange-100 text-orange-800 text-xs px-2 py-1 flex items-center gap-1">
+                    <WifiOff className="h-3 w-3" />
+                    <span className="hidden sm:inline">Loading AI...</span>
+                  </Badge>
+                )}
+
+                {/* Voice Input Status */}
+                {isListening && (
+                  <Badge variant="default" className="bg-green-500 text-white animate-pulse text-xs px-2 py-1 flex items-center gap-1">
+                    <Mic className="h-3 w-3" />
+                    <span className="hidden sm:inline">Recording</span>
+                  </Badge>
+                )}
 
 
 
@@ -832,40 +844,51 @@ ${status.capabilities ? `- Browser Support: ${status.capabilities.available}` : 
                 </Button>
               )}
 
-              <Button variant="ghost" size="sm">
-                <Settings className="h-4 w-4" />
-              </Button>
+                <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Messages Area */}
-        <ScrollArea className="flex-1 p-4">
-          <div className="max-w-4xl mx-auto space-y-4">
+        {/* Messages Area - Improved */}
+        <ScrollArea className="flex-1 px-3 sm:px-4 py-4">
+          <div className="max-w-4xl mx-auto space-y-3 sm:space-y-4">
             {messages.map((message) => (
               <div
                 key={message.id}
                 className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div className={`flex items-start space-x-2 max-w-[80%] ${message.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''
+                <div className={`flex items-start gap-2 sm:gap-3 max-w-[85%] sm:max-w-[80%] ${
+                  message.sender === 'user' ? 'flex-row-reverse' : ''
+                }`}>
+                  {/* Avatar */}
+                  <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm ${
+                    message.sender === 'user'
+                      ? 'bg-gradient-to-br from-blue-500 to-blue-600'
+                      : 'bg-gradient-to-br from-orange-500 to-red-500'
                   }`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${message.sender === 'user'
-                    ? 'bg-blue-500'
-                    : 'bg-gradient-to-r from-orange-400 to-red-400'
-                    }`}>
                     {message.sender === 'user' ? (
                       <User className="h-4 w-4 text-white" />
                     ) : (
                       <Bot className="h-4 w-4 text-white" />
                     )}
                   </div>
-                  <div className={`rounded-lg p-3 relative ${message.sender === 'user'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-white border border-orange-200'
-                    }`}>
-                    <div className="whitespace-pre-wrap">{message.content}</div>
-                    <div className="flex items-center justify-between mt-1">
-                      <div className="text-xs opacity-70">
+
+                  {/* Message Bubble */}
+                  <div className={`rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 shadow-sm relative ${
+                    message.sender === 'user'
+                      ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white'
+                      : 'bg-white border border-orange-100'
+                  }`}>
+                    <div className="text-sm sm:text-base whitespace-pre-wrap leading-relaxed">
+                      {message.content}
+                    </div>
+                    <div className="flex items-center justify-between mt-1.5 gap-2">
+                      <div className={`text-[10px] sm:text-xs ${
+                        message.sender === 'user' ? 'text-blue-100' : 'text-gray-500'
+                      }`}>
                         {formatTime(message.timestamp)}
                       </div>
 
@@ -989,15 +1012,16 @@ ${status.capabilities ? `- Browser Support: ${status.capabilities.available}` : 
               </div>
             ))}
 
+            {/* Loading Indicator */}
             {isLoading && (
               <div className="flex justify-start">
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-gradient-to-r from-orange-400 to-red-400 rounded-full flex items-center justify-center">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center shadow-sm">
                     <Bot className="h-4 w-4 text-white" />
                   </div>
-                  <div className="bg-white border border-orange-200 rounded-lg p-3">
-                    <div className="flex items-center space-x-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                  <div className="bg-white border border-orange-100 rounded-2xl px-4 py-3 shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
                       <span className="text-sm text-gray-600">Thinking...</span>
                     </div>
                   </div>
@@ -1009,25 +1033,26 @@ ${status.capabilities ? `- Browser Support: ${status.capabilities.available}` : 
           </div>
         </ScrollArea>
 
-        {/* Input Area */}
-        <div className="bg-white border-t border-orange-200 p-4">
-          <div className="max-w-4xl mx-auto">
-            <form onSubmit={handleSubmit} className="flex items-center space-x-2">
-              <div className="flex-1 relative">
-                <Input
-                  ref={inputRef}
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder="Type your message in Hindi or English..."
-                  className="pr-12 border-orange-200 focus:border-orange-400"
-                  disabled={isLoading}
-                />
-                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
+        {/* Input Area - Improved */}
+        <div className="bg-white/95 backdrop-blur-sm border-t border-orange-200 shadow-lg">
+          <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
+            <div className="max-w-4xl mx-auto">
+              <form onSubmit={handleSubmit} className="flex items-end gap-2">
+                <div className="flex-1 relative">
+                  <Input
+                    ref={inputRef}
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    placeholder="Type your message in Hindi or English..."
+                    className="pr-12 h-11 sm:h-12 border-orange-200 focus:border-orange-400 focus:ring-orange-400 rounded-xl text-sm sm:text-base"
+                    disabled={isLoading}
+                  />
+                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 hover:bg-orange-100 rounded-lg"
                     onClick={async () => {
                       try {
                         if (isListening) {
@@ -1139,27 +1164,32 @@ ${status.capabilities ? `- Browser Support: ${status.capabilities.available}` : 
                         <Mic className="h-4 w-4 text-green-600" />
                         <div className="absolute -bottom-1 -right-1 text-xs font-bold text-green-600">✓</div>
                       </div>
-                    )}
-                  </Button>
+                      )}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-              <Button
-                type="submit"
-                disabled={!inputMessage.trim() || isLoading}
-                className="bg-orange-500 hover:bg-orange-600"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </Button>
-            </form>
 
-            <div className="flex items-center justify-center mt-2 text-xs text-gray-500">
-              <span>Powered by AI • Supports Hindi & English • </span>
-              <Heart className="h-3 w-3 text-red-400 mx-1" />
-              <span>Made for Indian Artisans</span>
+                {/* Send Button */}
+                <Button
+                  type="submit"
+                  disabled={!inputMessage.trim() || isLoading}
+                  className="h-11 sm:h-12 w-11 sm:w-12 p-0 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 rounded-xl shadow-md hover:shadow-lg transition-all flex-shrink-0"
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Send className="h-5 w-5" />
+                  )}
+                </Button>
+              </form>
+
+              {/* Footer Info */}
+              <div className="flex items-center justify-center mt-3 text-[10px] sm:text-xs text-gray-500 flex-wrap gap-1">
+                <span className="hidden sm:inline">Powered by AI • Supports Hindi & English •</span>
+                <span className="sm:hidden">AI Powered •</span>
+                <Heart className="h-3 w-3 text-red-400 mx-0.5" />
+                <span>Made for Indian Artisans</span>
+              </div>
             </div>
           </div>
         </div>

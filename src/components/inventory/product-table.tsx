@@ -380,12 +380,12 @@ export default function ProductTable({
     const connectionStatus = getConnectionStatus();
 
     return (
-        <div className="space-y-4 w-full max-w-full overflow-hidden">
+        <div className="space-y-4 w-full">
             {/* Amazon Connection Status */}
-            <div className="bg-muted/50 rounded-lg p-3">
+            <div className="bg-muted/50 rounded-lg p-3 w-full">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                    <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${connectionStatus.color}`} />
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${connectionStatus.color}`} />
                         <span className="text-sm font-medium">
                             Amazon SP-API: {connectionStatus.status}
                         </span>
@@ -395,9 +395,9 @@ export default function ProductTable({
                     </div>
                 </div>
                 {amazonError && (
-                    <div className="mt-2 text-sm text-destructive flex items-center gap-1">
-                        <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                        <span className="break-words">{amazonError}</span>
+                    <div className="mt-2 text-sm text-destructive flex items-start gap-1">
+                        <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                        <span className="break-words flex-1 min-w-0">{amazonError}</span>
                     </div>
                 )}
                 {isAmazonConnected && (
@@ -408,16 +408,16 @@ export default function ProductTable({
             </div>
 
             {/* Filters and Search */}
-            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-                <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between w-full">
+                <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center w-full sm:flex-1 sm:max-w-md">
                     <Input
                         placeholder="Search products..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full sm:w-64"
+                        className="w-full sm:flex-1"
                     />
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="w-full sm:w-36">
+                        <SelectTrigger className="w-full sm:w-36 flex-shrink-0">
                             <SelectValue placeholder="Filter by status" />
                         </SelectTrigger>
                         <SelectContent>
@@ -429,61 +429,62 @@ export default function ProductTable({
                     </Select>
                 </div>
 
-                <div className="text-sm text-muted-foreground whitespace-nowrap">
+                <div className="text-sm text-muted-foreground whitespace-nowrap flex-shrink-0">
                     Showing {filteredProducts.length} of {products.length} products
                 </div>
             </div>
 
             {/* Products Table */}
             {filteredProducts.length === 0 ? (
-                <div className="text-center py-8">
+                <div className="text-center py-8 w-full">
                     <p className="text-muted-foreground">No products match your current filters.</p>
                 </div>
             ) : (
                 <>
                     {/* Desktop Table View */}
-                    <div className="hidden lg:block border rounded-lg overflow-hidden w-full">
-                        <div className="overflow-x-auto w-full">
-                            <Table className="w-full table-fixed">
-                        <TableHeader>
-                            <TableRow>
-                                    <TableHead className="w-[40%] p-2 text-xs font-medium">Product</TableHead>
-                                    <TableHead className="w-[10%] p-2 text-xs font-medium">Category</TableHead>
-                                    <TableHead className="w-[10%] p-2 text-xs font-medium">Status</TableHead>
-                                    <TableHead className="w-[20%] p-2 text-xs font-medium">Stock</TableHead>
-                                    <TableHead className="w-[10%] p-2 text-xs font-medium">Amazon</TableHead>
-                                    <TableHead className="w-[10%] p-2 text-xs font-medium text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredProducts.map(product => (
-                                <TableRow key={product.productId}>
-                                    {/* Product Info */}
-                                    <TableCell className="p-2">
-                                        <div className="flex items-center gap-2">
-                                            <div className="relative w-8 h-8 rounded overflow-hidden bg-muted flex-shrink-0">
-                                                {product.images && product.images.length > 0 ? (
-                                                    <Image
-                                                        src={product.images[0]}
-                                                        alt={product.name}
-                                                        fill
-                                                        className="object-cover"
-                                                        sizes="32px"
-                                                    />
-                                                ) : (
-                                                    <Package className="w-4 h-4 text-muted-foreground absolute inset-0 m-auto" />
-                                                )}
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <p className="font-medium text-xs truncate" title={product.name}>
-                                                    {product.name}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {formatPrice(product.price)}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </TableCell>
+                    <div className="hidden lg:block w-full">
+                        <div className="border rounded-lg overflow-hidden w-full">
+                            <div className="overflow-x-auto w-full">
+                                <Table className="w-full min-w-[900px]">
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="min-w-[250px] p-2 text-xs font-medium">Product</TableHead>
+                                            <TableHead className="min-w-[100px] p-2 text-xs font-medium">Category</TableHead>
+                                            <TableHead className="min-w-[90px] p-2 text-xs font-medium">Status</TableHead>
+                                            <TableHead className="min-w-[150px] p-2 text-xs font-medium">Stock</TableHead>
+                                            <TableHead className="min-w-[140px] p-2 text-xs font-medium">Amazon</TableHead>
+                                            <TableHead className="min-w-[80px] p-2 text-xs font-medium text-right">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredProducts.map(product => (
+                                            <TableRow key={product.productId}>
+                                                {/* Product Info */}
+                                                <TableCell className="p-2">
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <div className="relative w-10 h-10 rounded overflow-hidden bg-muted flex-shrink-0">
+                                                            {product.images && product.images.length > 0 ? (
+                                                                <Image
+                                                                    src={product.images[0]}
+                                                                    alt={product.name}
+                                                                    fill
+                                                                    className="object-cover"
+                                                                    sizes="40px"
+                                                                />
+                                                            ) : (
+                                                                <Package className="w-5 h-5 text-muted-foreground absolute inset-0 m-auto" />
+                                                            )}
+                                                        </div>
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="font-medium text-sm truncate" title={product.name}>
+                                                                {product.name}
+                                                            </p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {formatPrice(product.price)}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
 
                                     {/* Category */}
                                     <TableCell className="p-2">

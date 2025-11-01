@@ -28,48 +28,50 @@ export default function InventoryPage() {
     }
   }, [user, loading, isArtisan]);
 
-  // Loading state
+  // Loading state - Improved
   if (loading) {
     return (
-      <div className="container mx-auto py-8 space-y-6">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-4 w-48" />
-        </div>
-        
-        {/* Stats skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="border rounded-lg p-4 space-y-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-6 w-12" />
-              <Skeleton className="h-3 w-20" />
-            </div>
-          ))}
-        </div>
-
-        {/* Tabs skeleton */}
-        <div className="space-y-4">
-          <div className="flex space-x-1 border rounded-lg p-1">
-            <Skeleton className="h-8 w-24" />
-            <Skeleton className="h-8 w-24" />
-            <Skeleton className="h-8 w-24" />
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-red-50">
+        <div className="container mx-auto px-3 sm:px-4 md:px-6 py-6 sm:py-8 space-y-6">
+          <div className="space-y-2">
+            <Skeleton className="h-8 sm:h-10 w-48 sm:w-64" />
+            <Skeleton className="h-4 w-32 sm:w-48" />
           </div>
-          
-          <div className="border rounded-lg p-6 space-y-4">
-            <Skeleton className="h-6 w-48" />
-            <div className="space-y-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-center space-x-4">
-                  <Skeleton className="h-12 w-12 rounded" />
-                  <div className="flex-1 space-y-1">
-                    <Skeleton className="h-4 w-48" />
-                    <Skeleton className="h-3 w-32" />
+
+          {/* Stats skeleton */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="bg-white/80 backdrop-blur-sm border rounded-xl p-3 sm:p-4 space-y-2 shadow-sm">
+                <Skeleton className="h-4 w-20 sm:w-24" />
+                <Skeleton className="h-6 sm:h-8 w-12 sm:w-16" />
+                <Skeleton className="h-3 w-16 sm:w-20" />
+              </div>
+            ))}
+          </div>
+
+          {/* Tabs skeleton */}
+          <div className="space-y-4">
+            <div className="flex gap-2 bg-white/50 backdrop-blur-sm border rounded-xl p-2">
+              <Skeleton className="h-10 w-24 rounded-lg" />
+              <Skeleton className="h-10 w-24 rounded-lg" />
+              <Skeleton className="h-10 w-24 rounded-lg" />
+            </div>
+
+            <div className="bg-white/80 backdrop-blur-sm border rounded-xl p-4 sm:p-6 space-y-4 shadow-sm">
+              <Skeleton className="h-6 w-32 sm:w-48" />
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 sm:gap-4 p-3 bg-muted/30 rounded-lg">
+                    <Skeleton className="h-12 w-12 sm:h-14 sm:w-14 rounded-lg" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-32 sm:w-48" />
+                      <Skeleton className="h-3 w-24 sm:w-32" />
+                    </div>
+                    <Skeleton className="h-4 w-12 sm:w-16" />
+                    <Skeleton className="h-8 sm:h-10 w-16 sm:w-20 rounded-lg" />
                   </div>
-                  <Skeleton className="h-4 w-16" />
-                  <Skeleton className="h-8 w-20" />
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -80,13 +82,15 @@ export default function InventoryPage() {
   // Error state - user not authenticated
   if (!user) {
     return (
-      <div className="container mx-auto py-8">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            You must be logged in to access the inventory management system.
-          </AlertDescription>
-        </Alert>
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-red-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full">
+          <Alert variant="destructive" className="shadow-lg">
+            <AlertCircle className="h-5 w-5" />
+            <AlertDescription className="text-sm sm:text-base">
+              You must be logged in to access the inventory management system.
+            </AlertDescription>
+          </Alert>
+        </div>
       </div>
     );
   }
@@ -94,13 +98,17 @@ export default function InventoryPage() {
   // Error state - not an artisan
   if (pageError) {
     return (
-      <div className="container mx-auto py-8 text-center space-y-4">
-        <Package className="h-16 w-16 text-muted-foreground mx-auto" />
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold">Access Denied</h1>
-          <p className="text-muted-foreground max-w-md mx-auto">
-            {pageError} Please contact support if you believe this is an error.
-          </p>
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-red-50 flex items-center justify-center p-4">
+        <div className="text-center space-y-6 max-w-md">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+            <Package className="h-8 w-8 sm:h-10 sm:w-10 text-orange-500" />
+          </div>
+          <div className="space-y-3">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Access Denied</h1>
+            <p className="text-sm sm:text-base text-muted-foreground leading-relaxed px-4">
+              {pageError} Please contact support if you believe this is an error.
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -108,8 +116,10 @@ export default function InventoryPage() {
 
   // Success state - render inventory dashboard
   return (
-    <div className="container mx-auto py-8">
-      <InventoryDashboard artisanId={user.uid} />
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-red-50">
+      <div className="container mx-auto px-3 sm:px-4 md:px-6 py-6 sm:py-8">
+        <InventoryDashboard artisanId={user.uid} />
+      </div>
     </div>
   );
 }

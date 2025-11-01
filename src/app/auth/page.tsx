@@ -21,10 +21,12 @@ interface UserData {
 }
 
 const AuthPage: React.FC = () => {
-  const { user, userProfile, loading } = useAuth();
+  const { user, userProfile, loading, demoLogin } = useAuth();
   const router = useRouter();
   const [authStep, setAuthStep] = useState<AuthStep>('login');
   const [authenticatedUser, setAuthenticatedUser] = useState<User | null>(null);
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoSuccess, setDemoSuccess] = useState(false);
 
   useEffect(() => {
     if (!loading && user && userProfile) {
@@ -41,11 +43,11 @@ const AuthPage: React.FC = () => {
   const handleAuthSuccess = async (firebaseUser: User): Promise<void> => {
     console.log('Authentication successful:', firebaseUser);
     setAuthenticatedUser(firebaseUser);
-    
+
     // Check if user profile exists in MongoDB
     try {
       const response = await fetch(`/api/users/${firebaseUser.uid}`);
-      
+
       if (response.ok) {
         const result: UserProfileResponse = await response.json();
         if (result.success && result.data) {
@@ -87,6 +89,33 @@ const AuthPage: React.FC = () => {
     }
   };
 
+  const handleDemoLogin = async (): Promise<void> => {
+    setDemoLoading(true);
+    setDemoSuccess(false);
+    try {
+      const success = await demoLogin('+919876543210');
+
+      if (success) {
+        console.log('Demo login successful, redirecting to dashboard...');
+        setDemoSuccess(true);
+        // Small delay to show success state
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 800);
+      } else {
+        console.error('Demo login failed');
+        alert('Demo login failed. Please try again or use regular login.');
+      }
+    } catch (error) {
+      console.error('Error during demo login:', error);
+      alert('An error occurred during demo login. Please try again.');
+    } finally {
+      setTimeout(() => {
+        setDemoLoading(false);
+      }, 800);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -113,16 +142,84 @@ const AuthPage: React.FC = () => {
         {authStep === 'login' && (
           <>
             <PhoneAuth onAuthSuccess={handleAuthSuccess} />
-            <div className="mt-6 sm:mt-8 p-3 sm:p-4 bg-muted rounded-lg max-w-sm sm:max-w-md mx-auto">
-              <h3 className="text-sm sm:text-base font-semibold mb-3 text-center">Test Credentials</h3>
-              <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm text-muted-foreground text-center">
-                <div>
-                  <span className="block mb-1">Phone Number:</span>
-                  <code className="bg-background px-2 py-1 rounded text-xs sm:text-sm">+919876543210</code>
+
+            {/* Demo Login Section for Judges */}
+            <div className="mt-6 sm:mt-8 space-y-4">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-muted"></div>
                 </div>
-                <div>
-                  <span className="block mb-1">OTP:</span>
-                  <code className="bg-background px-2 py-1 rounded text-xs sm:text-sm">123456</code>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Quick Access for Judges
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-4 sm:p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 rounded-lg border-2 border-blue-200 dark:border-blue-800 max-w-sm sm:max-w-md mx-auto">
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                    <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-sm sm:text-base font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                      Demo Login
+                    </h3>
+                    <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300">
+                      Skip authentication and explore the platform instantly with a test artisan profile
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleDemoLogin}
+                  disabled={loading || demoLoading || demoSuccess}
+                  className={`w-full font-semibold py-3 px-4 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${demoSuccess
+                    ? 'bg-gradient-to-r from-green-600 to-emerald-600'
+                    : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
+                    } text-white`}
+                >
+                  {demoSuccess ? (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Success! Redirecting...</span>
+                    </>
+                  ) : demoLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Loading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
+                      <span>Enter as Demo Artisan</span>
+                    </>
+                  )}
+                </button>
+
+                <div className="mt-3 p-2 bg-white/50 dark:bg-black/20 rounded text-xs text-center text-blue-600 dark:text-blue-400">
+                  <span className="font-medium">Test Profile:</span> +919876543210
+                </div>
+              </div>
+
+              {/* Regular Test Credentials */}
+              <div className="p-3 sm:p-4 bg-muted rounded-lg max-w-sm sm:max-w-md mx-auto">
+                <h3 className="text-sm sm:text-base font-semibold mb-3 text-center">Or Use Regular Login</h3>
+                <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm text-muted-foreground text-center">
+                  <div>
+                    <span className="block mb-1">Phone Number:</span>
+                    <code className="bg-background px-2 py-1 rounded text-xs sm:text-sm">+919876543210</code>
+                  </div>
+                  <div>
+                    <span className="block mb-1">OTP:</span>
+                    <code className="bg-background px-2 py-1 rounded text-xs sm:text-sm">123456</code>
+                  </div>
                 </div>
               </div>
             </div>
