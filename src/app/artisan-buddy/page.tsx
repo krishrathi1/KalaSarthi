@@ -1,17 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import {
-  MessageCircle,
   Send,
   Mic,
-  MicOff,
   Volume2,
   VolumeX,
   User,
@@ -19,9 +16,7 @@ import {
   Loader2,
   Settings,
   History,
-  Star,
   Heart,
-  Share2,
   Pause,
   Play,
   Wifi,
@@ -61,14 +56,19 @@ export default function ArtisanBuddyPage() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
 
-  // Offline AI state
+  // Online state
   const [isOnline, setIsOnline] = useState(true);
-  const [gemmaLoading, setGemmaLoading] = useState(false);
+
+  // Gemma offline AI state
   const [gemmaReady, setGemmaReady] = useState(false);
+  const [gemmaLoading, setGemmaLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingStage, setLoadingStage] = useState('');
   const gemmaServiceRef = useRef<any>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -84,16 +84,23 @@ export default function ArtisanBuddyPage() {
 
     const handleOffline = () => {
       setIsOnline(false);
-      console.log('📴 Offline - will use Gemma if available');
+      console.log('📴 Offline detected - automatically loading offline AI...');
 
-      // Try to initialize Gemma when going offline
+      // Automatically load offline AI when going offline
       if (!gemmaReady && !gemmaLoading) {
         initializeGemma();
       }
     };
 
-    // Set initial state
-    setIsOnline(navigator.onLine);
+    // Set initial state based on navigator.onLine
+    const initialOnlineState = navigator.onLine;
+    setIsOnline(initialOnlineState);
+
+    // If starting offline, automatically load offline AI
+    if (!initialOnlineState && !gemmaReady && !gemmaLoading) {
+      console.log('📴 Starting offline - automatically loading offline AI...');
+      setTimeout(() => initializeGemma(), 1000); // Small delay to let component settle
+    }
 
     // Listen for online/offline events
     window.addEventListener('online', handleOnline);
@@ -103,32 +110,83 @@ export default function ArtisanBuddyPage() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [gemmaReady, gemmaLoading]);
+  }, []);
 
-  // Initialize Gemma service
+  // Initialize real offline AI with progress tracking
   const initializeGemma = async () => {
     if (gemmaServiceRef.current) return;
 
     try {
       setGemmaLoading(true);
-      console.log('🤖 Initializing Gemma offline AI...');
+      setLoadingProgress(0);
+      setLoadingStage('Initializing...');
+      console.log('🤖 Loading real offline AI model...');
 
-      // Dynamically import to avoid SSR issues
-      const { GemmaOfflineService } = await import('@/lib/services/GemmaOfflineService');
+      // Import and initialize Gemini Nano offline AI
+      const { GeminiNanoOfflineAI } = await import('@/lib/services/GeminiNanoOfflineAI');
+      gemmaServiceRef.current = GeminiNanoOfflineAI.getInstance();
 
-      gemmaServiceRef.current = GemmaOfflineService.getInstance();
-      const success = await gemmaServiceRef.current.initialize();
+      // Initialize with progress tracking
+      const success = await gemmaServiceRef.current.initialize(
+        (progress: number, stage: string) => {
+          setLoadingProgress(progress);
+          setLoadingStage(stage);
+        }
+      );
 
-      if (success) {
-        setGemmaReady(true);
-        console.log('✅ Gemma ready for offline use!');
-      } else {
-        console.error('❌ Gemma initialization failed');
+      if (!success) {
+        throw new Error('Failed to initialize offline AI model');
       }
+
+      setGemmaReady(true);
+      setLoadingProgress(100);
+      setLoadingStage('Ready!');
+
+      const modelInfo = gemmaServiceRef.current.getModelInfo();
+      console.log('✅ Gemini Nano offline AI ready!', {
+        modelId: modelInfo.modelId,
+        type: modelInfo.type,
+        capabilities: modelInfo.capabilities
+      });
+
+      // Add success notification message
+      const successMessage: Message = {
+        id: 'ai-ready-' + Date.now(),
+        content: `🎉 **Offline AI Ready!**\n\n${modelInfo.hasRealAI
+          ? 'Your Google Gemini Nano AI is now loaded and ready! You can now chat completely offline with real AI.'
+          : 'Your intelligent AI assistant is now ready! Using advanced rule-based system optimized for artisan needs.'}\n\n**Model:** ${modelInfo.modelId}\n**Type:** ${modelInfo.type}\n**System:** ${modelInfo.hasRealAI ? 'Real Neural AI' : 'Intelligent Fallback'}\n**Capabilities:** ${modelInfo.capabilities.join(', ')}`,
+        sender: 'assistant',
+        timestamp: new Date(),
+        metadata: {
+          intent: 'system_notification',
+          suggestions: [
+            'मेरे व्यापार की जानकारी दिखाएं',
+            'नया उत्पाद बनाने में मदद करें',
+            'Show my business analytics',
+            'Help me create a new product'
+          ]
+        }
+      };
+      setMessages(prev => [...prev, successMessage]);
     } catch (error) {
       console.error('❌ Gemma initialization error:', error);
+
+      // Show user-friendly message - this shouldn't happen since we have fallback
+      const infoMessage: Message = {
+        id: `ai-info-${Date.now()}`,
+        content: 'ℹ️ **AI System Information**\n\nThe offline AI system encountered an issue during initialization, but don\'t worry - you can still use online features when connected to the internet.\n\n🌐 **Online Mode**: Full AI capabilities with Gemini 2.0 Flash\n🔌 **Offline Mode**: Will use fallback system when available',
+        sender: 'assistant',
+        timestamp: new Date(),
+        metadata: {
+          intent: 'info_notification',
+          suggestions: ['Continue with Online Mode', 'Try Again Later']
+        }
+      };
+      setMessages(prev => [...prev, infoMessage]);
     } finally {
       setGemmaLoading(false);
+      setLoadingProgress(0);
+      setLoadingStage('');
     }
   };
 
@@ -136,7 +194,19 @@ export default function ArtisanBuddyPage() {
   useEffect(() => {
     const welcomeMessage: Message = {
       id: 'welcome',
-      content: 'नमस्ते! मैं आपका Artisan Buddy हूँ। मैं आपकी शिल्पकारी, व्यापार, और डिजिटल खाता प्रबंधन में सहायता कर सकता हूँ। आप मुझसे हिंदी या अंग्रेजी में बात कर सकते हैं।\n\nHello! I\'m your Artisan Buddy. I can help you with crafts, business, and digital ledger management. You can chat with me in Hindi or English.',
+      content: `🙏 नमस्ते! मैं आपका Artisan Buddy हूँ।
+
+मैं आपकी शिल्पकारी, व्यापार, और डिजिटल खाता प्रबंधन में सहायता कर सकता हूँ।
+
+**🚀 शुरू करने के लिए:**
+${isOnline ? '🌐 आप ऑनलाइन हैं - तुरंत चैट करें!' : '🤖 Gemini Nano अपने आप लोड हो रहा है...'}
+
+---
+
+Hello! I'm your Artisan Buddy. I can help you with crafts, business, and digital ledger management.
+
+**🚀 To get started:**
+${isOnline ? '🌐 You\'re online - start chatting now!' : '🤖 Gemini Nano is loading automatically...'}`,
       sender: 'assistant',
       timestamp: new Date(),
       metadata: {
@@ -169,18 +239,8 @@ export default function ArtisanBuddyPage() {
       let responseText = '';
       let isOfflineResponse = false;
 
-      // Check if we should use offline AI
-      if (!isOnline && gemmaReady && gemmaServiceRef.current) {
-        console.log('🤖 Using Gemma offline AI');
-        isOfflineResponse = true;
-
-        const systemPrompt = gemmaServiceRef.current.getArtisanSystemPrompt('en');
-        responseText = await gemmaServiceRef.current.generateResponse(content, systemPrompt);
-      } else if (!isOnline && !gemmaReady) {
-        // Offline but Gemma not ready
-        responseText = 'You are currently offline and the offline AI is not available. Please connect to the internet to chat with Artisan Buddy.';
-      } else {
-        // Online - use Gemini 2.0 Flash API
+      if (isOnline) {
+        // Online - use Gemini 2.0 Flash API (prioritize online functionality)
         console.log('🌐 Using Gemini 2.0 Flash API');
         const response = await fetch('/api/artisan-buddy/chat', {
           method: 'POST',
@@ -206,6 +266,45 @@ export default function ArtisanBuddyPage() {
 
         const data = await response.json();
         responseText = data.response || 'मुझे खुशी होगी आपकी सहायता करने में। कृपया अपना प्रश्न दोबारा पूछें।';
+      } else if (gemmaReady && gemmaServiceRef.current) {
+        // Offline - use real local AI
+        console.log('🤖 Using Gemini Nano offline AI');
+        try {
+          const aiResponse = await gemmaServiceRef.current.generateResponse(
+            content,
+            messages.slice(-3).map(m => `${m.sender}: ${m.content}`).join('\n')
+          );
+          responseText = aiResponse.text;
+          isOfflineResponse = true;
+
+          console.log('✅ Gemini Nano response generated:', {
+            confidence: aiResponse.confidence,
+            processingTime: `${Math.round(aiResponse.processingTime)}ms`
+          });
+        } catch (error) {
+          console.error('❌ Offline AI error:', error);
+          responseText = 'Sorry, the offline AI encountered an error. Please try again or connect to the internet.';
+        }
+      } else {
+        // No AI available - provide helpful guidance with automatic loading
+        const isOffline = !isOnline;
+        const noOfflineAI = !gemmaReady;
+        const isLoadingAI = gemmaLoading;
+
+        if (isOffline && isLoadingAI) {
+          responseText = `🤖 **Gemini Nano is loading automatically...**\n\nProgress: ${Math.round(loadingProgress)}% - ${loadingStage}\n\nPlease wait while I prepare Google's Gemini Nano AI for offline use. Once ready, you'll have real AI responses without internet!`;
+        } else if (isOffline && noOfflineAI) {
+          responseText = `🔌 **You're offline** - Starting Gemini Nano...\n\nI'm automatically loading Google's Gemini Nano AI so you can chat with real AI without internet. This may take a few moments.\n\n🌐 **Alternative:** Connect to the internet for instant online chat`;
+
+          // Trigger automatic loading if not already loading
+          if (!gemmaLoading) {
+            setTimeout(() => initializeGemma(), 500);
+          }
+        } else if (isOffline) {
+          responseText = 'You appear to be offline, but the offline AI should be available. Let me try to reconnect...';
+        } else {
+          responseText = 'Please ensure you have an internet connection or wait for the offline AI to load automatically.';
+        }
       }
 
       // Create assistant message
@@ -215,56 +314,145 @@ export default function ArtisanBuddyPage() {
         sender: 'assistant',
         timestamp: new Date(),
         metadata: {
-          intent: isOfflineResponse ? 'offline_gemma' : 'online_gemini',
+          intent: isOfflineResponse ? 'offline_ai' : 'online_gemini',
           confidence: isOfflineResponse ? 0.8 : 0.9
         }
       };
 
       setMessages(prev => [...prev, assistantMessage]);
 
-      // BULLETPROOF VOICE OUTPUT - Speak the AI response
-      if ('speechSynthesis' in window && assistantMessage.content) {
+      // SMART TTS - Use Google Cloud TTS when online, browser TTS when offline
+      if (assistantMessage.content) {
         try {
-          console.log('🔊 Starting BULLETPROOF TTS for response');
+          console.log('🔊 Starting smart TTS for response');
           setIsSpeaking(true);
           setIsPaused(false);
 
-          // Use reliable browser TTS (most compatible)
-          speechSynthesis.cancel(); // Clear any existing speech
+          if (isOnline) {
+            // Online: Use Google Cloud TTS for high-quality voice
+            console.log('🌐 Using Google Cloud TTS (high quality)');
 
-          const utterance = new SpeechSynthesisUtterance(assistantMessage.content);
-          utterance.lang = 'en-US';
-          utterance.rate = 0.9;
-          utterance.pitch = 1;
-          utterance.volume = 0.8;
+            // Import and use Google Cloud TTS service
+            const { GoogleCloudTTSService } = await import('@/lib/services/GoogleCloudTTSService');
 
-          utterance.onstart = () => {
-            console.log('🔊 TTS started successfully');
-            setIsSpeaking(true);
-            setIsPaused(false);
-          };
+            // Detect language for better voice selection
+            const isHindi = /[\u0900-\u097F]/.test(assistantMessage.content);
+            const languageCode = isHindi ? 'hi-IN' : 'en-IN';
 
-          utterance.onend = () => {
-            console.log('🔊 TTS finished successfully');
-            setIsSpeaking(false);
-            setIsPaused(false);
-          };
+            const ttsResult = await GoogleCloudTTSService.synthesizeSpeech(
+              assistantMessage.content,
+              {
+                languageCode,
+                gender: 'FEMALE',
+                speakingRate: 0.9,
+                pitch: 0.1,
+                audioEncoding: 'MP3'
+              }
+            );
 
-          utterance.onerror = (e) => {
-            console.error('🔊 TTS error:', e);
-            setIsSpeaking(false);
-            setIsPaused(false);
-          };
+            if (ttsResult.success && ttsResult.audio) {
+              console.log('✅ Google Cloud TTS synthesis successful');
 
-          // Wait a moment for voices to load, then speak
-          setTimeout(() => {
-            speechSynthesis.speak(utterance);
-          }, 100);
+              // Create audio element and play
+              const audioUrl = GoogleCloudTTSService.createAudioUrl(
+                ttsResult.audio.content,
+                ttsResult.audio.mimeType
+              );
+
+              const audio = new Audio(audioUrl);
+              currentAudioRef.current = audio;
+
+              audio.onplay = () => {
+                console.log('🔊 Google TTS started playing');
+                setIsSpeaking(true);
+                setIsPaused(false);
+              };
+
+              audio.onended = () => {
+                console.log('🔊 Google TTS finished playing');
+                setIsSpeaking(false);
+                setIsPaused(false);
+                currentAudioRef.current = null;
+              };
+
+              audio.onerror = (e) => {
+                console.warn('🔊 Google TTS playback error:', e);
+                setIsSpeaking(false);
+                setIsPaused(false);
+
+                // Fallback to browser TTS
+                playWithBrowserTTS(assistantMessage.content);
+              };
+
+              await audio.play();
+
+            } else {
+              console.warn('🔊 Google Cloud TTS failed, using browser fallback');
+              playWithBrowserTTS(assistantMessage.content);
+            }
+
+          } else {
+            // Offline: Use browser TTS
+            console.log('🔌 Using browser TTS (offline mode)');
+            playWithBrowserTTS(assistantMessage.content);
+          }
 
         } catch (error) {
-          console.error('TTS failed:', error);
+          console.error('🔊 Smart TTS failed:', error);
           setIsSpeaking(false);
           setIsPaused(false);
+
+          // Ultimate fallback to browser TTS
+          playWithBrowserTTS(assistantMessage.content);
+        }
+      }
+
+      // Browser TTS fallback function
+      function playWithBrowserTTS(text: string) {
+        if ('speechSynthesis' in window) {
+          try {
+            speechSynthesis.cancel(); // Clear any existing speech
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.9;
+            utterance.pitch = 1;
+            utterance.volume = 0.8;
+
+            utterance.onstart = () => {
+              console.log('🔊 Browser TTS started');
+              setIsSpeaking(true);
+              setIsPaused(false);
+            };
+
+            utterance.onend = () => {
+              console.log('🔊 Browser TTS finished');
+              setIsSpeaking(false);
+              setIsPaused(false);
+            };
+
+            utterance.onerror = (e) => {
+              const errorType = e?.error || 'Unknown TTS error';
+
+              if (errorType === 'interrupted' || errorType === 'canceled') {
+                console.log('🔊 Browser TTS interrupted (normal)');
+              } else {
+                console.warn('🔊 Browser TTS error:', errorType);
+              }
+
+              setIsSpeaking(false);
+              setIsPaused(false);
+            };
+
+            setTimeout(() => {
+              speechSynthesis.speak(utterance);
+            }, 100);
+
+          } catch (error) {
+            console.error('🔊 Browser TTS failed:', error);
+            setIsSpeaking(false);
+            setIsPaused(false);
+          }
         }
       }
 
@@ -288,6 +476,32 @@ export default function ArtisanBuddyPage() {
   };
 
   const handleSuggestionClick = (suggestion: string) => {
+    // Handle special suggestions for Gemma AI
+    if (suggestion === 'Retry Loading Offline AI') {
+      // Offline AI disabled for stability - show message instead
+      const message: Message = {
+        id: Date.now().toString(),
+        content: 'Offline AI is temporarily disabled for stability. Please use online features.',
+        sender: 'assistant',
+        timestamp: new Date(),
+        metadata: { intent: 'system_message' }
+      };
+      setMessages(prev => [...prev, message]);
+      return;
+    }
+    if (suggestion === 'Continue with Online Only') {
+      // Just acknowledge and continue
+      const ackMessage: Message = {
+        id: Date.now().toString(),
+        content: 'Continuing with online-only mode. You can try loading offline AI again later using the "Load Offline AI" button.',
+        sender: 'assistant',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, ackMessage]);
+      return;
+    }
+
+    // Regular suggestion - send as message
     sendMessage(suggestion);
   };
 
@@ -319,12 +533,22 @@ export default function ArtisanBuddyPage() {
   };
 
   const stopSpeech = () => {
+    // Stop Google Cloud TTS audio if playing
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.currentTime = 0;
+      currentAudioRef.current = null;
+      console.log('🔊 Google TTS stopped');
+    }
+
+    // Stop browser TTS if playing
     if ('speechSynthesis' in window) {
       speechSynthesis.cancel();
-      setIsSpeaking(false);
-      setIsPaused(false);
-      console.log('🔊 TTS stopped');
+      console.log('🔊 Browser TTS stopped');
     }
+
+    setIsSpeaking(false);
+    setIsPaused(false);
   };
 
   const formatTime = (date: Date) => {
@@ -402,13 +626,18 @@ export default function ArtisanBuddyPage() {
               ) : gemmaReady ? (
                 <Badge variant="secondary" className="bg-blue-100 text-blue-800">
                   <WifiOff className="h-3 w-3 mr-1" />
-                  Offline (Gemma AI)
+                  Gemini Nano Ready
                 </Badge>
               ) : gemmaLoading ? (
-                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                  <Download className="h-3 w-3 mr-1 animate-pulse" />
-                  Loading AI...
-                </Badge>
+                <div className="flex items-center space-x-2">
+                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                    <Download className="h-3 w-3 mr-1 animate-pulse" />
+                    Loading Gemini Nano... {Math.round(loadingProgress)}%
+                  </Badge>
+                  {loadingStage && (
+                    <span className="text-xs text-gray-600">{loadingStage}</span>
+                  )}
+                </div>
               ) : (
                 <Badge variant="secondary" className="bg-red-100 text-red-800">
                   <WifiOff className="h-3 w-3 mr-1" />
@@ -456,15 +685,48 @@ export default function ArtisanBuddyPage() {
                 )}
               </div>
 
-              {!gemmaReady && !gemmaLoading && (
+              {!gemmaReady && !gemmaLoading && isOnline && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={initializeGemma}
-                  title="Load offline AI"
+                  title="Load Google Gemini Nano for offline AI"
                 >
                   <Download className="h-4 w-4 mr-1" />
                   Load Offline AI
+                </Button>
+              )}
+
+              {gemmaReady && gemmaServiceRef.current && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const status = gemmaServiceRef.current.getStatus();
+                    const modelInfo = gemmaServiceRef.current.getModelInfo();
+
+                    const statusMessage: Message = {
+                      id: 'ai-status-' + Date.now(),
+                      content: `**Gemini Nano Status:**
+- Model: ${modelInfo.modelId}
+- Type: ${modelInfo.type}
+- Real AI: ${modelInfo.hasRealAI ? 'Yes' : 'Fallback Mode'}
+- Status: ${status.isReady ? 'Ready' : 'Not Ready'}
+- Capabilities: ${modelInfo.capabilities.join(', ')}
+- Loading: ${status.isLoading ? 'Yes' : 'No'}
+${status.loadError ? `- Error: ${status.loadError}` : ''}
+${status.capabilities ? `- Browser Support: ${status.capabilities.available}` : ''}`,
+                      sender: 'assistant',
+                      timestamp: new Date(),
+                      metadata: {
+                        intent: 'status_info'
+                      }
+                    };
+                    setMessages(prev => [...prev, statusMessage]);
+                  }}
+                  title="Show AI status information"
+                >
+                  <Settings className="h-4 w-4" />
                 </Button>
               )}
 

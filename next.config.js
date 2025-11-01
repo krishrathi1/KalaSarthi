@@ -29,7 +29,45 @@ const nextConfig = {
       },
     },
   },
-  webpack: (config, { isServer, dev }) => {
+  webpack: (config, { isServer, dev, webpack }) => {
+    // Fix for @xenova/transformers environment variables
+    config.plugins.push(
+      new webpack.DefinePlugin({
+        'process.env.TRANSFORMERS_CACHE': JSON.stringify('./models'),
+        'process.env.ONNX_CACHE': JSON.stringify('./models'),
+      })
+    );
+
+    // Provide polyfills for Node.js modules in browser
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: require.resolve('path-browserify'),
+        crypto: require.resolve('crypto-browserify'),
+        stream: require.resolve('stream-browserify'),
+        util: require.resolve('util'),
+        buffer: require.resolve('buffer'),
+        process: require.resolve('process/browser'),
+        os: false,
+        net: false,
+        tls: false,
+        url: require.resolve('url'),
+        zlib: false,
+        http: false,
+        https: false,
+        assert: require.resolve('assert'),
+        querystring: require.resolve('querystring-es3'),
+        child_process: false,
+      };
+
+      config.plugins.push(
+        new webpack.ProvidePlugin({
+          Buffer: ['buffer', 'Buffer'],
+          process: 'process/browser',
+        })
+      );
+    }
     // Development optimizations
     if (dev) {
       // Simplified development config to avoid chunk errors
@@ -128,6 +166,13 @@ const nextConfig = {
         'node:os': false,
         'node:url': false,
         'node:querystring': false,
+      };
+
+      // Add transformers.js configuration for browser
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        'sharp$': false,
+        'onnxruntime-node$': false,
       };
     }
 
