@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { TrendingUp, Star, ExternalLink, WifiOff, Clock, Zap, RefreshCw } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { TrendingUp, Star, ExternalLink, WifiOff, Clock, Zap, RefreshCw, Wifi } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +14,9 @@ import { TrendCardGrid } from "@/components/trend-card";
 import { ProfessionSelector, QuickProfessionSelector } from "@/components/profession-selector";
 import { MarketInsights } from "@/components/market-insights";
 import { DataSourceIndicator } from "@/components/ui/data-source-indicator";
+import { useOffline } from "@/hooks/use-offline";
+import { notificationManager, notifySyncComplete } from "@/lib/notifications";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // Import types from centralized type definitions
 import {
@@ -38,6 +41,18 @@ export function SimplifiedTrendSpotter() {
   });
   const [userProfession, setUserProfession] = useState<ProfessionCategory>('handmade');
   const { toast } = useToast();
+  
+  // Offline support
+  const {
+    isOnline,
+    isSyncing,
+    storeOffline,
+    getOfflineData,
+    sync,
+  } = useOffline();
+
+  // Track previous online state for connection restoration detection
+  const previousOnlineState = useRef(isOnline);
 
   // Helper function to map user profession to our ProfessionCategory type
   const mapToProfessionCategory = (profession: string): ProfessionCategory => {
@@ -71,25 +86,34 @@ export function SimplifiedTrendSpotter() {
     return mappings[professionLower] || 'handmade';
   };
 
-  // Detect connectivity changes
+  // Request notification permission on mount
   useEffect(() => {
-    const handleOnline = () => {
-      setConnectivityStatus(prev => ({ ...prev, isOnline: true }));
-      loadTrendingData(); // Refresh data when coming online
-    };
-
-    const handleOffline = () => {
-      setConnectivityStatus(prev => ({ ...prev, isOnline: false }));
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
+    if (notificationManager.isSupported() && notificationManager.getPermission() === 'default') {
+      setTimeout(() => {
+        notificationManager.requestPermission();
+      }, 3000);
+    }
   }, []);
+
+  // Detect connection restoration and refresh data
+  useEffect(() => {
+    // Detect when connection is restored
+    if (!previousOnlineState.current && isOnline) {
+      // Connection was restored
+      if (notificationManager.getPermission() === 'granted') {
+        notificationManager.notifyConnectionRestored();
+      }
+      
+      toast({
+        title: "Connection Restored",
+        description: "You're back online! Refreshing trending data...",
+      });
+      
+      loadTrendingData(); // Refresh data when coming online
+    }
+
+    previousOnlineState.current = isOnline;
+  }, [isOnline]);
 
   // Load user profession
   useEffect(() => {
@@ -119,45 +143,125 @@ export function SimplifiedTrendSpotter() {
     setLoading(true);
     
     try {
-      // Use the new API service with fallback
-      const { trendAPI } = await import('@/lib/services/simplified-trend-api');
-      
-      // Clear cache to ensure fresh data with updated URLs
-      trendAPI.clearCache();
-      
-      const response = await trendAPI.getTrendingData(userProfession, {
-        maxProducts: 6,
-        includeInsights: true,
-        forceRefresh: true // Force refresh to get updated URLs
-      });
-
-      if (response.success) {
-        setTrendingProducts(response.data.products);
-        setMarketInsights(response.data.insights);
+      if (isOnline) {
+        // Fetch from API when online
+        const { trendAPI } = await import('@/lib/services/simplified-trend-api');
         
-        const newStatus: ConnectivityStatus = {
-          isOnline: navigator.onLine,
-          lastUpdated: response.data.metadata.lastUpdated,
-          dataSource: response.data.metadata.dataSource
-        };
-        setConnectivityStatus(newStatus);
-
-        toast({
-          title: newStatus.dataSource === 'api' ? "Live Data Updated" : 
-                 newStatus.dataSource === 'cached' ? "Cached Data Loaded" : "Offline Mode",
-          description: newStatus.dataSource === 'api' 
-            ? "Latest trending products loaded successfully!"
-            : newStatus.dataSource === 'cached'
-            ? "Using cached data for faster loading"
-            : "Showing offline data. Connect to internet for live updates.",
-          duration: 2000,
+        // Clear cache to ensure fresh data with updated URLs
+        trendAPI.clearCache();
+        
+        const response = await trendAPI.getTrendingData(userProfession, {
+          maxProducts: 6,
+          includeInsights: true,
+          forceRefresh: true // Force refresh to get updated URLs
         });
-      } else {
-        throw new Error('Failed to load trending data');
-      }
 
+        if (response.success) {
+          setTrendingProducts(response.data.products);
+          setMarketInsights(response.data.insights);
+          
+          const newStatus: ConnectivityStatus = {
+            isOnline: true,
+            lastUpdated: response.data.metadata.lastUpdated,
+            dataSource: response.data.metadata.dataSource
+          };
+          setConnectivityStatus(newStatus);
+
+          // Cache trending data for offline use
+          try {
+            for (const product of response.data.products) {
+              await storeOffline('trend', product, product.id, true);
+            }
+            console.log(`✅ Cached ${response.data.products.length} trending products for offline use`);
+          } catch (cacheError) {
+            console.error('Failed to cache trending data:', cacheError);
+          }
+
+          toast({
+            title: newStatus.dataSource === 'api' ? "Live Data Updated" : "Cached Data Loaded",
+            description: newStatus.dataSource === 'api' 
+              ? "Latest trending products loaded successfully!"
+              : "Using cached data for faster loading",
+            duration: 2000,
+          });
+        } else {
+          throw new Error('Failed to load trending data');
+        }
+      } else {
+        // Load from offline storage when offline
+        console.log('Loading trending data from offline storage...');
+        const offlineTrends = await getOfflineData('trend') as TrendingProduct[];
+        console.log(`Found ${offlineTrends.length} cached trending products`);
+
+        if (offlineTrends.length > 0) {
+          setTrendingProducts(offlineTrends);
+          
+          const newStatus: ConnectivityStatus = {
+            isOnline: false,
+            lastUpdated: new Date(),
+            dataSource: 'cached'
+          };
+          setConnectivityStatus(newStatus);
+
+          toast({
+            title: "Working Offline",
+            description: `Showing ${offlineTrends.length} cached trending products. Connect to internet for live updates.`,
+            duration: 5000,
+          });
+        } else {
+          // Fallback to mock data if no offline data available
+          const { trendAPI } = await import('@/lib/services/simplified-trend-api');
+          const response = await trendAPI.getTrendingData(userProfession, {
+            maxProducts: 6,
+            includeInsights: true,
+            forceRefresh: false
+          });
+
+          if (response.success) {
+            setTrendingProducts(response.data.products);
+            setMarketInsights(response.data.insights);
+            
+            const newStatus: ConnectivityStatus = {
+              isOnline: false,
+              lastUpdated: new Date(),
+              dataSource: 'mock'
+            };
+            setConnectivityStatus(newStatus);
+          }
+
+          toast({
+            title: "No Offline Data",
+            description: "Showing sample data. Connect to internet for live trending products.",
+            variant: "destructive",
+          });
+        }
+      }
     } catch (error) {
       console.error('Failed to load trending data:', error);
+      
+      // Fallback to offline data on error
+      try {
+        const offlineTrends = await getOfflineData('trend') as TrendingProduct[];
+        if (offlineTrends.length > 0) {
+          setTrendingProducts(offlineTrends);
+          
+          const newStatus: ConnectivityStatus = {
+            isOnline: false,
+            lastUpdated: new Date(),
+            dataSource: 'cached'
+          };
+          setConnectivityStatus(newStatus);
+
+          toast({
+            title: "Using Cached Data",
+            description: "Couldn't reach server. Showing cached trending products.",
+            variant: "destructive",
+          });
+        }
+      } catch (offlineError) {
+        console.error('Error loading offline trending data:', offlineError);
+      }
+
       toast({
         title: "Error",
         description: "Failed to load trending data. Please try again.",
@@ -205,6 +309,19 @@ export function SimplifiedTrendSpotter() {
               </Badge>
             </CardTitle>
             <div className="flex flex-wrap items-center gap-3 mt-3">
+              {/* Offline/Online Indicator */}
+              {isOnline ? (
+                <Badge variant="outline" className="gap-1 border-green-200 text-green-700 bg-green-50 min-h-[44px] px-3 py-2">
+                  <Wifi className="h-4 w-4" />
+                  <span>Online</span>
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="gap-1 border-red-200 text-red-700 bg-red-50 min-h-[44px] px-3 py-2">
+                  <WifiOff className="h-4 w-4" />
+                  <span>Offline</span>
+                </Badge>
+              )}
+              
               <DataSourceIndicator 
                 source={connectivityStatus.dataSource}
                 className="min-h-[44px] px-3 py-2 text-sm font-medium rounded-full"
@@ -222,13 +339,39 @@ export function SimplifiedTrendSpotter() {
                 onClick={() => {
                   loadTrendingData();
                 }}
-                disabled={loading}
+                disabled={loading || !isOnline}
                 className="min-h-[44px] px-3 py-2 text-sm"
                 aria-label="Refresh trending data"
               >
                 <RefreshCw className={`size-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
+              
+              {/* Sync Button */}
+              {isOnline && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={async () => {
+                    const result = await sync();
+                    if (result) {
+                      toast({
+                        title: "Sync Complete",
+                        description: "All data synchronized successfully.",
+                      });
+
+                      if (notificationManager.getPermission() === 'granted') {
+                        await notifySyncComplete(result.synced || 0);
+                      }
+                    }
+                  }}
+                  disabled={isSyncing}
+                  className="min-h-[44px] px-3 py-2"
+                  aria-label="Sync offline data"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -251,6 +394,16 @@ export function SimplifiedTrendSpotter() {
             </p>
           )}
         </CardDescription>
+        
+        {/* Offline Banner */}
+        {!isOnline && (
+          <Alert className="mt-4 bg-yellow-50 border-yellow-200">
+            <WifiOff className="h-4 w-4 text-yellow-600" />
+            <AlertDescription className="text-yellow-800">
+              You're working offline. Showing cached trending products. Some features may be limited. Changes will sync when you're back online.
+            </AlertDescription>
+          </Alert>
+        )}
       </CardHeader>
 
       <CardContent className="space-y-8">
