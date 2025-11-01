@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './button';
 import { Card, CardContent } from './card';
-import { Mic, MicOff, Volume2, Settings, Languages } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Languages } from 'lucide-react';
 import { SimpleVoiceService } from '@/lib/services/SimpleVoiceService';
 import { cn } from '@/lib/utils';
 
@@ -13,6 +13,10 @@ interface VoiceControlProps {
   variant?: 'default' | 'floating' | 'inline';
   showSettings?: boolean;
   autoStart?: boolean;
+  onPlayPause?: () => void;
+  onMuteToggle?: () => void;
+  isPlaying?: boolean;
+  isMuted?: boolean;
 }
 
 export function VoiceControl({
@@ -20,14 +24,24 @@ export function VoiceControl({
   size = 'md',
   variant = 'default',
   showSettings = true,
-  autoStart = false
+  autoStart = false,
+  onPlayPause,
+  onMuteToggle,
+  isPlaying: externalIsPlaying,
+  isMuted: externalIsMuted
 }: VoiceControlProps) {
+  const [internalIsPlaying, setInternalIsPlaying] = useState(false);
+  const [internalIsMuted, setInternalIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastCommand, setLastCommand] = useState<string>('');
   const [showLanguageSelector, setShowLanguageSelector] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState('en-US');
   const voiceServiceRef = useRef<SimpleVoiceService | null>(null);
+
+  // Use external state if provided, otherwise use internal state
+  const isPlaying = externalIsPlaying !== undefined ? externalIsPlaying : internalIsPlaying;
+  const isMuted = externalIsMuted !== undefined ? externalIsMuted : internalIsMuted;
 
   const sizeClasses = {
     sm: 'h-8 w-8',
@@ -107,6 +121,24 @@ export function VoiceControl({
     }
   };
 
+  const handlePlayPause = () => {
+    if (onPlayPause) {
+      onPlayPause();
+    } else {
+      setInternalIsPlaying(!internalIsPlaying);
+      setLastCommand(internalIsPlaying ? 'Paused' : 'Playing');
+    }
+  };
+
+  const handleMuteToggle = () => {
+    if (onMuteToggle) {
+      onMuteToggle();
+    } else {
+      setInternalIsMuted(!internalIsMuted);
+      setLastCommand(internalIsMuted ? 'Unmuted' : 'Muted');
+    }
+  };
+
   const handleLanguageChange = (language: string) => {
     setCurrentLanguage(language);
     setShowLanguageSelector(false);
@@ -134,24 +166,39 @@ export function VoiceControl({
         <Card className="shadow-lg">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
+              {/* Play/Pause Toggle Button */}
               <Button
-                onClick={handleToggleListening}
-                disabled={isProcessing}
+                onClick={handlePlayPause}
                 className={cn(
                   sizeClasses[size],
                   'rounded-full transition-all duration-200',
-                  isListening
-                    ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-                    : 'bg-blue-500 hover:bg-blue-600',
-                  isProcessing && 'opacity-50'
+                  isPlaying
+                    ? 'bg-orange-500 hover:bg-orange-600'
+                    : 'bg-green-500 hover:bg-green-600'
                 )}
               >
-                {isProcessing ? (
-                  <Volume2 className={iconSizes[size]} />
-                ) : isListening ? (
-                  <MicOff className={iconSizes[size]} />
+                {isPlaying ? (
+                  <Pause className={iconSizes[size]} />
                 ) : (
-                  <Mic className={iconSizes[size]} />
+                  <Play className={iconSizes[size]} />
+                )}
+              </Button>
+
+              {/* Mute/Unmute Toggle Button */}
+              <Button
+                onClick={handleMuteToggle}
+                className={cn(
+                  sizeClasses[size],
+                  'rounded-full transition-all duration-200',
+                  isMuted
+                    ? 'bg-red-500 hover:bg-red-600'
+                    : 'bg-blue-500 hover:bg-blue-600'
+                )}
+              >
+                {isMuted ? (
+                  <VolumeX className={iconSizes[size]} />
+                ) : (
+                  <Volume2 className={iconSizes[size]} />
                 )}
               </Button>
 
@@ -200,29 +247,42 @@ export function VoiceControl({
   if (variant === 'inline') {
     return (
       <div className={cn('flex items-center gap-2', className)}>
+        {/* Play/Pause Toggle Button */}
         <Button
-          onClick={handleToggleListening}
-          disabled={isProcessing}
-          variant={isListening ? 'destructive' : 'default'}
+          onClick={handlePlayPause}
+          variant={isPlaying ? 'default' : 'outline'}
           className={cn(
             sizeClasses[size],
-            'rounded-full',
-            isProcessing && 'opacity-50'
+            'rounded-full'
           )}
         >
-          {isProcessing ? (
-            <Volume2 className={iconSizes[size]} />
-          ) : isListening ? (
-            <MicOff className={iconSizes[size]} />
+          {isPlaying ? (
+            <Pause className={iconSizes[size]} />
           ) : (
-            <Mic className={iconSizes[size]} />
+            <Play className={iconSizes[size]} />
           )}
         </Button>
 
-        {isListening && (
+        {/* Mute/Unmute Toggle Button */}
+        <Button
+          onClick={handleMuteToggle}
+          variant={isMuted ? 'destructive' : 'outline'}
+          className={cn(
+            sizeClasses[size],
+            'rounded-full'
+          )}
+        >
+          {isMuted ? (
+            <VolumeX className={iconSizes[size]} />
+          ) : (
+            <Volume2 className={iconSizes[size]} />
+          )}
+        </Button>
+
+        {isPlaying && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-            Listening...
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            Playing...
           </div>
         )}
 
@@ -238,29 +298,47 @@ export function VoiceControl({
   // Default variant
   return (
     <div className={cn('flex flex-col items-center gap-4', className)}>
-      <Button
-        onClick={handleToggleListening}
-        disabled={isProcessing}
-        className={cn(
-          sizeClasses[size],
-          'rounded-full transition-all duration-200',
-          isListening
-            ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-            : 'bg-blue-500 hover:bg-blue-600'
-        )}
-      >
-        {isProcessing ? (
-          <Volume2 className={iconSizes[size]} />
-        ) : isListening ? (
-          <MicOff className={iconSizes[size]} />
-        ) : (
-          <Mic className={iconSizes[size]} />
-        )}
-      </Button>
+      <div className="flex items-center gap-3">
+        {/* Play/Pause Toggle Button */}
+        <Button
+          onClick={handlePlayPause}
+          className={cn(
+            sizeClasses[size],
+            'rounded-full transition-all duration-200',
+            isPlaying
+              ? 'bg-orange-500 hover:bg-orange-600'
+              : 'bg-green-500 hover:bg-green-600'
+          )}
+        >
+          {isPlaying ? (
+            <Pause className={iconSizes[size]} />
+          ) : (
+            <Play className={iconSizes[size]} />
+          )}
+        </Button>
+
+        {/* Mute/Unmute Toggle Button */}
+        <Button
+          onClick={handleMuteToggle}
+          className={cn(
+            sizeClasses[size],
+            'rounded-full transition-all duration-200',
+            isMuted
+              ? 'bg-red-500 hover:bg-red-600'
+              : 'bg-blue-500 hover:bg-blue-600'
+          )}
+        >
+          {isMuted ? (
+            <VolumeX className={iconSizes[size]} />
+          ) : (
+            <Volume2 className={iconSizes[size]} />
+          )}
+        </Button>
+      </div>
 
       <div className="text-center">
         <div className="text-sm font-medium">
-          {isProcessing ? 'Processing...' : isListening ? 'Listening...' : 'Voice Control'}
+          {isPlaying ? (isMuted ? 'Playing (Muted)' : 'Playing') : 'Paused'}
         </div>
         {lastCommand && (
           <div className="text-xs text-muted-foreground mt-1 max-w-48 truncate">
