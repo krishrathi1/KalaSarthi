@@ -1,6 +1,6 @@
 'use client';
 
-import { SimpleVoiceChat } from '@/components/SimpleVoiceChat';
+
 
 export default function SimpleVoiceTestPage() {
     return (
@@ -16,7 +16,6 @@ export default function SimpleVoiceTestPage() {
                         </p>
                     </div>
                     <div className="h-[calc(100%-100px)]">
-                        <SimpleVoiceChat />
                     </div>
                 </div>
             </div>

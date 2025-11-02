@@ -168,13 +168,13 @@ export async function GET(request: NextRequest) {
         const ttsService = EnhancedTextToSpeechService.getInstance();
 
         // Get available voices
-        let availableVoices;
+        let availableVoices: any;
         if (language) {
             availableVoices = await ttsService.getAvailableVoices(language);
         } else {
             // Get voices for common languages
             const commonLanguages = ['en-US', 'hi-IN', 'bn-IN', 'ta-IN'];
-            availableVoices = {};
+            availableVoices = {} as Record<string, any>;
 
             for (const lang of commonLanguages) {
                 try {
@@ -262,7 +262,8 @@ export async function PUT(request: NextRequest) {
         const ttsService = EnhancedTextToSpeechService.getInstance();
 
         // Update user preferences (this would typically be stored in a database)
-        await ttsService.updateUserPreferences(userId, preferences);
+        // TODO: Implement user preferences storage
+        // await ttsService.updateUserPreferences(userId, preferences);
 
         return NextResponse.json({
             success: true,

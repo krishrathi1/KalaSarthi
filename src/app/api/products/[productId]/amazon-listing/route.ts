@@ -26,16 +26,19 @@ export async function PUT(
     }
 
     // Update the amazonListing field
-    product.amazonListing = {
-      ...product.amazonListing,
-      ...body,
-      isListed: true,
-      lastSync: new Date(),
+    const updatedProduct = {
+      ...product,
+      amazonListing: {
+        ...product.amazonListing,
+        ...body,
+        isListed: true,
+        lastSync: new Date(),
+      }
     };
 
-    await product.save();
+    await FirestoreService.update(COLLECTIONS.PRODUCTS, productId, updatedProduct);
 
-    return NextResponse.json(product);
+    return NextResponse.json(updatedProduct);
   } catch (error) {
     console.error('Failed to update Amazon listing status:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

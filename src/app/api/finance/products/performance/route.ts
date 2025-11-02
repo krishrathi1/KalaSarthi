@@ -48,11 +48,14 @@ export async function GET(request: NextRequest) {
     );
 
     const querySnapshot = await getDocs(q);
-    const salesEvents = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      eventTimestamp: doc.data().eventTimestamp.toDate()
-    }));
+    const salesEvents = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        eventTimestamp: data.eventTimestamp?.toDate ? data.eventTimestamp.toDate() : new Date()
+      };
+    });
 
     console.log(`📈 Found ${salesEvents.length} sales events for product analysis`);
 
@@ -60,9 +63,9 @@ export async function GET(request: NextRequest) {
     const productPerformance = new Map();
 
     salesEvents.forEach(event => {
-      const productId = event.productId;
-      const productName = event.productName;
-      const category = event.category;
+      const productId = (event as any).productId;
+      const productName = (event as any).productName;
+      const category = (event as any).category;
 
       if (!productPerformance.has(productId)) {
         productPerformance.set(productId, {
@@ -79,11 +82,12 @@ export async function GET(request: NextRequest) {
       }
 
       const product = productPerformance.get(productId);
-      product.revenue += event.totalAmount || 0;
-      product.units += event.quantity || 0;
+      const eventData = event as any;
+      product.revenue += eventData.totalAmount || 0;
+      product.units += eventData.quantity || 0;
       product.orders += 1;
-      product.totalCost += event.totalCost || 0;
-      product.totalProfit += event.profit || 0;
+      product.totalCost += eventData.totalCost || 0;
+      product.totalProfit += eventData.profit || 0;
     });
 
     // Calculate margins and add rankings

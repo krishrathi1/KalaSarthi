@@ -423,13 +423,13 @@ async function generateCostProjections(analyticsService: any, currentRange: any)
  */
 function getBudgetAlerts(monitoringService: any, costAnalytics: any): any {
     const activeAlerts = monitoringService.getActiveAlerts();
-    const costAlerts = activeAlerts.filter(alert => 
+    const costAlerts = activeAlerts.filter((alert: any) => 
         alert.ruleId.includes('budget') || alert.ruleId.includes('cost')
     );
     
     return {
         active: costAlerts.length,
-        alerts: costAlerts.map(alert => ({
+        alerts: costAlerts.map((alert: any) => ({
             id: alert.id,
             severity: alert.severity,
             message: alert.message,

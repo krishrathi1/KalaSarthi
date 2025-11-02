@@ -66,7 +66,7 @@ export function CustomOverrides({
     unifiedTranslationService.addCustomOverride(newOverride);
     loadOverrides();
     resetForm();
-    
+
     if (onOverrideAdded) {
       onOverrideAdded({ ...newOverride, createdAt: Date.now() });
     }
@@ -79,7 +79,7 @@ export function CustomOverrides({
       override.targetLanguage
     );
     loadOverrides();
-    
+
     if (onOverrideRemoved) {
       onOverrideRemoved(override);
     }
@@ -121,12 +121,16 @@ export function CustomOverrides({
   };
 
   // Filter overrides based on search query
-  const filteredOverrides = overrides.filter(override =>
-    override.originalText.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    override.translatedText.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    languages[override.sourceLanguage]?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    languages[override.targetLanguage]?.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredOverrides = overrides.filter(override => {
+    const sourceLang = override.sourceLanguage as LanguageCode;
+    const targetLang = override.targetLanguage as LanguageCode;
+    return (
+      override.originalText.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      override.translatedText.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      languages[sourceLang]?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      languages[targetLang]?.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
 
   return (
     <div className={cn('space-y-4', className)}>
@@ -162,7 +166,7 @@ export function CustomOverrides({
           <h4 className="text-sm font-medium text-gray-900 mb-3">
             {editingId ? 'Edit Override' : 'Add New Override'}
           </h4>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Language Selection */}
             <div className="grid grid-cols-2 gap-2">
@@ -182,7 +186,7 @@ export function CustomOverrides({
                   ))}
                 </select>
               </div>
-              
+
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">
                   To Language
@@ -205,7 +209,7 @@ export function CustomOverrides({
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Original Text ({languages[formData.sourceLanguage]?.name})
+                  Original Text ({languages[formData.sourceLanguage as LanguageCode]?.name})
                 </label>
                 <textarea
                   value={formData.originalText}
@@ -215,10 +219,10 @@ export function CustomOverrides({
                   rows={2}
                 />
               </div>
-              
+
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Custom Translation ({languages[formData.targetLanguage]?.name})
+                  Custom Translation ({languages[formData.targetLanguage as LanguageCode]?.name})
                 </label>
                 <textarea
                   value={formData.translatedText}
@@ -276,14 +280,14 @@ export function CustomOverrides({
                     {/* Language pair */}
                     <div className="flex items-center gap-2 text-xs text-gray-500">
                       <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded">
-                        {languages[override.sourceLanguage]?.name}
+                        {languages[override.sourceLanguage as LanguageCode]?.name}
                       </span>
                       <span>→</span>
                       <span className="px-2 py-1 bg-green-100 text-green-700 rounded">
-                        {languages[override.targetLanguage]?.name}
+                        {languages[override.targetLanguage as LanguageCode]?.name}
                       </span>
                     </div>
-                    
+
                     {/* Text content */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
@@ -299,14 +303,14 @@ export function CustomOverrides({
                         </div>
                       </div>
                     </div>
-                    
+
                     {/* Metadata */}
                     <div className="text-xs text-gray-500">
                       Created: {new Date(override.createdAt).toLocaleDateString()}
                       {override.createdBy && ` by ${override.createdBy}`}
                     </div>
                   </div>
-                  
+
                   {/* Actions */}
                   <div className="flex gap-1 ml-4">
                     <button

@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { 
-  ArrowLeft, 
-  Star, 
-  MapPin, 
-  Clock, 
-  MessageCircle, 
-  Heart, 
-  Award, 
+import {
+  ArrowLeft,
+  Star,
+  MapPin,
+  Clock,
+  MessageCircle,
+  Heart,
+  Award,
   Calendar,
   CheckCircle,
   ExternalLink,
@@ -102,12 +102,12 @@ interface VirtualShowroom {
   culturalStory: string;
 }
 
-export function ArtisanProfileViewer({ 
-  artisanId, 
-  onBack, 
-  onStartChat, 
+export function ArtisanProfileViewer({
+  artisanId,
+  onBack,
+  onStartChat,
   onToggleFavorite,
-  isFavorite = false 
+  isFavorite = false
 }: ArtisanProfileViewerProps) {
   const [profile, setProfile] = useState<ArtisanProfile | null>(null);
   const [showroom, setShowroom] = useState<VirtualShowroom | null>(null);
@@ -122,7 +122,7 @@ export function ArtisanProfileViewer({
   const loadArtisanProfile = async () => {
     try {
       setLoading(true);
-      
+
       // Mock data - in real implementation, fetch from API
       const mockProfile: ArtisanProfile = {
         uid: artisanId,
@@ -233,7 +233,7 @@ export function ArtisanProfileViewer({
 
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       setProfile(mockProfile);
       setShowroom(mockShowroom);
     } catch (error) {
@@ -333,7 +333,7 @@ export function ArtisanProfileViewer({
           <ArrowLeft className="h-4 w-4" />
           Back to Results
         </Button>
-        
+
         <div className="flex items-center gap-2">
           {onToggleFavorite && (
             <Button
@@ -346,7 +346,7 @@ export function ArtisanProfileViewer({
               {isFavorite ? 'Favorited' : 'Add to Favorites'}
             </Button>
           )}
-          
+
           <Button onClick={() => onStartChat(artisanId)} className="gap-2">
             <MessageCircle className="h-4 w-4" />
             Start Chat
@@ -359,8 +359,8 @@ export function ArtisanProfileViewer({
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row items-start gap-6">
             <Avatar className="h-24 w-24">
-              <AvatarImage 
-                src={!imageError ? profile.profileImage : undefined} 
+              <AvatarImage
+                src={!imageError ? profile.profileImage : undefined}
                 alt={profile.name}
                 onError={() => setImageError(true)}
               />
@@ -368,7 +368,7 @@ export function ArtisanProfileViewer({
                 {getInitials(profile.name)}
               </AvatarFallback>
             </Avatar>
-            
+
             <div className="flex-1 space-y-4">
               <div>
                 <div className="flex items-center gap-3 mb-2">
@@ -377,9 +377,9 @@ export function ArtisanProfileViewer({
                     {profile.artisanConnectProfile?.availabilityStatus || 'available'}
                   </Badge>
                 </div>
-                
+
                 <p className="text-xl text-muted-foreground mb-2">{profile.artisticProfession}</p>
-                
+
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   {profile.address && (
                     <div className="flex items-center gap-1">
@@ -387,21 +387,21 @@ export function ArtisanProfileViewer({
                       {profile.address.city}, {profile.address.state}
                     </div>
                   )}
-                  
+
                   <div className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
                     Responds in {profile.artisanConnectProfile?.responseTimeAverage}m
                   </div>
-                  
+
                   <div className="flex items-center gap-1">
                     <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                     {profile.artisanConnectProfile?.aiMetrics.customerSatisfactionScore.toFixed(1)}
                   </div>
                 </div>
               </div>
-              
+
               <p className="text-muted-foreground leading-relaxed">{profile.description}</p>
-              
+
               {/* Specializations */}
               <div className="flex flex-wrap gap-2">
                 {profile.artisanConnectProfile?.specializations.map((spec, index) => (
@@ -461,22 +461,6 @@ export function ArtisanProfileViewer({
                 </CardContent>
               </Card>
 
-              {/* Portfolio Highlights */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Portfolio Highlights</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-3">
-                    {profile.artisanConnectProfile?.portfolioHighlights.map((highlight, index) => (
-                      <li key={index} className="flex items-start gap-3">
-                        <Award className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                        <span>{highlight}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
 
               {/* Business Information */}
               <Card>
@@ -672,19 +656,19 @@ export function ArtisanProfileViewer({
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button 
-                className="w-full gap-2" 
+              <Button
+                className="w-full gap-2"
                 onClick={() => onStartChat(artisanId)}
               >
                 <MessageCircle className="h-4 w-4" />
                 Start Conversation
               </Button>
-              
+
               <Button variant="outline" className="w-full gap-2">
                 <Calendar className="h-4 w-4" />
                 Schedule Consultation
               </Button>
-              
+
               <Button variant="outline" className="w-full gap-2">
                 <ExternalLink className="h-4 w-4" />
                 View Full Portfolio
@@ -707,7 +691,7 @@ export function ArtisanProfileViewer({
                   </span>
                 </div>
               </div>
-              
+
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span>Quality</span>
@@ -725,18 +709,6 @@ export function ArtisanProfileViewer({
                   <span>Value</span>
                   <span>4.5</span>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Similar Artisans */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Similar Artisans</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm text-muted-foreground text-center py-4">
-                Similar artisan recommendations will appear here
               </div>
             </CardContent>
           </Card>

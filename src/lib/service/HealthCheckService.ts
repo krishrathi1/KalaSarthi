@@ -1,6 +1,6 @@
 import { monitoringService } from '@/lib/monitoring';
 import { CacheService } from './CacheService';
-import { connectionPool } from './ConnectionPoolService';
+
 import { performanceMonitor } from './PerformanceMonitoringService';
 
 export interface HealthCheckResult {
@@ -66,7 +66,6 @@ export class HealthCheckService {
      */
     async checkHealth(): Promise<SystemHealthStatus> {
         const checks = [
-            this.checkDatabase(),
             this.checkCache(),
             this.checkMonitoring(),
             this.checkPerformance(),
@@ -114,39 +113,7 @@ export class HealthCheckService {
     /**
      * Check database health
      */
-    private async checkDatabase(): Promise<HealthCheckResult> {
-        const startTime = Date.now();
 
-        try {
-            const health = await connectionPool.healthCheck();
-            const latency = Date.now() - startTime;
-
-            let status: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
-            if (health.overall === 'unhealthy') {
-                status = 'unhealthy';
-            } else if (health.overall === 'degraded') {
-                status = 'degraded';
-            }
-
-            return {
-                service: 'database',
-                status,
-                latency,
-                details: {
-                    mongodb: health.mongodb,
-                    redis: health.redis
-                },
-                lastChecked: new Date()
-            };
-        } catch (error) {
-            return {
-                service: 'database',
-                status: 'unhealthy',
-                error: error instanceof Error ? error.message : 'Database check failed',
-                lastChecked: new Date()
-            };
-        }
-    }
 
     /**
      * Check cache health
@@ -502,8 +469,6 @@ export class HealthCheckService {
      */
     async checkService(serviceName: string): Promise<HealthCheckResult> {
         switch (serviceName) {
-            case 'database':
-                return this.checkDatabase();
             case 'cache':
                 return this.checkCache();
             case 'monitoring':

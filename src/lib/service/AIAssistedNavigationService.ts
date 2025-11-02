@@ -217,7 +217,7 @@ export class AIAssistedNavigationService {
           target: ruleBasedResult.target,
           params: ruleBasedResult.params,
           response: executionResult.message,
-          confidence: ruleBasedResult.confidence
+          confidence: ruleBasedResult.confidence ?? 0
         };
       }
 

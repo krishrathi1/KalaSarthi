@@ -595,9 +595,9 @@ export class DatabaseOptimizationService extends BaseService {
    * Get service metrics
    */
   async getServiceMetrics(): Promise<{
-    poolStatistics: ReturnType<typeof this.getPoolStatistics>;
+    poolStatistics: ReturnType<DatabaseOptimizationService['getPoolStatistics']>;
     queryStatistics: QueryStatistics;
-    slowQueries: ReturnType<typeof this.getSlowQueriesReport>;
+    slowQueries: ReturnType<DatabaseOptimizationService['getSlowQueriesReport']>;
   }> {
     return {
       poolStatistics: this.getPoolStatistics(),

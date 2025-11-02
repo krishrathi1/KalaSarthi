@@ -29,6 +29,7 @@ import {
 } from '@/lib/services/VoiceNavigationAnalytics';
 import { SemanticVoiceNavigationService } from '@/lib/services/SemanticVoiceNavigationService';
 import { GeminiSpeechService } from '@/lib/service/GeminiSpeechService';
+import { ExtendedSpeechRecognition } from '@/types/speech-recognition';
 
 export interface GlobalVoiceNavigationProps {
     className?: string;
@@ -1168,29 +1169,5 @@ export function GlobalVoiceNavigation({
     );
 }
 
-// TypeScript declarations for Speech Recognition API
-declare global {
-    interface Window {
-        SpeechRecognition: any;
-        webkitSpeechRecognition: any;
-        AudioContext: any;
-        webkitAudioContext: any;
-    }
-}
-
-// Extend SpeechRecognition interface
-interface ExtendedSpeechRecognition {
-    maxAlternatives?: number;
-    lang: string;
-    continuous: boolean;
-    interimResults: boolean;
-    start(): void;
-    stop(): void;
-    abort(): void;
-    onstart: ((this: any, ev: Event) => any) | null;
-    onend: ((this: any, ev: Event) => any) | null;
-    onerror: ((this: any, ev: any) => any) | null;
-    onresult: ((this: any, ev: any) => any) | null;
-}
-
 // Types are already exported as interfaces above
+// Speech Recognition type declarations moved to src/types/speech-recognition.d.ts

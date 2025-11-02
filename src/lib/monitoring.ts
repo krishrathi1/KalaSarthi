@@ -75,7 +75,7 @@ export class MonitoringService {
 
     // Only initialize BigQuery on server-side
     if (this.isServerSide) {
-      this.bigquery = new BigQuery({
+      this.bigquery! = new BigQuery({
         projectId: this.projectId,
         keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS || './google-credentials.json'
       });
@@ -158,7 +158,7 @@ export class MonitoringService {
     };
 
     // Only log to BigQuery on server-side
-    if (!this.isServerSide || !this.bigquery) {
+    if (!this.isServerSide || !this.bigquery!) {
       // Fallback to console logging on client-side
       console.log(`[${logEntry.level}] ${logEntry.service}:${logEntry.operation}`, {
         userId: logEntry.userId,
@@ -185,7 +185,7 @@ export class MonitoringService {
    * Record performance metrics
    */
   async recordMetrics(metrics: PerformanceMetrics): Promise<void> {
-    if (!this.isServerSide || !this.bigquery) {
+    if (!this.isServerSide || !this.bigquery!) {
       return;
     }
 
@@ -254,7 +254,7 @@ export class MonitoringService {
       WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL @hours HOUR)
     `;
 
-    const [rows] = await this.bigquery.query({
+    const [rows] = await this.bigquery!!.query({
       query,
       params: { hours }
     });
@@ -272,7 +272,7 @@ export class MonitoringService {
       LIMIT 10
     `;
 
-    const [topOpsRows] = await this.bigquery.query({
+    const [topOpsRows] = await this.bigquery!.query({
       query: topOpsQuery,
       params: { hours }
     });
@@ -305,7 +305,7 @@ export class MonitoringService {
       LIMIT @limit
     `;
 
-    const [rows] = await this.bigquery.query({
+    const [rows] = await this.bigquery!.query({
       query,
       params: { hours, limit }
     });
@@ -349,7 +349,7 @@ export class MonitoringService {
       LIMIT 100
     `;
 
-    const [rows] = await this.bigquery.query({
+    const [rows] = await this.bigquery!.query({
       query,
       params: { hours }
     });
@@ -411,7 +411,7 @@ export class MonitoringService {
       WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL @hours HOUR)
     `;
 
-    const [rows] = await this.bigquery.query({
+    const [rows] = await this.bigquery!.query({
       query,
       params: { hours }
     });
@@ -429,7 +429,7 @@ export class MonitoringService {
       LIMIT 10
     `;
 
-    const [intentsRows] = await this.bigquery.query({
+    const [intentsRows] = await this.bigquery!.query({
       query: intentsQuery,
       params: { hours }
     });
@@ -466,7 +466,7 @@ export class MonitoringService {
       LIMIT 1
     `;
 
-    const [rows] = await this.bigquery.query({ query });
+    const [rows] = await this.bigquery!.query({ query });
     const latestMetrics = rows[0] as SystemHealthMetrics || await this.collectSystemHealth();
 
     // Check alert status
@@ -520,7 +520,7 @@ export class MonitoringService {
         WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 5 MINUTE)
       `;
 
-      const [rows] = await this.bigquery.query({ query });
+      const [rows] = await this.bigquery!.query({ query });
       return parseFloat(rows[0]?.errorRate) || 0;
     } catch (error) {
       console.error('Failed to calculate error rate:', error);
@@ -539,7 +539,7 @@ export class MonitoringService {
         WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 5 MINUTE)
       `;
 
-      const [rows] = await this.bigquery.query({ query });
+      const [rows] = await this.bigquery!.query({ query });
       return parseFloat(rows[0]?.avgResponseTime) || 0;
     } catch (error) {
       console.error('Failed to calculate response time:', error);
@@ -610,7 +610,7 @@ export class MonitoringService {
         WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
       `;
 
-      const [rows] = await this.bigquery.query({ query });
+      const [rows] = await this.bigquery!.query({ query });
       return parseFloat(rows[0]?.avgCompletionRate) || 1;
     } catch (error) {
       console.error('Failed to get completion rate:', error);
@@ -691,7 +691,7 @@ export class MonitoringService {
    * Create logs table
    */
   private async createLogsTable(): Promise<void> {
-    const dataset = this.bigquery.dataset(this.logsDataset);
+    const dataset = this.bigquery!.dataset(this.logsDataset);
     const table = dataset.table(this.logsTable);
 
     const [exists] = await table.exists();
@@ -720,7 +720,7 @@ export class MonitoringService {
    * Create metrics table
    */
   private async createMetricsTable(): Promise<void> {
-    const dataset = this.bigquery.dataset(this.logsDataset);
+    const dataset = this.bigquery!.dataset(this.logsDataset);
     const table = dataset.table(this.metricsTable);
 
     const [exists] = await table.exists();
@@ -746,7 +746,7 @@ export class MonitoringService {
    * Create conversation metrics table
    */
   private async createConversationTable(): Promise<void> {
-    const dataset = this.bigquery.dataset(this.logsDataset);
+    const dataset = this.bigquery!.dataset(this.logsDataset);
     const table = dataset.table(this.conversationTable);
 
     const [exists] = await table.exists();
@@ -777,7 +777,7 @@ export class MonitoringService {
    * Create system health table
    */
   private async createHealthTable(): Promise<void> {
-    const dataset = this.bigquery.dataset(this.logsDataset);
+    const dataset = this.bigquery!.dataset(this.logsDataset);
     const table = dataset.table(this.healthTable);
 
     const [exists] = await table.exists();
@@ -804,7 +804,7 @@ export class MonitoringService {
    * Insert log entry
    */
   private async insertLogEntry(entry: LogEntry): Promise<void> {
-    const dataset = this.bigquery.dataset(this.logsDataset);
+    const dataset = this.bigquery!.dataset(this.logsDataset);
     const table = dataset.table(this.logsTable);
 
     await table.insert({
@@ -825,7 +825,7 @@ export class MonitoringService {
    * Insert metrics
    */
   private async insertMetrics(metrics: PerformanceMetrics): Promise<void> {
-    const dataset = this.bigquery.dataset(this.logsDataset);
+    const dataset = this.bigquery!.dataset(this.logsDataset);
     const table = dataset.table(this.metricsTable);
 
     await table.insert({
@@ -843,7 +843,7 @@ export class MonitoringService {
    * Insert conversation metrics
    */
   private async insertConversationMetrics(metrics: ConversationMetrics): Promise<void> {
-    const dataset = this.bigquery.dataset(this.logsDataset);
+    const dataset = this.bigquery!.dataset(this.logsDataset);
     const table = dataset.table(this.conversationTable);
 
     await table.insert({
@@ -866,7 +866,7 @@ export class MonitoringService {
    * Insert system health metrics
    */
   private async insertSystemHealth(metrics: SystemHealthMetrics): Promise<void> {
-    const dataset = this.bigquery.dataset(this.logsDataset);
+    const dataset = this.bigquery!.dataset(this.logsDataset);
     const table = dataset.table(this.healthTable);
 
     await table.insert({

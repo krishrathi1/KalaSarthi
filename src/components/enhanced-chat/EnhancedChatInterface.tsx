@@ -43,6 +43,12 @@ interface EnhancedChatMessage {
   originalLanguage: string;
   translatedText?: string;
   targetLanguage?: string;
+  // Optional metadata about translations so UI components can display confidence, alternatives and cultural context
+  translationMetadata?: {
+    confidence?: number;
+    alternatives?: string[];
+    culturalContext?: string;
+  };
   messageType: 'text' | 'voice' | 'design' | 'order' | 'system';
   audioData?: {
     url: string;

@@ -347,14 +347,14 @@ export function ArtisanGrid({
       )}
 
       {/* Alternative Recommendations */}
-      {alternativeRecommendations?.length > 0 && (
+      {(alternativeRecommendations?.length ?? 0) > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Alternative Recommendations</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {alternativeRecommendations.map((rec, index) => (
+              {alternativeRecommendations?.map((rec, index) => (
                 <div key={index} className="border-l-4 border-primary pl-4">
                   <div className="font-medium text-sm">{rec.suggestion}</div>
                   <div className="text-sm text-muted-foreground mt-1">{rec.reasoning}</div>

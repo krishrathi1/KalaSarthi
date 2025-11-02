@@ -40,6 +40,8 @@ Always provide helpful, friendly, and practical advice. Respect Indian culture a
 };
 
 export async function POST(request: NextRequest) {
+  let detectedLanguage = 'en'; // Default language
+  
   try {
     const body = await request.json();
     const { message, language, sessionId, context } = body;
@@ -52,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Detect language if not provided
-    const detectedLanguage = language || detectLanguage(message);
+    detectedLanguage = language || detectLanguage(message);
     
     // Get the appropriate model
     const model = genAI.getGenerativeModel({ 

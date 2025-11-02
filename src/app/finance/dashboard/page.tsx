@@ -448,296 +448,325 @@ export default function FinanceDashboard() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Offline/Online Indicator and Sync */}
-      <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-3">
-          {isOnline ? (
-            <Badge variant="outline" className="gap-1 border-green-200 text-green-700 bg-green-50">
-              <Wifi className="h-3 w-3" />
-              Online
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="gap-1 border-red-200 text-red-700 bg-red-50">
-              <WifiOff className="h-3 w-3" />
-              Offline
-            </Badge>
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 w-full overflow-x-hidden">
+      <div className="container mx-auto px-3 sm:px-4 md:px-6 py-6 sm:py-8 max-w-full space-y-6">
+        {/* Offline/Online Indicator and Sync */}
+        <div className="flex items-center justify-between flex-wrap gap-3 bg-white/80 backdrop-blur-sm border rounded-xl p-3 sm:p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            {isOnline ? (
+              <Badge variant="outline" className="gap-1.5 border-green-200 text-green-700 bg-green-50 flex-shrink-0">
+                <Wifi className="h-3 w-3" />
+                <span className="text-xs sm:text-sm">Online</span>
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="gap-1.5 border-red-200 text-red-700 bg-red-50 flex-shrink-0">
+                <WifiOff className="h-3 w-3" />
+                <span className="text-xs sm:text-sm">Offline</span>
+              </Badge>
+            )}
+          </div>
+
+          {/* Sync Button */}
+          {isOnline && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                const result = await sync();
+                if (result) {
+                  toast({
+                    title: "Sync Complete",
+                    description: "All data synchronized successfully.",
+                  });
+
+                  if (notificationManager.getPermission() === 'granted') {
+                    await notifySyncComplete(result.synced || 0);
+                  }
+                }
+              }}
+              disabled={isSyncing}
+              className="flex-shrink-0"
+            >
+              <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span className="ml-2 hidden sm:inline">Sync</span>
+            </Button>
           )}
         </div>
 
-        {/* Sync Button */}
-        {isOnline && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={async () => {
-              const result = await sync();
-              if (result) {
-                toast({
-                  title: "Sync Complete",
-                  description: "All data synchronized successfully.",
-                });
-
-                if (notificationManager.getPermission() === 'granted') {
-                  await notifySyncComplete(result.synced || 0);
-                }
-              }
-            }}
-            disabled={isSyncing}
-          >
-            <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-          </Button>
-        )}
-      </div>
-
-      {/* Offline Banner */}
-      {!isOnline && (
-        <Alert className="mb-4 bg-yellow-50 border-yellow-200">
-          <WifiOff className="h-4 w-4 text-yellow-600" />
-          <AlertDescription className="text-yellow-800">
-            You're working offline. Showing cached financial data. Real-time features require an internet connection.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Redis Connection Error Banner */}
-      {error && error.includes('Redis') && (
-        <Alert className="mb-4 bg-blue-50 border-blue-200">
-          <AlertCircle className="h-4 w-4 text-blue-600" />
-          <AlertDescription className="text-blue-800">
-            Real-time analytics unavailable (Redis not connected). Showing cached data. This is normal for local development.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">DigitalKhata Dashboard</h1>
-          <p className="text-muted-foreground">
-            Real-time financial tracking with AI-powered insights
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!isOnline}
-            onClick={async () => {
-              if (!isOnline) {
-                toast({
-                  title: "Offline Mode",
-                  description: "Generating sample data requires an internet connection.",
-                  variant: "destructive",
-                });
-                return;
-              }
-              try {
-                const response = await fetch('/api/generate-sample-data', { method: 'POST' });
-                const result = await response.json();
-                if (result.success) {
-                  alert('Sample data generated successfully! Refresh the page to see the data.');
-                } else {
-                  alert('Failed to generate sample data: ' + result.error);
-                }
-              } catch (error) {
-                alert('Error generating sample data: ' + error);
-              }
-            }}
-          >
-            Generate Sample Data
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              try {
-                const response = await fetch('/api/debug-firestore');
-                const result = await response.json();
-                if (result.success) {
-                  alert(`Firestore Debug:\nSales Events: ${result.data.salesEvents.count}\nSummaries: ${result.data.monthlySummaries.count}`);
-                } else {
-                  alert('Debug failed: ' + result.error);
-                }
-              } catch (error) {
-                alert('Debug error: ' + error);
-              }
-            }}
-          >
-            Debug Firestore
-          </Button>
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7d">Last 7 days</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
-              <SelectItem value="90d">Last 90 days</SelectItem>
-              <SelectItem value="1y">Last year</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={resolution} onValueChange={setResolution}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="daily">Daily</SelectItem>
-              <SelectItem value="weekly">Weekly</SelectItem>
-              <SelectItem value="monthly">Monthly</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Real-time Dashboard - Always shown */}
-      <RealtimeDashboard artisanId="dev_bulchandani_001" />
-
-
-
-      {/* Main Content Tabs - Moved to top as requested */}
-      <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="realtime">Real-time Analytics</TabsTrigger>
-          <TabsTrigger value="products">Product Performance</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="insights">Insights</TabsTrigger>
-          <TabsTrigger value="quick-actions">Quick Actions</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-6">
-          {/* Recent Activity */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Sales</CardTitle>
-              <CardDescription>Latest sales events</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {salesData.slice(-5).reverse().map((sale, index) => (
-                <div key={index} className="flex items-center justify-between py-2">
-                  <div>
-                    <p className="font-medium">{sale.periodKey}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {sale.orders} orders • {sale.units} units
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">{formatCurrency(sale.revenue)}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {formatCurrency(sale.averageOrderValue)} avg
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="realtime" className="space-y-6">
-          {/* Enhanced Real-time Dashboard */}
-          <Alert>
-            <Wifi className="h-4 w-4" />
-            <AlertDescription>
-              This tab shows real-time financial data with live updates from Firestore.
-              Data is synchronized automatically and cached for offline access.
+        {/* Offline Banner */}
+        {!isOnline && (
+          <Alert className="bg-yellow-50 border-yellow-200 shadow-sm w-full">
+            <WifiOff className="h-4 w-4 text-yellow-600 flex-shrink-0" />
+            <AlertDescription className="text-xs sm:text-sm text-yellow-800">
+              You're working offline. Showing cached financial data. Real-time features require an internet connection.
             </AlertDescription>
           </Alert>
+        )}
 
+        {/* Redis Connection Error Banner */}
+        {error && error.includes('Redis') && (
+          <Alert className="bg-blue-50 border-blue-200 shadow-sm w-full">
+            <AlertCircle className="h-4 w-4 text-blue-600 flex-shrink-0" />
+            <AlertDescription className="text-xs sm:text-sm text-blue-800">
+              Real-time analytics unavailable (Redis not connected). Showing cached data. This is normal for local development.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Header */}
+        <div className="bg-white/80 backdrop-blur-sm border rounded-xl p-4 sm:p-6 shadow-sm w-full max-w-full overflow-hidden">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 w-full">
+            <div className="min-w-0 flex-1 max-w-full">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent truncate">
+                DigitalKhata Dashboard
+              </h1>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">
+                Real-time financial tracking with AI-powered insights
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 w-full lg:w-auto max-w-full">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!isOnline}
+                onClick={async () => {
+                  if (!isOnline) {
+                    toast({
+                      title: "Offline Mode",
+                      description: "Generating sample data requires an internet connection.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  try {
+                    const response = await fetch('/api/generate-sample-data', { method: 'POST' });
+                    const result = await response.json();
+                    if (result.success) {
+                      alert('Sample data generated successfully! Refresh the page to see the data.');
+                    } else {
+                      alert('Failed to generate sample data: ' + result.error);
+                    }
+                  } catch (error) {
+                    alert('Error generating sample data: ' + error);
+                  }
+                }}
+                className="text-xs sm:text-sm flex-shrink-0 min-w-0"
+              >
+                <span className="hidden md:inline">Generate Sample Data</span>
+                <span className="md:hidden">Sample</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/debug-firestore');
+                    const result = await response.json();
+                    if (result.success) {
+                      alert(`Firestore Debug:\nSales Events: ${result.data.salesEvents.count}\nSummaries: ${result.data.monthlySummaries.count}`);
+                    } else {
+                      alert('Debug failed: ' + result.error);
+                    }
+                  } catch (error) {
+                    alert('Debug error: ' + error);
+                  }
+                }}
+                className="text-xs sm:text-sm flex-shrink-0 min-w-0"
+              >
+                <span className="hidden md:inline">Debug</span>
+                <span className="md:hidden">🐛</span>
+              </Button>
+              <Select value={timeRange} onValueChange={setTimeRange}>
+                <SelectTrigger className="w-24 sm:w-28 text-xs sm:text-sm flex-shrink-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7d">7 days</SelectItem>
+                  <SelectItem value="30d">30 days</SelectItem>
+                  <SelectItem value="90d">90 days</SelectItem>
+                  <SelectItem value="1y">1 year</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={resolution} onValueChange={setResolution}>
+                <SelectTrigger className="w-24 sm:w-28 text-xs sm:text-sm flex-shrink-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        {/* Real-time Dashboard - Always shown */}
+        <div className="w-full max-w-full overflow-hidden">
           <RealtimeDashboard artisanId="dev_bulchandani_001" />
-        </TabsContent>
+        </div>
 
-        <TabsContent value="products" className="space-y-6">
-          {/* Product Performance Component */}
-          <ProductPerformance
-            timeRange={timeRange === '7d' ? 'week' : timeRange === '30d' ? 'month' : timeRange === '90d' ? 'quarter' : 'year'}
-          />
-        </TabsContent>
+        {/* Main Content Tabs - Moved to top as requested */}
+        <Tabs defaultValue="overview" className="space-y-6 w-full max-w-full">
+          <div className="w-full max-w-full overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0">
+            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 bg-white/80 backdrop-blur-sm border shadow-sm min-w-fit">
+              <TabsTrigger value="overview" className="text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white">
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="realtime" className="text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white">
+                <span className="hidden sm:inline">Real-time</span>
+                <span className="sm:hidden">Live</span>
+              </TabsTrigger>
+              <TabsTrigger value="products" className="text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white">
+                Products
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white">
+                Analytics
+              </TabsTrigger>
+              <TabsTrigger value="insights" className="text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white">
+                Insights
+              </TabsTrigger>
+              <TabsTrigger value="quick-actions" className="text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white">
+                <span className="hidden sm:inline">Quick Actions</span>
+                <span className="sm:hidden">Actions</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-        <TabsContent value="analytics" className="space-y-6">
-          {/* Forecast Chart Component */}
-          <ForecastChart
-            horizon={30}
-            metric="revenue"
-          />
-        </TabsContent>
-
-        <TabsContent value="insights" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>AI-Powered Insights</CardTitle>
-              <CardDescription>Intelligent recommendations for your business</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-start space-x-3 p-4 bg-green-50 rounded-lg">
-                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
-                  <div>
-                    <h4 className="font-medium text-green-800">Revenue Growth Opportunity</h4>
-                    <p className="text-sm text-green-700">
-                      Your top-performing category shows 15% growth potential. Consider increasing inventory.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3 p-4 bg-yellow-50 rounded-lg">
-                  <AlertCircle className="h-5 w-5 text-yellow-500 mt-0.5" />
-                  <div>
-                    <h4 className="font-medium text-yellow-800">Margin Optimization</h4>
-                    <p className="text-sm text-yellow-700">
-                      Several products have declining margins. Review pricing strategy and costs.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3 p-4 bg-blue-50 rounded-lg">
-                  <Target className="h-5 w-5 text-blue-500 mt-0.5" />
-                  <div>
-                    <h4 className="font-medium text-blue-800">Inventory Management</h4>
-                    <p className="text-sm text-blue-700">
-                      Stock levels for popular items are below optimal. Consider restocking.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="quick-actions" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="h-5 w-5" />
-                Quick Actions
-              </CardTitle>
-              <CardDescription>
-                Generate detailed reports, export data, and perform common tasks quickly
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Report Generation */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Generate Reports
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <Card className="p-4 hover:shadow-md transition-shadow">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="p-2 bg-blue-100 rounded-lg">
-                        <TrendingUp className="h-5 w-5 text-blue-600" />
+          <TabsContent value="overview" className="space-y-6 w-full">
+            {/* Recent Activity */}
+            <Card className="bg-white/80 backdrop-blur-sm border-emerald-100 shadow-sm">
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-lg sm:text-xl text-emerald-900">Recent Sales</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Latest sales events</CardDescription>
+              </CardHeader>
+              <CardContent className="p-4 sm:p-6 pt-0">
+                <div className="space-y-3">
+                  {salesData.slice(-5).reverse().map((sale, index) => (
+                    <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 sm:p-4 bg-gradient-to-r from-emerald-50/50 to-cyan-50/50 rounded-lg border border-emerald-100 hover:shadow-md transition-shadow">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-sm sm:text-base truncate">{sale.periodKey}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground">
+                          {sale.orders} orders • {sale.units} units
+                        </p>
                       </div>
-                      <div>
-                        <h4 className="font-medium">Sales Report</h4>
-                        <p className="text-sm text-muted-foreground">Comprehensive sales analysis</p>
+                      <div className="text-left sm:text-right flex-shrink-0 w-full sm:w-auto">
+                        <p className="font-medium text-base sm:text-lg text-emerald-900">{formatCurrency(sale.revenue)}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground">
+                          {formatCurrency(sale.averageOrderValue)} avg
+                        </p>
                       </div>
                     </div>
-                    <Button
-                      size="sm"
-                      className="w-full"
-                      onClick={() => {
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="realtime" className="space-y-6 w-full">
+            {/* Enhanced Real-time Dashboard */}
+            <Alert className="bg-emerald-50 border-emerald-200 shadow-sm">
+              <Wifi className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+              <AlertDescription className="text-xs sm:text-sm text-emerald-800">
+                This tab shows real-time financial data with live updates from Firestore.
+                Data is synchronized automatically and cached for offline access.
+              </AlertDescription>
+            </Alert>
+
+            <RealtimeDashboard artisanId="dev_bulchandani_001" />
+          </TabsContent>
+
+          <TabsContent value="products" className="space-y-6 w-full">
+            {/* Product Performance Component */}
+            <ProductPerformance
+              timeRange={timeRange === '7d' ? 'week' : timeRange === '30d' ? 'month' : timeRange === '90d' ? 'quarter' : 'year'}
+            />
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-6 w-full">
+            {/* Forecast Chart Component */}
+            <ForecastChart
+              horizon={30}
+              metric="revenue"
+            />
+          </TabsContent>
+
+          <TabsContent value="insights" className="space-y-6 w-full">
+            <Card className="bg-white/80 backdrop-blur-sm border-emerald-100 shadow-sm">
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-lg sm:text-xl text-emerald-900">AI-Powered Insights</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Intelligent recommendations for your business</CardDescription>
+              </CardHeader>
+              <CardContent className="p-4 sm:p-6 pt-0">
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3 p-3 sm:p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200 hover:shadow-md transition-shadow">
+                    <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-medium text-sm sm:text-base text-green-800">Revenue Growth Opportunity</h4>
+                      <p className="text-xs sm:text-sm text-green-700 mt-1">
+                        Your top-performing category shows 15% growth potential. Consider increasing inventory.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-3 sm:p-4 bg-gradient-to-r from-yellow-50 to-amber-50 rounded-lg border border-yellow-200 hover:shadow-md transition-shadow">
+                    <AlertCircle className="h-5 w-5 text-yellow-500 mt-0.5 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-medium text-sm sm:text-base text-yellow-800">Margin Optimization</h4>
+                      <p className="text-xs sm:text-sm text-yellow-700 mt-1">
+                        Several products have declining margins. Review pricing strategy and costs.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-200 hover:shadow-md transition-shadow">
+                    <Target className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-medium text-sm sm:text-base text-blue-800">Inventory Management</h4>
+                      <p className="text-xs sm:text-sm text-blue-700 mt-1">
+                        Stock levels for popular items are below optimal. Consider restocking.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="quick-actions" className="space-y-6 w-full">
+            <Card className="bg-white/80 backdrop-blur-sm border-emerald-100 shadow-sm">
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl text-emerald-900">
+                  <Zap className="h-5 w-5 flex-shrink-0" />
+                  <span>Quick Actions</span>
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
+                  Generate detailed reports, export data, and perform common tasks quickly
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6 p-4 sm:p-6 pt-0">
+                {/* Report Generation */}
+                <div className="space-y-4">
+                  <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2 text-emerald-900">
+                    <FileText className="h-5 w-5 flex-shrink-0" />
+                    <span>Generate Reports</span>
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                    <Card className="p-3 sm:p-4 hover:shadow-lg transition-all hover:scale-[1.02] bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
+                      <div className="flex items-center gap-2 sm:gap-3 mb-3">
+                        <div className="p-2 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex-shrink-0">
+                          <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-medium text-sm sm:text-base truncate">Sales Report</h4>
+                          <p className="text-xs text-muted-foreground truncate">Comprehensive sales analysis</p>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-xs sm:text-sm"
+                        onClick={() => {
                         const reportData = {
                           type: 'sales_report',
                           period: timeRange,
@@ -761,20 +790,20 @@ export default function FinanceDashboard() {
                     </Button>
                   </Card>
 
-                  <Card className="p-4 hover:shadow-md transition-shadow">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="p-2 bg-green-100 rounded-lg">
-                        <Package className="h-5 w-5 text-green-600" />
+                    <Card className="p-3 sm:p-4 hover:shadow-lg transition-all hover:scale-[1.02] bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+                      <div className="flex items-center gap-2 sm:gap-3 mb-3">
+                        <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg flex-shrink-0">
+                          <Package className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-medium text-sm sm:text-base truncate">Product Report</h4>
+                          <p className="text-xs text-muted-foreground truncate">Product performance analysis</p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-medium">Product Report</h4>
-                        <p className="text-sm text-muted-foreground">Product performance analysis</p>
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      className="w-full"
-                      onClick={() => {
+                      <Button
+                        size="sm"
+                        className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-xs sm:text-sm"
+                        onClick={() => {
                         const reportData = {
                           type: 'product_report',
                           period: timeRange,
@@ -798,20 +827,20 @@ export default function FinanceDashboard() {
                     </Button>
                   </Card>
 
-                  <Card className="p-4 hover:shadow-md transition-shadow">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="p-2 bg-purple-100 rounded-lg">
-                        <BarChart3 className="h-5 w-5 text-purple-600" />
+                    <Card className="p-3 sm:p-4 hover:shadow-lg transition-all hover:scale-[1.02] bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+                      <div className="flex items-center gap-2 sm:gap-3 mb-3">
+                        <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex-shrink-0">
+                          <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-medium text-sm sm:text-base truncate">Analytics Report</h4>
+                          <p className="text-xs text-muted-foreground truncate">Complete business analytics</p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-medium">Analytics Report</h4>
-                        <p className="text-sm text-muted-foreground">Complete business analytics</p>
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      className="w-full"
-                      onClick={() => {
+                      <Button
+                        size="sm"
+                        className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-xs sm:text-sm"
+                        onClick={() => {
                         const reportData = {
                           type: 'analytics_report',
                           period: timeRange,
@@ -842,92 +871,91 @@ export default function FinanceDashboard() {
                 </div>
               </div>
 
-              {/* Quick Export Actions */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <Download className="h-5 w-5" />
-                  Quick Export
-                </h3>
+                {/* Quick Export Actions */}
+                <div className="space-y-4">
+                  <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2 text-emerald-900">
+                    <Download className="h-5 w-5 flex-shrink-0" />
+                    <span>Quick Export</span>
+                  </h3>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={() => exportToFile('csv')}
-                    disabled={!isOnline}
-                    className="flex flex-col items-center gap-2 h-auto py-4"
-                  >
-                    <FileText className="h-6 w-6" />
-                    <span className="text-sm">Export CSV</span>
-                  </Button>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => exportToFile('csv')}
+                      disabled={!isOnline}
+                      className="flex flex-col items-center gap-2 h-auto py-3 sm:py-4 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300"
+                    >
+                      <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600" />
+                      <span className="text-xs sm:text-sm">Export CSV</span>
+                    </Button>
 
-                  <Button
-                    variant="outline"
-                    onClick={() => exportToFile('json')}
-                    disabled={!isOnline}
-                    className="flex flex-col items-center gap-2 h-auto py-4"
-                  >
-                    <FileText className="h-6 w-6" />
-                    <span className="text-sm">Export JSON</span>
-                  </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => exportToFile('json')}
+                      disabled={!isOnline}
+                      className="flex flex-col items-center gap-2 h-auto py-3 sm:py-4 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
+                    >
+                      <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
+                      <span className="text-xs sm:text-sm">Export JSON</span>
+                    </Button>
 
-                  <Button
-                    variant="outline"
-                    onClick={() => exportToFile('excel')}
-                    disabled={!isOnline}
-                    className="flex flex-col items-center gap-2 h-auto py-4"
-                  >
-                    <FileSpreadsheet className="h-6 w-6" />
-                    <span className="text-sm">Excel Format</span>
-                  </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => exportToFile('excel')}
+                      disabled={!isOnline}
+                      className="flex flex-col items-center gap-2 h-auto py-3 sm:py-4 border-green-200 hover:bg-green-50 hover:border-green-300"
+                    >
+                      <FileSpreadsheet className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
+                      <span className="text-xs sm:text-sm">Excel Format</span>
+                    </Button>
 
-                  <Button
-                    variant="outline"
-                    onClick={exportToGoogleSheets}
-                    disabled={!isOnline || exportingToSheets}
-                    className="flex flex-col items-center gap-2 h-auto py-4"
-                  >
-                    {exportingToSheets ? (
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-current"></div>
-                    ) : (
-                      <FileSpreadsheet className="h-6 w-6" />
-                    )}
-                    <span className="text-sm">Google Sheets</span>
-                  </Button>
-                </div>
-              </div>
-
-              {/* Quick Stats */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <Activity className="h-5 w-5" />
-                  Quick Stats
-                </h3>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-4 bg-blue-50 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">{formatCurrency(summary.totalRevenue)}</div>
-                    <div className="text-sm text-blue-700">Total Revenue</div>
-                  </div>
-                  <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">{summary.totalOrders}</div>
-                    <div className="text-sm text-green-700">Total Orders</div>
-                  </div>
-                  <div className="text-center p-4 bg-purple-50 rounded-lg">
-                    <div className="text-2xl font-bold text-purple-600">{summary.totalUnits}</div>
-                    <div className="text-sm text-purple-700">Units Sold</div>
-                  </div>
-                  <div className="text-center p-4 bg-orange-50 rounded-lg">
-                    <div className="text-2xl font-bold text-orange-600">{formatCurrency(summary.averageOrderValue)}</div>
-                    <div className="text-sm text-orange-700">Avg Order Value</div>
+                    <Button
+                      variant="outline"
+                      onClick={exportToGoogleSheets}
+                      disabled={!isOnline || exportingToSheets}
+                      className="flex flex-col items-center gap-2 h-auto py-3 sm:py-4 border-purple-200 hover:bg-purple-50 hover:border-purple-300"
+                    >
+                      {exportingToSheets ? (
+                        <div className="animate-spin rounded-full h-5 w-5 sm:h-6 sm:w-6 border-b-2 border-purple-600"></div>
+                      ) : (
+                        <FileSpreadsheet className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
+                      )}
+                      <span className="text-xs sm:text-sm">Google Sheets</span>
+                    </Button>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
+                {/* Quick Stats */}
+                <div className="space-y-4">
+                  <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2 text-emerald-900">
+                    <Activity className="h-5 w-5 flex-shrink-0" />
+                    <span>Quick Stats</span>
+                  </h3>
 
-      </Tabs>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                    <div className="text-center p-3 sm:p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg border border-blue-200 hover:shadow-md transition-shadow">
+                      <div className="text-lg sm:text-2xl font-bold text-blue-600 truncate">{formatCurrency(summary.totalRevenue)}</div>
+                      <div className="text-xs sm:text-sm text-blue-700 mt-1">Total Revenue</div>
+                    </div>
+                    <div className="text-center p-3 sm:p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200 hover:shadow-md transition-shadow">
+                      <div className="text-lg sm:text-2xl font-bold text-green-600">{summary.totalOrders}</div>
+                      <div className="text-xs sm:text-sm text-green-700 mt-1">Total Orders</div>
+                    </div>
+                    <div className="text-center p-3 sm:p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg border border-purple-200 hover:shadow-md transition-shadow">
+                      <div className="text-lg sm:text-2xl font-bold text-purple-600">{summary.totalUnits}</div>
+                      <div className="text-xs sm:text-sm text-purple-700 mt-1">Units Sold</div>
+                    </div>
+                    <div className="text-center p-3 sm:p-4 bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg border border-orange-200 hover:shadow-md transition-shadow">
+                      <div className="text-lg sm:text-2xl font-bold text-orange-600 truncate">{formatCurrency(summary.averageOrderValue)}</div>
+                      <div className="text-xs sm:text-sm text-orange-700 mt-1">Avg Order Value</div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }

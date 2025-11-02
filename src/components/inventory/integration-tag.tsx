@@ -88,7 +88,7 @@ export default function IntegrationsTab({ isOnline = true }: IntegrationsTabProp
             try {
                 clearError();
                 const authResult = await authenticate();
-                
+
                 if (authResult.success) {
                     toast({
                         title: 'Connected Successfully',
@@ -123,7 +123,7 @@ export default function IntegrationsTab({ isOnline = true }: IntegrationsTabProp
         try {
             setSyncing(true);
             const isConnected = await testConnection();
-            
+
             if (isConnected) {
                 toast({
                     title: 'Connection Test Successful',
@@ -162,7 +162,7 @@ export default function IntegrationsTab({ isOnline = true }: IntegrationsTabProp
         try {
             // Test the connection and get marketplace participation
             const participationData = await getMarketplaceParticipation();
-            
+
             if (participationData && participationData.length > 0) {
                 toast({
                     title: 'Sync Successful',
@@ -526,9 +526,9 @@ export default function IntegrationsTab({ isOnline = true }: IntegrationsTabProp
                                         <ExternalLink className="h-4 w-4 mr-1" />
                                         View on {integration.name}
                                     </Button>
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm" 
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
                                         onClick={integration.id === 'amazon' ? handleSync : undefined}
                                         disabled={!isOnline || syncing}
                                     >
@@ -543,7 +543,7 @@ export default function IntegrationsTab({ isOnline = true }: IntegrationsTabProp
             </div>
 
             {/* Help Section */}
-            <Card>
+            {/* <Card>
                 <CardHeader>
                     <CardTitle>Need Help?</CardTitle>
                 </CardHeader>
@@ -581,7 +581,7 @@ export default function IntegrationsTab({ isOnline = true }: IntegrationsTabProp
                         )}
                     </div>
                 </CardContent>
-            </Card>
+            </Card> */}
         </div>
     );
 }

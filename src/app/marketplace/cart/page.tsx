@@ -285,34 +285,36 @@ export default function CartPage() {
     }
 
     return (
-        <div className="min-h-screen">
-            <div className="container mx-auto px-4 py-8">
+        <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-red-50 w-full overflow-x-hidden">
+            <div className="container mx-auto px-3 sm:px-4 md:px-6 py-6 sm:py-8 max-w-full">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8 bg-white/80 backdrop-blur-sm border rounded-xl p-4 sm:p-6 shadow-sm">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 min-w-0 flex-1">
                         {showCheckout ? (
-                            <Button variant="ghost" size="sm" onClick={handleBackToCart}>
+                            <Button variant="ghost" size="sm" onClick={handleBackToCart} className="flex-shrink-0">
                                 <ArrowLeft className="h-4 w-4 mr-2" />
-                                Back to Cart
+                                <span className="hidden sm:inline">Back to Cart</span>
+                                <span className="sm:hidden">Back</span>
                             </Button>
                         ) : (
                             <Link href="/marketplace">
-                                <Button variant="ghost" size="sm">
+                                <Button variant="ghost" size="sm" className="flex-shrink-0">
                                     <ArrowLeft className="h-4 w-4 mr-2" />
-                                    Continue Shopping
+                                    <span className="hidden sm:inline">Continue Shopping</span>
+                                    <span className="sm:hidden">Shop</span>
                                 </Button>
                             </Link>
                         )}
-                        <div>
-                            <h1 className="text-3xl font-bold">
+                        <div className="min-w-0 flex-1">
+                            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent truncate">
                                 {showCheckout ? 'Checkout' : 'Your Cart'}
                             </h1>
-                            {!showCheckout && <p className="text-gray-600">{cart.totalItems} items</p>}
+                            {!showCheckout && <p className="text-sm sm:text-base text-gray-600 truncate">{cart.totalItems} items</p>}
                         </div>
                     </div>
 
                     {!showCheckout && cart.items.length > 0 && (
-                        <Button variant="outline" onClick={handleClearCart}>
+                        <Button variant="outline" onClick={handleClearCart} className="flex-shrink-0 w-full sm:w-auto">
                             <Trash2 className="h-4 w-4 mr-2" />
                             Clear Cart
                         </Button>
@@ -321,22 +323,22 @@ export default function CartPage() {
 
                 {/* Cart View */}
                 {!showCheckout && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 w-full">
                         {/* Cart Items */}
-                        <div className="lg:col-span-2 space-y-4">
+                        <div className="lg:col-span-2 space-y-3 sm:space-y-4 w-full">
                             {cart.items.map((item) => (
-                                <Card key={item.productId}>
-                                    <CardContent className="p-6">
-                                        <div className="flex gap-4">
+                                <Card key={item.productId} className="bg-white/80 backdrop-blur-sm border-orange-100 shadow-sm hover:shadow-md transition-shadow w-full">
+                                    <CardContent className="p-4 sm:p-6">
+                                        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full">
                                             {/* Product Image */}
-                                            <div className="relative w-24 h-24 bg-white rounded-lg overflow-hidden flex-shrink-0">
+                                            <div className="relative w-full sm:w-20 md:w-24 h-32 sm:h-20 md:h-24 bg-white rounded-lg overflow-hidden flex-shrink-0 border-2 border-orange-100">
                                                 {item.product?.images && item.product.images.length > 0 ? (
                                                     <Image
                                                         src={item.product.images[0]}
                                                         alt={item.product.name}
                                                         fill
                                                         className="object-cover"
-                                                        sizes="96px"
+                                                        sizes="(max-width: 640px) 100vw, 96px"
                                                     />
                                                 ) : (
                                                     <div className="w-full h-full bg-gray-100 flex items-center justify-center">
@@ -346,11 +348,11 @@ export default function CartPage() {
                                             </div>
 
                                             {/* Product Details */}
-                                            <div className="flex-1">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <div>
-                                                        <h3 className="font-semibold text-lg">{item.product?.name}</h3>
-                                                        <Badge variant="outline" className="mt-1">
+                                            <div className="flex-1 min-w-0 w-full">
+                                                <div className="flex justify-between items-start gap-2 mb-2">
+                                                    <div className="min-w-0 flex-1">
+                                                        <h3 className="font-semibold text-base sm:text-lg truncate">{item.product?.name}</h3>
+                                                        <Badge variant="outline" className="mt-1 text-xs border-orange-200 text-orange-700">
                                                             {item.product?.category}
                                                         </Badge>
                                                     </div>
@@ -359,26 +361,27 @@ export default function CartPage() {
                                                         size="sm"
                                                         onClick={() => handleRemoveItem(item.productId)}
                                                         disabled={updatingItems.has(item.productId)}
+                                                        className="flex-shrink-0"
                                                     >
-                                                        <Trash2 className="h-4 w-4" />
+                                                        <Trash2 className="h-4 w-4 text-red-500" />
                                                     </Button>
                                                 </div>
 
-                                                <div className="flex items-center justify-between">
+                                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mt-3">
                                                     {/* Quantity Controls */}
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="text-sm font-medium">Qty:</span>
-                                                        <div className="flex items-center border rounded-md">
+                                                    <div className="flex items-center gap-2 sm:gap-3">
+                                                        <span className="text-xs sm:text-sm font-medium whitespace-nowrap">Qty:</span>
+                                                        <div className="flex items-center border border-orange-200 rounded-lg bg-white">
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
                                                                 onClick={() => handleQuantityChange(item.productId, item.quantity - 1)}
                                                                 disabled={item.quantity <= 1 || updatingItems.has(item.productId)}
-                                                                className="h-8 w-8 p-0"
+                                                                className="h-8 w-8 p-0 hover:bg-orange-50"
                                                             >
                                                                 <Minus className="h-3 w-3" />
                                                             </Button>
-                                                            <span className="px-3 py-2 min-w-[3rem] text-center">
+                                                            <span className="px-3 py-2 min-w-[2.5rem] text-center font-medium">
                                                                 {item.quantity}
                                                             </span>
                                                             <Button
@@ -389,7 +392,7 @@ export default function CartPage() {
                                                                     updatingItems.has(item.productId) ||
                                                                     item.quantity >= (item.product?.inventory?.quantity || 1)
                                                                 }
-                                                                className="h-8 w-8 p-0"
+                                                                className="h-8 w-8 p-0 hover:bg-orange-50"
                                                             >
                                                                 <Plus className="h-3 w-3" />
                                                             </Button>
@@ -397,13 +400,13 @@ export default function CartPage() {
                                                     </div>
 
                                                     {/* Price */}
-                                                    <div className="text-right">
+                                                    <div className="text-left sm:text-right w-full sm:w-auto">
                                                         <div className="flex items-center">
-                                                            <span className="text-lg font-bold">
+                                                            <span className="text-lg sm:text-xl font-bold text-orange-600">
                                                                 {formatPrice(item.subtotal || 0)}
                                                             </span>
                                                         </div>
-                                                        <div className="text-sm text-gray-500">
+                                                        <div className="text-xs sm:text-sm text-gray-500">
                                                             {formatPrice(item.product?.price || 0)} each
                                                         </div>
                                                     </div>

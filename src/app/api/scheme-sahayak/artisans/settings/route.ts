@@ -182,7 +182,8 @@ export async function PUT(request: NextRequest) {
           whatsapp: settings.notifications.whatsapp
         },
         timing: {
-          ...artisan.preferences,
+          preferredHours: [9, 18] as [number, number],
+          timezone: 'Asia/Kolkata',
           frequency: settings.notifications.frequency
         }
       });

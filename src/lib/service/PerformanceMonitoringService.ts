@@ -88,7 +88,7 @@ export class PerformanceMonitoringService {
     /**
      * Start timing an operation
      */
-    startTiming(operation: string, context?: string, userId?: string): () => void {
+    startTiming(operation: string, context?: string, userId?: string): (success?: boolean, metadata?: Record<string, any>) => void {
         const startTime = Date.now();
 
         return (success: boolean = true, metadata?: Record<string, any>) => {

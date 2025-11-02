@@ -172,7 +172,7 @@ export default function ProductPerformance({ timeRange, className = '' }: Produc
   }
 
   return (
-    <div className={`space-y-6 ${className}`}>
+    <div className={`space-y-6 w-full max-w-full overflow-hidden ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -202,14 +202,14 @@ export default function ProductPerformance({ timeRange, className = '' }: Produc
             <CardTitle>Top Products by {sortBy.charAt(0).toUpperCase() + sortBy.slice(1)}</CardTitle>
             <CardDescription>Best performing products this {timeRange}</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topProducts} layout="horizontal">
+          <CardContent className="w-full max-w-full overflow-hidden p-4 sm:p-6">
+            <div className="h-64 sm:h-80 w-full overflow-hidden">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                <BarChart data={topProducts} layout="horizontal" margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     type="number" 
-                    fontSize={12}
+                    fontSize={10}
                     tickFormatter={(value) => 
                       sortBy === 'revenue' ? `₹${(value / 1000).toFixed(0)}k` :
                       sortBy === 'margin' ? `${(value * 100).toFixed(0)}%` :
@@ -220,9 +220,9 @@ export default function ProductPerformance({ timeRange, className = '' }: Produc
                   <YAxis 
                     type="category" 
                     dataKey="name" 
-                    fontSize={10}
-                    width={120}
-                    tickFormatter={(value) => value.length > 15 ? value.substring(0, 15) + '...' : value}
+                    fontSize={9}
+                    width={80}
+                    tickFormatter={(value) => value.length > 12 ? value.substring(0, 12) + '...' : value}
                   />
                   <Tooltip 
                     content={({ active, payload }) => {
@@ -259,9 +259,9 @@ export default function ProductPerformance({ timeRange, className = '' }: Produc
             <CardTitle>Revenue by Category</CardTitle>
             <CardDescription>Distribution across product categories</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
+          <CardContent className="w-full max-w-full overflow-hidden p-4 sm:p-6">
+            <div className="h-64 sm:h-80 w-full overflow-hidden">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <PieChart>
                   <Pie
                     data={categoryData}

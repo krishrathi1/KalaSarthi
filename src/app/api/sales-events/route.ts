@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const artisanId = searchParams.get('artisanId') || 'dev_bulchandani_001';
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const limitCount = parseInt(searchParams.get('limit') || '50');
 
     // Query Firestore for sales events
     const salesEventsRef = collection(db, 'sales_events');
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
       salesEventsRef,
       where('artisanId', '==', artisanId),
       orderBy('eventTimestamp', 'desc'),
-      limit(limit)
+      limit(limitCount)
     );
 
     const querySnapshot = await getDocs(q);

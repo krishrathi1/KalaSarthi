@@ -24,8 +24,9 @@ interface TranslateRequest {
 }
 
 export async function POST(request: NextRequest) {
+  const body: TranslateRequest = await request.json();
+  
   try {
-    const body: TranslateRequest = await request.json();
     
     if (!body.text || !body.sourceLanguage || !body.targetLanguage) {
       return NextResponse.json({
@@ -52,16 +53,24 @@ export async function POST(request: NextRequest) {
     
     // Use cultural context translator for enhanced translation
     const culturalTranslator = CulturalContextTranslator.getInstance();
-    const enhancedTranslation = await culturalTranslator.translate({
+    const enhancedTranslation = await culturalTranslator.translateText({
       text: body.text,
       sourceLanguage: body.sourceLanguage,
       targetLanguage: body.targetLanguage,
-      context: body.context
+      context: 'business'
     });
     
     return NextResponse.json({
       success: true,
-      result: enhancedTranslation
+      result: {
+        translatedText: enhancedTranslation.translatedText,
+        originalText: body.text,
+        sourceLanguage: enhancedTranslation.sourceLanguage,
+        targetLanguage: enhancedTranslation.targetLanguage,
+        confidence: enhancedTranslation.confidence,
+        alternatives: enhancedTranslation.alternatives,
+        culturalContext: enhancedTranslation.culturalNotes?.map(note => note.culturalContext).join('; ') || null
+      }
     });
     
   } catch (error) {

@@ -138,7 +138,7 @@ export default function FinanceAdvisor() {
     }
   };
 
-  const generateMockResponse = (query: string): FinancialResponse => {
+  const generateMockResponse = (query: string): EnhancedFinancialResponse => {
     const responses = {
       revenue: {
         response: "Your revenue is showing positive growth trends with a 15% increase month-over-month. The mobile channel is driving most of this growth.",

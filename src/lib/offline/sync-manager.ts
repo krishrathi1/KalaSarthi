@@ -5,6 +5,16 @@
 
 import { offlineStorage, OfflineApplication } from './offline-storage';
 
+// Extend ServiceWorkerRegistration to include Background Sync API
+declare global {
+  interface ServiceWorkerRegistration {
+    sync?: {
+      register(tag: string): Promise<void>;
+      getTags(): Promise<string[]>;
+    };
+  }
+}
+
 export interface SyncQueueItem {
   id: string;
   type: 'application' | 'document' | 'data';
@@ -40,7 +50,7 @@ export class SyncManager {
     });
 
     // Register background sync if supported
-    if ('serviceWorker' in navigator && 'sync' in ServiceWorkerRegistration.prototype) {
+    if ('serviceWorker' in navigator) {
       this.registerBackgroundSync();
     }
 
@@ -51,7 +61,9 @@ export class SyncManager {
   private async registerBackgroundSync() {
     try {
       const registration = await navigator.serviceWorker.ready;
-      await registration.sync.register('background-sync');
+      if (registration.sync) {
+        await registration.sync.register('background-sync');
+      }
     } catch (error) {
       console.error('Background sync registration failed:', error);
     }
@@ -60,7 +72,7 @@ export class SyncManager {
   private async loadPendingSyncItems() {
     try {
       const pendingApplications = await offlineStorage.getPendingSyncApplications();
-      
+
       pendingApplications.forEach(app => {
         this.addToQueue({
           id: app.id,
@@ -93,7 +105,7 @@ export class SyncManager {
   addToQueue(item: SyncQueueItem) {
     // Check if item already exists
     const existingIndex = this.syncQueue.findIndex(i => i.id === item.id);
-    
+
     if (existingIndex >= 0) {
       this.syncQueue[existingIndex] = item;
     } else {
@@ -139,10 +151,10 @@ export class SyncManager {
         this.removeFromQueue(item.id);
       } catch (error) {
         console.error('Sync failed for item:', item.id, error);
-        
+
         // Increment retry count
         item.retryCount++;
-        
+
         if (item.retryCount >= item.maxRetries) {
           // Remove from queue after max retries
           this.removeFromQueue(item.id);

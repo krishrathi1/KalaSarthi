@@ -27,7 +27,7 @@ async function testGeminiChat() {
     const genAI = new GoogleGenerativeAI(geminiKey);
     
     // Try different models
-    const models = ['gemini-2.0-flash-exp', 'gemini-1.5-flash', 'gemini-pro'];
+    const models = ['gemini-2.0-flash-exp', 'gemini-1.5-flash', 'gemini-pro', 'gemini-2.5-flash'];
     
     for (const modelName of models) {
       console.log(`\n3️⃣ Testing model: ${modelName}`);

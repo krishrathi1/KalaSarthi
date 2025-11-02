@@ -117,7 +117,7 @@ export default function ProductRankings({
       const growth = olderRevenue > 0 ? ((recentRevenue - olderRevenue) / olderRevenue) * 100 : 0;
       
       // Calculate actual margin based on cost price (if available in events)
-      const totalCost = data.events.reduce((sum, e) => sum + (e.costPrice || 0) * e.quantity, 0);
+      const totalCost = data.events.reduce((sum, e) => sum + ((e as any).costPrice || 0) * e.quantity, 0);
       const margin = totalCost > 0 ? ((data.revenue - totalCost) / data.revenue) * 100 : 0;
       
       return {

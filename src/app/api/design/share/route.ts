@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get session participants to find receiver
-    const session = await FirestoreService.getById('enhanced_chat_sessions', body.sessionId);
+    const session = await FirestoreService.getById('enhanced_chat_sessions', body.sessionId) as any;
     if (!session) {
       return NextResponse.json({
         success: false,

@@ -322,10 +322,10 @@ export function SimplifiedTrendSpotter() {
                 </Badge>
               )}
               
-              <DataSourceIndicator 
+              {/* <DataSourceIndicator 
                 source={connectivityStatus.dataSource}
                 className="min-h-[44px] px-3 py-2 text-sm font-medium rounded-full"
-              />
+              /> */}
               <div 
                 className="flex items-center gap-2 text-sm text-muted-foreground"
                 aria-label={`Last updated at ${connectivityStatus.lastUpdated.toLocaleTimeString()}`}

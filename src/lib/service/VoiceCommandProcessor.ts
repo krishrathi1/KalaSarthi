@@ -1,4 +1,4 @@
-import { NavigationAction } from './VoiceNavigationService';
+// import { NavigationAction } from './VoiceNavigationService';
 
 export interface VoiceCommand {
   command: string;
@@ -7,11 +7,18 @@ export interface VoiceCommand {
   language: string;
 }
 
+export interface NavigationAction {
+  type: string;
+  target?: string;
+  confidence?: number;
+  params?: Record<string, any>;
+}
+
 export interface CommandPattern {
   patterns: RegExp[];
-  action: NavigationAction;
   keywords: string[];
   language: string;
+  action?: NavigationAction;
 }
 
 export class VoiceCommandProcessor {
@@ -176,6 +183,11 @@ export class VoiceCommandProcessor {
           const finalScore = matchScore * command.confidence;
 
           if (finalScore > bestScore && finalScore > 0.6) { // Minimum confidence threshold
+            if (!pattern.action) {
+              // No action defined for this pattern — skip assigning a match
+              continue;
+            }
+
             bestMatch = { ...pattern.action, confidence: finalScore };
             bestScore = finalScore;
 

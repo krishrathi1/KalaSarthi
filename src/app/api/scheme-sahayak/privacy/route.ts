@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
           data.consentType as ConsentType,
           data.granted,
           {
-            ipAddress: request.headers.get('x-forwarded-for') || request.ip,
+            ipAddress: request.headers.get('x-forwarded-for') || (request as any).ip,
             userAgent: request.headers.get('user-agent') || undefined
           }
         );
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
           userId,
           data.consents,
           {
-            ipAddress: request.headers.get('x-forwarded-for') || request.ip,
+            ipAddress: request.headers.get('x-forwarded-for') || (request as any).ip,
             userAgent: request.headers.get('user-agent') || undefined
           }
         );

@@ -26,9 +26,8 @@ export function SyncStatus() {
           setShowStatus(false);
         }, 5000);
       }
+      return unsubscribe;
     });
-
-    return unsubscribe;
   }, []);
 
   const handleManualSync = () => {

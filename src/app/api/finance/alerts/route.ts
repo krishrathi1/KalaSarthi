@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SalesAggregate } from '@/lib/models/SalesAggregate';
+import { ISalesAggregate } from '@/lib/models/SalesAggregate';
 import { AnomalyService } from '@/lib/service/AnomalyService';
 
 export async function GET(request: NextRequest) {

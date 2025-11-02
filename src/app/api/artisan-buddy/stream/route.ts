@@ -59,9 +59,10 @@ export async function POST(request: NextRequest) {
         const profile = vectorStore.getArtisanProfile(artisanId);
 
         if (profile) {
+          const craftName = profile.skills.primary[0] || 'crafts';
           genericResponse = language === 'hi'
-            ? `नमस्ते! मैं ${profile.name} का AI असिस्टेंट हूं। मैं ${profile.craft} के बारे में जानकारी दे सकता हूं। कृपया थोड़ा इंतज़ार करें...`
-            : `Hello! I'm ${profile.name}'s AI assistant. I can help with information about ${profile.craft}. Please wait a moment...`;
+            ? `नमस्ते! मैं ${profile.personalInfo.name} का AI असिस्टेंट हूं। मैं ${craftName} के बारे में जानकारी दे सकता हूं। कृपया थोड़ा इंतज़ार करें...`
+            : `Hello! I'm ${profile.personalInfo.name}'s AI assistant. I can help with information about ${craftName}. Please wait a moment...`;
         }
       } catch (error) {
         console.error('Error loading artisan context:', error);

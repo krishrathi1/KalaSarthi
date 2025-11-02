@@ -47,7 +47,7 @@ interface IntentPattern {
 
 export class DialogflowService {
   private static instance: DialogflowService;
-  private sessionsClient: SessionsClient;
+  private sessionsClient: typeof SessionsClient;
   private genAI: GoogleGenerativeAI;
   private vectorStore: VectorStoreService;
   private config: DialogflowCXConfig;
@@ -241,7 +241,7 @@ export class DialogflowService {
     if (!this.sessionsClient) {
       throw new Error('Dialogflow CX client not available');
     }
-    
+
     const sessionPath = this.sessionsClient.projectLocationAgentSessionPath(
       this.config.projectId,
       this.config.location,
@@ -1199,9 +1199,11 @@ export class DialogflowService {
     if (clarificationResponse.understood) {
       // User provided clarification, update context and proceed
       const context = this.getConversationContext(sessionId);
-      const updatedContext = {
-        ...context,
-        parameters: { ...context?.parameters, ...clarificationResponse.parameters }
+      const updatedContext: ConversationContext = {
+        sessionId,
+        parameters: { ...context?.parameters, ...clarificationResponse.parameters },
+        currentPage: context?.currentPage,
+        followupIntents: context?.followupIntents
       };
       this.updateConversationContext(sessionId, updatedContext);
 

@@ -119,8 +119,9 @@ export function VoiceInputHandler({
   const setupAudioAnalysis = (stream: MediaStream) => {
     try {
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const source = audioContextRef.current.createMediaStreamSource(stream);
-      analyserRef.current = audioContextRef.current.createAnalyser();
+      const audioCtx = audioContextRef.current!;
+      const source = audioCtx.createMediaStreamSource(stream);
+      analyserRef.current = audioCtx.createAnalyser();
       
       analyserRef.current.fftSize = 256;
       source.connect(analyserRef.current);

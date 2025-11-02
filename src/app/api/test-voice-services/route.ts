@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
             const { GeminiSpeechService } = await import('@/lib/service/GeminiSpeechService');
             serviceImports.geminiSpeechService = true;
             console.log('✅ GeminiSpeechService imported successfully');
-        } catch (e) {
+        } catch (e:any) {
             console.error('❌ Failed to import GeminiSpeechService:', e.message);
         }
 
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
             const { EnhancedTTSService } = await import('@/lib/services/EnhancedTTSService');
             serviceImports.enhancedTTSService = true;
             console.log('✅ EnhancedTTSService imported successfully');
-        } catch (e) {
+        } catch (e:any) {
             console.error('❌ Failed to import EnhancedTTSService:', e.message);
         }
 
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
             const AudioResourceManager = (await import('@/lib/services/AudioResourceManager')).default;
             serviceImports.audioResourceManager = true;
             console.log('✅ AudioResourceManager imported successfully');
-        } catch (e) {
+        } catch (e:any) {
             console.error('❌ Failed to import AudioResourceManager:', e.message);
         }
 
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
             const VoiceServiceOptimizer = (await import('@/lib/services/VoiceServiceOptimizer')).default;
             serviceImports.voiceServiceOptimizer = true;
             console.log('✅ VoiceServiceOptimizer imported successfully');
-        } catch (e) {
+        } catch (e:any) {
             console.error('❌ Failed to import VoiceServiceOptimizer:', e.message);
         }
 
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
             const geminiService = GeminiSpeechService.getInstance();
             serviceInitialization.geminiSpeechService = !!geminiService;
             console.log('✅ GeminiSpeechService initialized successfully');
-        } catch (e) {
+        } catch (e:any) {
             console.error('❌ Failed to initialize GeminiSpeechService:', e.message);
             serviceInitialization.error = e.message;
         }
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
             const ttsStatus = await EnhancedTTSService.checkServiceAvailability();
             serviceInitialization.enhancedTTSService = ttsStatus.googleCloud || ttsStatus.browser;
             console.log('✅ EnhancedTTSService availability checked:', ttsStatus);
-        } catch (e) {
+        } catch (e:any) {
             console.error('❌ Failed to check EnhancedTTSService availability:', e.message);
             if (!serviceInitialization.error) serviceInitialization.error = e.message;
         }
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
             timestamp: new Date().toISOString()
         });
 
-    } catch (error) {
+    } catch (error : any) {
         console.error('❌ Voice services test failed:', error);
         return NextResponse.json({
             success: false,

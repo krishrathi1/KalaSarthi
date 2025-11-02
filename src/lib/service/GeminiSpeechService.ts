@@ -5,7 +5,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export interface SpeechToTextOptions {
   language?: string;
-  model?: 'gemini-pro' | 'gemini-pro-vision' | 'gemini-2.0-flash-exp' | 'gemini-1.5-pro';
+  model?: 'gemini-pro' | 'gemini-pro-vision' | 'gemini-2.0-flash-exp' | 'gemini-1.5-pro' | 'gemini-2.5-flash';
   temperature?: number;
 }
 

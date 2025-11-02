@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
             throw new Error('No speech detected in audio');
         }
 
-    } catch (error) {
+    } catch (error:any) {
         console.error('Google Cloud STT error:', error);
         return NextResponse.json({
             success: false,

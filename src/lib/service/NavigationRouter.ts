@@ -1,5 +1,3 @@
-import { NavigationAction } from './VoiceNavigationService';
-
 export interface NavigationResult {
   success: boolean;
   message: string;

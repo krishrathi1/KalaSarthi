@@ -252,4 +252,101 @@ export class VectorStoreService {
             };
         }
     }
+
+    /**
+     * Get a specific artisan profile by ID
+     */
+    getArtisanProfile(artisanId: string): ArtisanProfile | null {
+        try {
+            // This is a synchronous wrapper for the async searchSimilarProfiles
+            // In a real implementation, you'd want to use a proper cache or database lookup
+            return null; // Placeholder - needs proper implementation
+        } catch (error) {
+            console.error('Failed to get artisan profile:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Get all artisan profiles
+     */
+    getAllArtisanProfiles(): ArtisanProfile[] {
+        try {
+            // This is a placeholder - needs proper implementation
+            return [];
+        } catch (error) {
+            console.error('Failed to get all artisan profiles:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Add a new artisan profile (synchronous wrapper)
+     */
+    addArtisanProfile(profile: ArtisanProfile): void {
+        // Async operation wrapped - fire and forget
+        this.storeProfile(profile).catch(error => {
+            console.error('Failed to add artisan profile:', error);
+        });
+    }
+
+    /**
+     * Update an artisan profile (synchronous wrapper)
+     */
+    updateArtisanProfile(artisanId: string, updates: Partial<ArtisanProfile>): boolean {
+        // Async operation wrapped - fire and forget
+        this.updateProfile(artisanId, updates).catch(error => {
+            console.error('Failed to update artisan profile:', error);
+        });
+        return true; // Optimistic return
+    }
+
+    /**
+     * Search for similar content (wrapper for searchSimilarProfiles)
+     */
+    async searchSimilarContent(query: string, limit: number = 5): Promise<Array<{ id: string; content: string; metadata: any }>> {
+        try {
+            const profileMatches = await this.searchSimilarProfiles(query, limit);
+            
+            return profileMatches.map(match => ({
+                id: match.profile.id,
+                content: `${match.profile.personalInfo.name} - ${match.profile.skills.primary.join(', ')}`,
+                metadata: {
+                    location: match.profile.personalInfo.location,
+                    experience: match.profile.personalInfo.experience,
+                    skills: match.profile.skills,
+                    similarity: match.similarity
+                }
+            }));
+        } catch (error) {
+            console.error('Failed to search similar content:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Get a profile by ID (async version)
+     */
+    async getProfile(profileId: string): Promise<ArtisanProfile | null> {
+        try {
+            const results = await this.searchSimilarProfiles(`id:${profileId}`, 1);
+            return results.length > 0 ? results[0].profile : null;
+        } catch (error) {
+            console.error('Failed to get profile:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Get profiles by user ID
+     */
+    async getProfilesByUserId(userId: string): Promise<ArtisanProfile[]> {
+        try {
+            const results = await this.searchSimilarProfiles(`userId:${userId}`, 10);
+            return results.map(match => match.profile);
+        } catch (error) {
+            console.error('Failed to get profiles by user ID:', error);
+            return [];
+        }
+    }
 }

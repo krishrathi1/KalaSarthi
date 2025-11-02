@@ -4,8 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './card';
 import { Badge } from './badge';
 import { Mic, MicOff, Volume2, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
-import { VoiceNavigationService } from '@/lib/services/VoiceNavigationService';
 import { cn } from '@/lib/utils';
+
+// Dynamic import type for VoiceNavigationService
+type VoiceNavigationService = any;
 
 interface VoiceStatusProps {
   className?: string;
@@ -32,9 +34,8 @@ export function VoiceStatus({
   const [voiceService, setVoiceService] = useState<VoiceNavigationService | null>(null);
 
   useEffect(() => {
-    // Initialize voice service reference
-    const service = VoiceNavigationService.getInstance();
-    setVoiceService(service);
+    // local reference to the service so it can be used for attaching/detaching listeners
+    let service: VoiceNavigationService | null = null;
 
     // Set up event listeners
     const handleListening = (data: any) => {
@@ -58,14 +59,32 @@ export function VoiceStatus({
       addEvent('error', `Error: ${data.error}`, false);
     };
 
-    // cast to any to call event methods that may not be declared on the class type
-    (service as any).on('listening', handleListening);
-    (service as any).on('command', handleCommand);
-    (service as any).on('action', handleAction);
-    (service as any).on('error', handleError);
+    // Initialize voice service reference dynamically (only on client) and attach listeners when ready
+    const initService = async () => {
+      try {
+        const { VoiceNavigationService } = await import(
+          /* webpackIgnore: true */
+          '@/lib/services/VoiceNavigationService'
+        );
+        service = VoiceNavigationService.getInstance();
+        setVoiceService(service);
+
+        // cast to any to call event methods that may not be declared on the class type
+        (service as any).on('listening', handleListening);
+        (service as any).on('command', handleCommand);
+        (service as any).on('action', handleAction);
+        (service as any).on('error', handleError);
+      } catch (error) {
+        console.error('Failed to load voice service:', error);
+        // Voice service not available, component will work without it
+      }
+    };
+    
+    initService();
 
     // Cleanup
     return () => {
+      if (!service) return;
       (service as any).off('listening', handleListening);
       (service as any).off('command', handleCommand);
       (service as any).off('action', handleAction);

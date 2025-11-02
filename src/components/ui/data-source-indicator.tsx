@@ -26,7 +26,7 @@ export function DataSourceIndicator({
       case 'mock':
         return {
           icon: TestTube,
-          text: 'Demo Data',
+          text: '',
           variant: 'secondary' as const,
           color: 'text-orange-600',
           bgColor: 'bg-orange-50 border-orange-200'

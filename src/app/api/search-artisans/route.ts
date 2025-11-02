@@ -247,7 +247,7 @@ async function performSimpleSearch(body: SearchRequest, startTime: number) {
     // Description matching
     if (artisan.description) {
       const descriptionMatch = queryWords.some(word => 
-        artisan.description.toLowerCase().includes(word)
+        artisan.description?.toLowerCase().includes(word)
       );
       if (descriptionMatch) {
         score += 0.5;
@@ -258,8 +258,8 @@ async function performSimpleSearch(body: SearchRequest, startTime: number) {
     // Location matching
     if (artisan.address) {
       const locationMatch = queryWords.some(word => 
-        artisan.address.city?.toLowerCase().includes(word) ||
-        artisan.address.state?.toLowerCase().includes(word)
+        artisan.address?.city?.toLowerCase().includes(word) ||
+        artisan.address?.state?.toLowerCase().includes(word)
       );
       if (locationMatch) {
         score += 0.4;

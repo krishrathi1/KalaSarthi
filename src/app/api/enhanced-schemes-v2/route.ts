@@ -222,17 +222,17 @@ export async function GET(request: NextRequest) {
           //   { state: params.state, district: params.district }
           // );
           // Fallback to mock localized schemes
-          const localizedSchemes = generateMockLocalizedSchemes(params.state, params.language!);
+          const localizedSchemesData = generateMockLocalizedSchemes(params.state, params.language!);
           
           return NextResponse.json({
             success: true,
             data: {
-              schemes: localizedSchemes,
+              schemes: localizedSchemesData.schemes,
               location: { state: params.state, district: params.district },
               language: params.language,
               localizationStats: {
-                totalSchemes: localizedSchemes.length,
-                stateSpecific: localizedSchemes.filter(s => 
+                totalSchemes: localizedSchemesData.schemes.length,
+                stateSpecific: localizedSchemesData.schemes.filter(s => 
                   s.eligibility.location.states?.includes(params.state!)
                 ).length,
                 languageSupport: '100%'

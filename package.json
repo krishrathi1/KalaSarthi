@@ -13,7 +13,6 @@
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
     "ai:init": "tsx src/ai/initialize.ts",
-    "db:init": "tsx -e \"import('./src/lib/database/buyer-connect-init.ts').then(m => m.initializeBuyerConnectDatabase())\"",
     "db:sample": "tsx -e \"import('./src/lib/database/buyer-connect-init.ts').then(m => m.createSampleData())\"",
     "db:cleanup": "tsx -e \"import('./src/lib/database/buyer-connect-init.ts').then(m => m.cleanupSampleData())\"",
     "seed:firestore": "node scripts/run-seed.js",

@@ -434,7 +434,7 @@ Next Steps:
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button
+          {/* <Button
             size="sm"
             variant="outline"
             className="text-xs"
@@ -456,7 +456,7 @@ Next Steps:
           >
             <Bell className="h-3 w-3 mr-1" />
             Test WhatsApp
-          </Button>
+          </Button> */}
           <Badge variant="outline" className="flex items-center gap-1 bg-blue-50 text-blue-700 text-xs">
             <Zap className="h-3 w-3" />
             AI-Enhanced

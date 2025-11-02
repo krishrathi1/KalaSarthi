@@ -162,7 +162,6 @@ export class VoiceNavigationConfigManager {
         // Server-side detection
         const nodeEnv = process.env.NODE_ENV;
         if (nodeEnv === 'development') return 'development';
-        if (nodeEnv === 'staging') return 'staging';
         return 'production';
     }
 

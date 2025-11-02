@@ -394,27 +394,30 @@ export class ErrorHandler {
       return;
     }
 
-    try {
-      // Import monitoring service dynamically to avoid circular dependencies
-      const { monitoringService } = await import('./monitoring');
+    // Only log to monitoring service on server side
+    if (typeof window === 'undefined') {
+      try {
+        // Import monitoring service dynamically to avoid circular dependencies
+        const { monitoringService } = await import('./monitoring');
 
-      await monitoringService.log({
-        level: 'ERROR',
-        service: 'enhanced-artisan-buddy',
-        operation: errorInfo.context || 'unknown',
-        userId: errorInfo.userId,
-        error: errorInfo.message,
-        metadata: {
-          code: errorInfo.code,
-          severity: errorInfo.severity,
-          recoverable: errorInfo.recoverable,
-          userMessage: errorInfo.userMessage,
-          url: errorInfo.url,
-          userAgent: errorInfo.userAgent
-        }
-      });
-    } catch (e) {
-      console.error('Failed to send error to monitoring:', e);
+        await monitoringService.log({
+          level: 'ERROR',
+          service: 'enhanced-artisan-buddy',
+          operation: errorInfo.context || 'unknown',
+          userId: errorInfo.userId,
+          error: errorInfo.message,
+          metadata: {
+            code: errorInfo.code,
+            severity: errorInfo.severity,
+            recoverable: errorInfo.recoverable,
+            userMessage: errorInfo.userMessage,
+            url: errorInfo.url,
+            userAgent: errorInfo.userAgent
+          }
+        });
+      } catch (e) {
+        console.error('Failed to send error to monitoring:', e);
+      }
     }
   }
 

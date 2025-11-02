@@ -307,7 +307,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
           success: true,
-          data: comparison,
+          comparison,
           metadata: {
             generatedAt: new Date(),
             processingTime: Date.now() - startTime,

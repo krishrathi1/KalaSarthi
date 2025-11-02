@@ -56,8 +56,8 @@ export function usePageTranslation(options: UsePageTranslationOptions = {}) {
           }
 
           // If include selectors are specified, only include those
-          if (includeSelectors.length > 0 && 
-              !includeSelectors.some(selector => parent.closest(selector))) {
+          if (includeSelectors.length > 0 &&
+            !includeSelectors.some(selector => parent.closest(selector))) {
             return NodeFilter.FILTER_SKIP;
           }
 
@@ -96,9 +96,9 @@ export function usePageTranslation(options: UsePageTranslationOptions = {}) {
   }, [excludeSelectors, includeSelectors]);
 
   // Get translatable attributes
-  const getTranslatableAttributes = useCallback((root: Element = document.body): Array<{element: Element, attribute: string, text: string}> => {
-    const attributes: Array<{element: Element, attribute: string, text: string}> = [];
-    
+  const getTranslatableAttributes = useCallback((root: Element = document.body): Array<{ element: Element, attribute: string, text: string }> => {
+    const attributes: Array<{ element: Element, attribute: string, text: string }> = [];
+
     const elements = root.querySelectorAll('*');
     elements.forEach(element => {
       // Skip excluded elements
@@ -129,7 +129,7 @@ export function usePageTranslation(options: UsePageTranslationOptions = {}) {
       const attributeNodes = getTranslatableAttributes();
 
       // Group by unique text to avoid duplicate translations
-      const uniqueTexts = new Map<string, Array<{type: 'text' | 'attribute', node: Text | Element, attribute?: string}>>();
+      const uniqueTexts = new Map<string, Array<{ type: 'text' | 'attribute', node: Text | Element, attribute?: string }>>();
 
       // Process text nodes
       textNodes.forEach(node => {
@@ -152,7 +152,7 @@ export function usePageTranslation(options: UsePageTranslationOptions = {}) {
 
       // Separate texts that need translation vs those already translated
       const textsToTranslate: string[] = [];
-      const textNodeMap = new Map<string, Array<{type: 'text' | 'attribute', node: Text | Element, attribute?: string}>>();
+      const textNodeMap = new Map<string, Array<{ type: 'text' | 'attribute', node: Text | Element, attribute?: string }>>();
 
       Array.from(uniqueTexts.entries()).forEach(([originalText, nodes]) => {
         // Check if already translated for current language
@@ -185,18 +185,24 @@ export function usePageTranslation(options: UsePageTranslationOptions = {}) {
 
       // Batch translate all new texts
       if (textsToTranslate.length > 0) {
+        // Filter out very short or invalid texts before sending to API
+        const validTextsToTranslate = textsToTranslate.filter(text =>
+          text && text.trim().length >= 3 && text.trim().length <= 1000
+        );
+
+        if (validTextsToTranslate.length === 0) {
+          console.log('No valid texts to translate after filtering');
+          return;
+        }
+
         try {
-          // Filter out very short or invalid texts before sending to API
-          const validTextsToTranslate = textsToTranslate.filter(text => 
-            text && text.trim().length >= 3 && text.trim().length <= 1000
-          );
+          type BatchTranslateResult = {
+            results: Array<{
+              translatedText: string;
+            }>;
+          };
 
-          if (validTextsToTranslate.length === 0) {
-            console.log('No valid texts to translate after filtering');
-            return;
-          }
-
-          const batchResult = await unifiedTranslationService.translateBatch(
+          const batchResult: BatchTranslateResult = await unifiedTranslationService.translateBatch(
             validTextsToTranslate,
             currentLanguage,
             'en',
@@ -204,7 +210,7 @@ export function usePageTranslation(options: UsePageTranslationOptions = {}) {
           );
 
           // Apply batch translations
-          batchResult.results.forEach((result, index) => {
+          batchResult.results.forEach((result: { translatedText: string }, index: number) => {
             const originalText = validTextsToTranslate[index];
             const nodes = textNodeMap.get(originalText) || [];
             const translatedText = result.translatedText;
@@ -253,28 +259,28 @@ export function usePageTranslation(options: UsePageTranslationOptions = {}) {
           });
         } catch (error) {
           console.error('Batch translation failed:', error);
-          
+
           // Check if it's a rate limiting error
           if (error instanceof Error && error.message.includes('429')) {
             console.log('Rate limited - skipping translation for now');
             return;
           }
-          
+
           // Check if it's a service unavailable error
           if (error instanceof Error && (error.message.includes('503') || error.message.includes('500'))) {
             console.log('Translation service unavailable - skipping translation for now');
             return;
           }
-          
+
           // For other errors, try a very limited fallback
           const criticalTexts = validTextsToTranslate.slice(0, 3); // Only translate first 3 as fallback
           console.log(`Attempting fallback translation for ${criticalTexts.length} critical texts`);
-          
+
           for (const originalText of criticalTexts) {
             try {
               const translatedText = await translateText(originalText);
               const nodes = textNodeMap.get(originalText) || [];
-              
+
               nodes.forEach(({ type, node, attribute }) => {
                 if (type === 'text' && node instanceof Text) {
                   const parent = node.parentElement;
@@ -282,7 +288,7 @@ export function usePageTranslation(options: UsePageTranslationOptions = {}) {
                     parent.setAttribute('data-original-text', originalText);
                   }
                   node.textContent = translatedText;
-                  
+
                   if (parent) {
                     const translationInfo: TranslatedElement = {
                       element: parent,
@@ -298,7 +304,7 @@ export function usePageTranslation(options: UsePageTranslationOptions = {}) {
                     node.setAttribute(originalAttrKey, originalText);
                   }
                   node.setAttribute(attribute, translatedText);
-                  
+
                   const translationInfo: TranslatedElement = {
                     element: node,
                     originalText,
@@ -412,7 +418,7 @@ export function usePageTranslation(options: UsePageTranslationOptions = {}) {
         if (mutationTimeout) {
           clearTimeout(mutationTimeout);
         }
-        
+
         // Debounce mutations more aggressively
         mutationTimeout = setTimeout(() => {
           debouncedTranslate();

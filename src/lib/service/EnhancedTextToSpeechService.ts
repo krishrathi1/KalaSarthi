@@ -482,10 +482,12 @@ export class EnhancedTextToSpeechService {
   private convertToArrayBuffer(audioContent: string | Uint8Array): ArrayBuffer {
     if (typeof audioContent === 'string') {
       const buffer = Buffer.from(audioContent, 'base64');
-      return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+      // Create a copied Uint8Array and return its underlying ArrayBuffer to avoid SharedArrayBuffer types
+      return new Uint8Array(buffer).slice().buffer;
     } else {
       const buffer = audioContent as Uint8Array;
-      return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+      // Create a copied Uint8Array and return its underlying ArrayBuffer to ensure a plain ArrayBuffer
+      return new Uint8Array(buffer).slice().buffer;
     }
   }
 

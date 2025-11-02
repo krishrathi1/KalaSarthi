@@ -4,14 +4,14 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { 
-  diagnoseAudioSupport, 
-  requestMicrophoneAccess, 
-  createMediaRecorder, 
+import {
+  diagnoseAudioSupport,
+  requestMicrophoneAccess,
+  createMediaRecorder,
   getAudioErrorMessage,
   testAudioRecording,
   logAudioDiagnostics,
-  type AudioDiagnostics 
+  type AudioDiagnostics
 } from '@/lib/utils/audioUtils';
 
 export interface AudioRecordingState {
@@ -64,9 +64,9 @@ export function useAudioRecording(options: AudioRecordingOptions = {}) {
     const initializeDiagnostics = async () => {
       try {
         console.log('🔍 Initializing audio recording diagnostics...');
-        
+
         const diagnostics = await diagnoseAudioSupport();
-        
+
         setState(prev => ({
           ...prev,
           isSupported: diagnostics.isSupported,
@@ -77,7 +77,7 @@ export function useAudioRecording(options: AudioRecordingOptions = {}) {
           const errorMessage = 'Audio recording not supported on this device/browser';
           setState(prev => ({ ...prev, error: errorMessage }));
           onError?.(errorMessage);
-          
+
           // Log detailed diagnostics for troubleshooting
           await logAudioDiagnostics();
         } else {
@@ -100,7 +100,7 @@ export function useAudioRecording(options: AudioRecordingOptions = {}) {
     if (startTimeRef.current > 0) {
       const duration = Date.now() - startTimeRef.current;
       setState(prev => ({ ...prev, duration }));
-      
+
       // Auto-stop if max duration reached
       if (duration >= maxDuration) {
         console.log('⏰ Max recording duration reached, stopping...');
@@ -156,11 +156,11 @@ export function useAudioRecording(options: AudioRecordingOptions = {}) {
       mediaRecorder.onerror = (event) => {
         console.error('❌ MediaRecorder error:', event);
         const errorMessage = 'Recording error occurred';
-        setState(prev => ({ 
-          ...prev, 
-          isRecording: false, 
-          isProcessing: false, 
-          error: errorMessage 
+        setState(prev => ({
+          ...prev,
+          isRecording: false,
+          isProcessing: false,
+          error: errorMessage
         }));
         onError?.(errorMessage);
         cleanup();
@@ -169,12 +169,12 @@ export function useAudioRecording(options: AudioRecordingOptions = {}) {
       // Start recording
       mediaRecorder.start(100); // Collect data every 100ms
 
-      setState(prev => ({ 
-        ...prev, 
-        isRecording: true, 
-        isProcessing: false, 
+      setState(prev => ({
+        ...prev,
+        isRecording: true,
+        isProcessing: false,
         duration: 0,
-        error: null 
+        error: null
       }));
 
       // Start duration timer
@@ -186,11 +186,11 @@ export function useAudioRecording(options: AudioRecordingOptions = {}) {
     } catch (error) {
       console.error('❌ Failed to start recording:', error);
       const errorMessage = getAudioErrorMessage(error);
-      setState(prev => ({ 
-        ...prev, 
-        isRecording: false, 
-        isProcessing: false, 
-        error: errorMessage 
+      setState(prev => ({
+        ...prev,
+        isRecording: false,
+        isProcessing: false,
+        error: errorMessage
       }));
       onError?.(errorMessage);
       cleanup();
@@ -206,7 +206,7 @@ export function useAudioRecording(options: AudioRecordingOptions = {}) {
 
     try {
       console.log('⏹️ Stopping recording...');
-      
+
       // Stop duration timer
       if (durationIntervalRef.current) {
         clearInterval(durationIntervalRef.current);
@@ -218,10 +218,10 @@ export function useAudioRecording(options: AudioRecordingOptions = {}) {
         mediaRecorderRef.current.stop();
       }
 
-      setState(prev => ({ 
-        ...prev, 
-        isRecording: false, 
-        isProcessing: true 
+      setState(prev => ({
+        ...prev,
+        isRecording: false,
+        isProcessing: true
       }));
 
       onStatusChange?.('Processing recording...');
@@ -229,11 +229,11 @@ export function useAudioRecording(options: AudioRecordingOptions = {}) {
     } catch (error) {
       console.error('❌ Failed to stop recording:', error);
       const errorMessage = getAudioErrorMessage(error);
-      setState(prev => ({ 
-        ...prev, 
-        isRecording: false, 
-        isProcessing: false, 
-        error: errorMessage 
+      setState(prev => ({
+        ...prev,
+        isRecording: false,
+        isProcessing: false,
+        error: errorMessage
       }));
       onError?.(errorMessage);
       cleanup();
@@ -244,7 +244,7 @@ export function useAudioRecording(options: AudioRecordingOptions = {}) {
   const processRecording = useCallback(async () => {
     try {
       const finalDuration = Date.now() - startTimeRef.current;
-      
+
       console.log('🔄 Processing recording:', {
         duration: finalDuration,
         chunks: audioChunksRef.current.length,
@@ -254,10 +254,10 @@ export function useAudioRecording(options: AudioRecordingOptions = {}) {
       // Check minimum duration
       if (finalDuration < minDuration) {
         const errorMessage = `Recording too short. Please record for at least ${minDuration / 1000} seconds.`;
-        setState(prev => ({ 
-          ...prev, 
-          isProcessing: false, 
-          error: errorMessage 
+        setState(prev => ({
+          ...prev,
+          isProcessing: false,
+          error: errorMessage
         }));
         onError?.(errorMessage);
         cleanup();
@@ -267,10 +267,10 @@ export function useAudioRecording(options: AudioRecordingOptions = {}) {
       // Check if we have audio data
       if (audioChunksRef.current.length === 0) {
         const errorMessage = 'No audio data recorded. Please check your microphone.';
-        setState(prev => ({ 
-          ...prev, 
-          isProcessing: false, 
-          error: errorMessage 
+        setState(prev => ({
+          ...prev,
+          isProcessing: false,
+          error: errorMessage
         }));
         onError?.(errorMessage);
         cleanup();
@@ -280,7 +280,7 @@ export function useAudioRecording(options: AudioRecordingOptions = {}) {
       // Create audio blob
       const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
       const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-      
+
       console.log('✅ Audio blob created:', {
         size: audioBlob.size,
         type: audioBlob.type,
@@ -295,7 +295,7 @@ export function useAudioRecording(options: AudioRecordingOptions = {}) {
         if (prev.audioUrl) {
           URL.revokeObjectURL(prev.audioUrl);
         }
-        
+
         return {
           ...prev,
           isProcessing: false,
@@ -315,10 +315,10 @@ export function useAudioRecording(options: AudioRecordingOptions = {}) {
     } catch (error) {
       console.error('❌ Failed to process recording:', error);
       const errorMessage = getAudioErrorMessage(error);
-      setState(prev => ({ 
-        ...prev, 
-        isProcessing: false, 
-        error: errorMessage 
+      setState(prev => ({
+        ...prev,
+        isProcessing: false,
+        error: errorMessage
       }));
       onError?.(errorMessage);
     } finally {
@@ -331,7 +331,7 @@ export function useAudioRecording(options: AudioRecordingOptions = {}) {
     try {
       onStatusChange?.('Testing audio recording...');
       const result = await testAudioRecording();
-      
+
       if (result.success) {
         onStatusChange?.('Audio recording test successful');
         console.log('✅ Audio recording test passed');
@@ -341,7 +341,7 @@ export function useAudioRecording(options: AudioRecordingOptions = {}) {
         onError?.(errorMessage);
         console.error('❌ Audio recording test failed:', result.error);
       }
-      
+
       return result;
     } catch (error) {
       const errorMessage = getAudioErrorMessage(error);
@@ -370,7 +370,7 @@ export function useAudioRecording(options: AudioRecordingOptions = {}) {
 
     // Clear MediaRecorder
     mediaRecorderRef.current = null;
-    
+
     // Clear audio chunks
     audioChunksRef.current = [];
     startTimeRef.current = 0;

@@ -46,22 +46,22 @@ function RecentSalesEvents({
   const displayEvents = showAll ? events : events.slice(0, 5);
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Recent Sales</CardTitle>
-            <CardDescription>
+    <Card className="w-full max-w-full">
+      <CardHeader className="p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <CardTitle className="text-lg sm:text-xl">Recent Sales</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">
               Latest transactions in real-time
             </CardDescription>
           </div>
-          <Badge variant="outline" className="flex items-center gap-1">
+          <Badge variant="outline" className="flex items-center gap-1.5 flex-shrink-0">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            Live
+            <span className="text-xs">Live</span>
           </Badge>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4 sm:p-6 pt-0">
         {events.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Package className="h-8 w-8 mx-auto mb-2" />
@@ -72,20 +72,20 @@ function RecentSalesEvents({
             {displayEvents.map((event, index) => (
               <div 
                 key={event.id || index} 
-                className="flex items-center justify-between p-3 bg-muted/20 rounded-lg"
+                className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3 p-3 bg-muted/20 rounded-lg w-full"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <div>
-                    <p className="font-medium">{event.productName}</p>
-                    <p className="text-sm text-muted-foreground">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm sm:text-base truncate">{event.productName}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">
                       {event.eventType} • {event.quantity} units • {event.buyerName || 'Customer'}
                     </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-medium">{formatCurrency(event.totalAmount)}</p>
-                  <p className="text-sm text-muted-foreground">
+                <div className="text-left sm:text-right flex-shrink-0 w-full sm:w-auto">
+                  <p className="font-medium text-sm sm:text-base">{formatCurrency(event.totalAmount)}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     {new Date(event.eventTimestamp).toLocaleTimeString()}
                   </p>
                 </div>
@@ -340,11 +340,11 @@ export default function RealtimeDashboard({ artisanId, className = '' }: Realtim
   }
 
   return (
-    <div className={`space-y-6 ${className}`}>
+    <div className={`space-y-6 w-full max-w-full ${className}`}>
       {/* Header with Connection Status */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Real-time Dashboard</h2>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-xl sm:text-2xl font-bold truncate">Real-time Dashboard</h2>
           <p className="text-muted-foreground">
             {connectionState === 'online' 
               ? 'Live financial data and performance metrics' 
@@ -354,7 +354,7 @@ export default function RealtimeDashboard({ artisanId, className = '' }: Realtim
             }
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
           <ConnectionStatus 
             connectionState={connectionState}
             lastUpdated={lastUpdated}
@@ -374,51 +374,57 @@ export default function RealtimeDashboard({ artisanId, className = '' }: Realtim
 
 
       {/* Sales Overview Component */}
-      <SalesOverview
-        timeRange="month"
-      />
+      <div className="w-full max-w-full overflow-hidden">
+        <SalesOverview
+          timeRange="month"
+        />
+      </div>
 
       {/* Real-time Analytics */}
-      <RealtimeMetrics 
-        currentSales={dashboardData.currentSales}
-        recentEvents={dashboardData.recentEvents}
-        connectionState={connectionState}
-      />
+      <div className="w-full max-w-full overflow-hidden">
+        <RealtimeMetrics 
+          currentSales={dashboardData.currentSales}
+          recentEvents={dashboardData.recentEvents}
+          connectionState={connectionState}
+        />
+      </div>
 
       {/* Performance Overview */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Performance Overview</CardTitle>
-          <CardDescription>Key business metrics and trends</CardDescription>
+      <Card className="w-full max-w-full">
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="text-lg sm:text-xl">Performance Overview</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">Key business metrics and trends</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{dashboardData.recentEvents.length}</div>
-              <p className="text-sm text-muted-foreground">Total Events</p>
+        <CardContent className="p-4 sm:p-6 pt-0">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 w-full">
+            <div className="text-center p-3 sm:p-4 bg-blue-50 rounded-lg">
+              <div className="text-xl sm:text-2xl font-bold text-blue-600">{dashboardData.recentEvents.length}</div>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">Total Events</p>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
+            <div className="text-center p-3 sm:p-4 bg-green-50 rounded-lg">
+              <div className="text-xl sm:text-2xl font-bold text-green-600">
                 {dashboardData.recentEvents.filter(e => e.eventType === 'order_paid').length}
               </div>
-              <p className="text-sm text-muted-foreground">Completed Orders</p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">Completed Orders</p>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">
+            <div className="text-center p-3 sm:p-4 bg-purple-50 rounded-lg">
+              <div className="text-xl sm:text-2xl font-bold text-purple-600">
                 {dashboardData.recentEvents.reduce((sum, e) => sum + e.quantity, 0)}
               </div>
-              <p className="text-sm text-muted-foreground">Units Sold</p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">Units Sold</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Real-time Product Rankings */}
-      <ProductRankings
-        recentEvents={dashboardData.recentEvents}
-        aggregates={dashboardData.aggregates}
-        connectionState={connectionState}
-      />
+      <div className="w-full max-w-full overflow-hidden">
+        <ProductRankings
+          recentEvents={dashboardData.recentEvents}
+          aggregates={dashboardData.aggregates}
+          connectionState={connectionState}
+        />
+      </div>
 
       {/* Recent Sales Events - Limited to 5 with dropdown */}
       <RecentSalesEvents 

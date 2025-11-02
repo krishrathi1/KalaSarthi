@@ -30,7 +30,7 @@ export default function VoiceDebugPage() {
                 try {
                     const permission = await navigator.permissions.query({ name: 'microphone' as PermissionName });
                     micPermission = permission.state;
-                } catch (e) {
+                } catch (e : any) {
                     micPermission = 'error';
                 }
             }
@@ -43,8 +43,8 @@ export default function VoiceDebugPage() {
                     getUserMediaTest = 'success';
                     // Stop the stream immediately
                     stream.getTracks().forEach(track => track.stop());
-                } catch (e) {
-                    getUserMediaTest = `error: ${e.message}`;
+                } catch (e : any) {
+                    getUserMediaTest = `error: ${e instanceof Error ? e.message : 'Unknown error'}`;
                 }
             }
 
@@ -54,7 +54,7 @@ export default function VoiceDebugPage() {
                 try {
                     const voices = speechSynthesis.getVoices();
                     speechSynthesisTest = `available (${voices.length} voices)`;
-                } catch (e) {
+                } catch (e : any) {
                     speechSynthesisTest = `error: ${e.message}`;
                 }
             }
@@ -74,7 +74,7 @@ export default function VoiceDebugPage() {
                 } else {
                     apiTest = `error: ${response.status} ${response.statusText}`;
                 }
-            } catch (e) {
+            } catch (e : any) {
                 apiTest = `error: ${e.message}`;
             }
 
@@ -87,7 +87,7 @@ export default function VoiceDebugPage() {
                 timestamp: new Date().toISOString()
             });
 
-        } catch (error) {
+        } catch (error : any) {
             console.error('Debug check failed:', error);
             setDebugInfo({
                 error: error.message,
@@ -120,7 +120,7 @@ export default function VoiceDebugPage() {
 
             // Refresh the debug info
             checkServices();
-        } catch (error) {
+         } catch (error : any) {
             console.error('❌ Microphone test failed:', error);
             alert(`❌ Microphone test failed: ${error.message}`);
         }
@@ -136,7 +136,7 @@ export default function VoiceDebugPage() {
 
             speechSynthesis.speak(utterance);
             alert('🔊 Speech synthesis test started. You should hear audio.');
-        } catch (error) {
+        } catch (error : any) {
             console.error('❌ Speech synthesis test failed:', error);
             alert(`❌ Speech synthesis test failed: ${error.message}`);
         }

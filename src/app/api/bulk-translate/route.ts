@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
           text,
           sourceLanguage,
           targetLanguage,
-          craftCategory: 'general',
+          context: 'craft',
           preserveCulturalTerms: true
         });
         return {

@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { FirestoreService, COLLECTIONS, serverTimestamp } from '@/lib/firestore';
+import { FirestoreService } from '@/lib/firestore';
 import { IEnhancedChatMessage } from '@/lib/models/EnhancedChat';
 import { SentimentAnalyzer } from '@/lib/services/SentimentAnalyzer';
 import { CulturalContextTranslator } from '@/lib/services/CulturalContextTranslator';
@@ -27,7 +27,7 @@ interface SendMessageRequest {
 interface MessageAttachment {
   type: 'image' | 'design' | 'document';
   url: string;
-  metadata?: any;
+  metadata: any;
 }
 
 export async function POST(request: NextRequest) {
@@ -59,18 +59,23 @@ export async function POST(request: NextRequest) {
     
     // Translate message if needed
     let translatedText = body.originalText;
-    let translationMetadata = null;
+    let translationMetadata = undefined;
     
     if (body.originalLanguage !== receiverLanguage) {
-      const translation = await translator.translate({
+      const translation = await translator.translateText({
         text: body.originalText,
         sourceLanguage: body.originalLanguage,
         targetLanguage: receiverLanguage,
-        context: await getConversationContext(body.sessionId)
+        context: 'business'
       });
       
       translatedText = translation.translatedText;
-      translationMetadata = translation.metadata;
+      translationMetadata = {
+        confidence: translation.confidence,
+        service: 'CulturalContextTranslator',
+        alternatives: [],
+        culturalContext: translation.culturalNotes?.map(note => note.culturalContext).join('; ')
+      };
     }
     
     // Create enhanced message data
@@ -83,8 +88,16 @@ export async function POST(request: NextRequest) {
       translatedText,
       targetLanguage: receiverLanguage,
       messageType: body.messageType,
-      voiceData: body.audioData,
-      attachments: body.attachments || [],
+      voiceData: body.audioData ? {
+        audioUrl: body.audioData.url,
+        duration: body.audioData.duration,
+        transcriptionConfidence: body.audioData.transcriptionConfidence
+      } : undefined,
+      attachments: (body.attachments || []).map(att => ({
+        type: att.type,
+        url: att.url,
+        metadata: att.metadata || {}
+      })),
       translationMetadata,
       aiAnalysis,
       timestamp: new Date(),
@@ -122,22 +135,26 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function getUserLanguage(userId: string): Promise<string> {
+async function getUserLanguage(_userId: string): Promise<string> {
   // TODO: Get from user profile
   return 'en'; // Default fallback
 }
 
 async function getConversationContext(sessionId: string) {
-  // TODO: Implement conversation context retrieval
-  return {};
+  // TODO: Implement full conversation context retrieval
+  return {
+    sessionId,
+    participants: [],
+    messageHistory: []
+  };
 }
 
-async function broadcastMessage(message: any) {
+async function broadcastMessage(_message: any) {
   // TODO: Implement WebSocket broadcasting
-  console.log('Broadcasting message:', message.id);
+  // console.log('Broadcasting message:', _message.id);
 }
 
-async function updateConversationContext(sessionId: string, message: any) {
+async function updateConversationContext(_sessionId: string, _message: any) {
   // TODO: Update conversation context with new message
-  console.log('Updating context for session:', sessionId);
+  // console.log('Updating context for session:', _sessionId);
 }

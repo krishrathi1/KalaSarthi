@@ -125,7 +125,7 @@ export class ProductService {
             }
 
             // Build constraints from filter
-            const constraints = Object.entries(filter).map(([key, value]) =>
+            const constraints: any[] = Object.entries(filter).map(([key, value]) =>
                 where(key, '==', value)
             );
             constraints.push(orderBy('createdAt', 'desc'));

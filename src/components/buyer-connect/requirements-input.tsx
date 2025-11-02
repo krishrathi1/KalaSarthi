@@ -37,20 +37,18 @@ interface SearchRequirements {
 }
 
 const SPECIALIZATIONS = [
-  'Pottery', 'Textiles', 'Jewelry', 'Woodwork', 'Metalwork', 
+  'Pottery', 'Textiles', 'Jewelry', 'Woodwork', 'Metalwork',
   'Painting', 'Sculpture', 'Weaving', 'Embroidery', 'Carving'
 ];
 
 const CULTURAL_PREFERENCES = [
-  'Traditional Indian', 'Rajasthani', 'Bengali', 'South Indian', 
+  'Traditional Indian', 'Rajasthani', 'Bengali', 'South Indian',
   'Gujarati', 'Punjabi', 'Kashmiri', 'Tribal Art', 'Folk Art'
 ];
 
 const SAMPLE_PROMPTS = [
-  "I need wooden doors for my hotel with traditional Indian carvings",
-  "Looking for handwoven silk sarees for a wedding collection",
-  "Want custom pottery dinnerware for my restaurant",
-  "Need silver jewelry with traditional motifs for my store"
+  "Looking for a skilled painter for traditional Madhubani art on canvas",
+  "Need a textile artisan for handwoven cotton fabric with block printing"
 ];
 
 export function RequirementsInput({ onSearch, loading = false, initialValue = '' }: RequirementsInputProps) {
@@ -67,7 +65,7 @@ export function RequirementsInput({ onSearch, loading = false, initialValue = ''
     sortBy: 'confidence',
     includeAlternatives: true
   });
-  
+
   const { toast } = useToast();
 
   const handleSearch = useCallback(() => {
@@ -119,8 +117,8 @@ export function RequirementsInput({ onSearch, loading = false, initialValue = ''
     });
   };
 
-  const hasActiveFilters = 
-    (filters.specializations?.length || 0) > 0 || 
+  const hasActiveFilters =
+    (filters.specializations?.length || 0) > 0 ||
     (filters.culturalPreferences?.length || 0) > 0 ||
     filters.location ||
     filters.availability ||
@@ -170,8 +168,8 @@ export function RequirementsInput({ onSearch, loading = false, initialValue = ''
 
           {/* Action Buttons */}
           <div className="flex items-center gap-3">
-            <Button 
-              onClick={handleSearch} 
+            <Button
+              onClick={handleSearch}
               disabled={loading || !userInput.trim()}
               className="flex-1 sm:flex-none"
             >
@@ -187,8 +185,8 @@ export function RequirementsInput({ onSearch, loading = false, initialValue = ''
                 </>
               )}
             </Button>
-            
-            <Button
+
+            {/* <Button
               variant="outline"
               onClick={() => setShowFilters(!showFilters)}
               className="relative"
@@ -200,7 +198,7 @@ export function RequirementsInput({ onSearch, loading = false, initialValue = ''
                   {(filters.specializations?.length || 0) + (filters.culturalPreferences?.length || 0)}
                 </Badge>
               )}
-            </Button>
+            </Button> */}
           </div>
         </CardContent>
       </Card>
@@ -229,7 +227,7 @@ export function RequirementsInput({ onSearch, loading = false, initialValue = ''
               <div className="px-3">
                 <Slider
                   value={[filters.priceRange?.min || 1000, filters.priceRange?.max || 50000]}
-                  onValueChange={([min, max]) => 
+                  onValueChange={([min, max]) =>
                     setFilters(prev => ({ ...prev, priceRange: { min, max } }))
                   }
                   max={100000}
@@ -284,7 +282,7 @@ export function RequirementsInput({ onSearch, loading = false, initialValue = ''
                 <Label>Preferred Location</Label>
                 <Select
                   value={filters.location || ''}
-                  onValueChange={(value) => 
+                  onValueChange={(value) =>
                     setFilters(prev => ({ ...prev, location: value || undefined }))
                   }
                 >
@@ -307,7 +305,7 @@ export function RequirementsInput({ onSearch, loading = false, initialValue = ''
                 <Label>Availability</Label>
                 <Select
                   value={filters.availability || ''}
-                  onValueChange={(value) => 
+                  onValueChange={(value) =>
                     setFilters(prev => ({ ...prev, availability: value || undefined }))
                   }
                 >
@@ -329,7 +327,7 @@ export function RequirementsInput({ onSearch, loading = false, initialValue = ''
               <div className="px-3">
                 <Slider
                   value={[filters.rating || 0]}
-                  onValueChange={([rating]) => 
+                  onValueChange={([rating]) =>
                     setFilters(prev => ({ ...prev, rating: rating > 0 ? rating : undefined }))
                   }
                   max={5}
@@ -347,13 +345,13 @@ export function RequirementsInput({ onSearch, loading = false, initialValue = ''
             {/* Search Preferences */}
             <div className="border-t pt-4 space-y-4">
               <Label className="text-base font-medium">Search Preferences</Label>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-sm">Sort Results By</Label>
                   <Select
                     value={preferences.sortBy}
-                    onValueChange={(value: any) => 
+                    onValueChange={(value: any) =>
                       setPreferences(prev => ({ ...prev, sortBy: value }))
                     }
                   >
@@ -373,7 +371,7 @@ export function RequirementsInput({ onSearch, loading = false, initialValue = ''
                   <Label className="text-sm">Maximum Results</Label>
                   <Select
                     value={preferences.maxResults.toString()}
-                    onValueChange={(value) => 
+                    onValueChange={(value) =>
                       setPreferences(prev => ({ ...prev, maxResults: parseInt(value) }))
                     }
                   >
@@ -394,7 +392,7 @@ export function RequirementsInput({ onSearch, loading = false, initialValue = ''
                 <Checkbox
                   id="alternatives"
                   checked={preferences.includeAlternatives}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked) =>
                     setPreferences(prev => ({ ...prev, includeAlternatives: !!checked }))
                   }
                 />

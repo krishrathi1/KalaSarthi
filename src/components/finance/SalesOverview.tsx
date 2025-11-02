@@ -128,13 +128,13 @@ export default function SalesOverview({ timeRange, className = '' }: SalesOvervi
 
   if (loading) {
     return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle>Sales Overview</CardTitle>
-          <CardDescription>Loading sales data...</CardDescription>
+      <Card className={`w-full max-w-full ${className}`}>
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="text-lg sm:text-xl">Sales Overview</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">Loading sales data...</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="h-80 flex items-center justify-center">
+        <CardContent className="p-4 sm:p-6 pt-0">
+          <div className="h-64 sm:h-80 flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         </CardContent>
@@ -144,14 +144,14 @@ export default function SalesOverview({ timeRange, className = '' }: SalesOvervi
 
   if (error) {
     return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle>Sales Overview</CardTitle>
-          <CardDescription>Error loading data</CardDescription>
+      <Card className={`w-full max-w-full ${className}`}>
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="text-lg sm:text-xl">Sales Overview</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">Error loading data</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="h-80 flex items-center justify-center text-muted-foreground">
-            <p>{error}</p>
+        <CardContent className="p-4 sm:p-6 pt-0">
+          <div className="h-64 sm:h-80 flex items-center justify-center text-muted-foreground">
+            <p className="text-sm">{error}</p>
           </div>
         </CardContent>
       </Card>
@@ -159,16 +159,16 @@ export default function SalesOverview({ timeRange, className = '' }: SalesOvervi
   }
 
   return (
-    <Card className={className}>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Sales Overview</CardTitle>
-            <CardDescription>
+    <Card className={`w-full max-w-full ${className}`}>
+      <CardHeader className="p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
+          <div className="min-w-0 flex-1">
+            <CardTitle className="text-lg sm:text-xl">Sales Overview</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">
               Revenue trends for the selected {timeRange}
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             {trend.trend === 'up' && (
               <Badge variant="default" className="bg-green-100 text-green-800">
                 <TrendingUp className="h-3 w-3 mr-1" />
@@ -190,11 +190,11 @@ export default function SalesOverview({ timeRange, className = '' }: SalesOvervi
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4 sm:p-6 pt-0 w-full max-w-full overflow-hidden">
         {/* Enhanced Graph with Better Visual Appeal */}
-        <div className="h-96 bg-gradient-to-br from-slate-50 to-gray-100 rounded-xl p-4 border">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={salesData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+        <div className="h-64 sm:h-80 lg:h-96 bg-gradient-to-br from-slate-50 to-gray-100 rounded-xl p-2 sm:p-4 border w-full overflow-hidden">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+            <LineChart data={salesData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
               <defs>
                 <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
@@ -204,19 +204,20 @@ export default function SalesOverview({ timeRange, className = '' }: SalesOvervi
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" strokeOpacity={0.5} />
               <XAxis 
                 dataKey="period" 
-                fontSize={11}
+                fontSize={10}
                 tickLine={false}
                 axisLine={false}
                 tick={{ fill: '#64748b' }}
-                dy={10}
+                dy={5}
+                interval="preserveStartEnd"
               />
               <YAxis 
-                fontSize={11}
+                fontSize={10}
                 tickLine={false}
                 axisLine={false}
                 tick={{ fill: '#64748b' }}
                 tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
-                dx={-10}
+                width={45}
               />
               <Tooltip 
                 content={({ active, payload, label }) => {

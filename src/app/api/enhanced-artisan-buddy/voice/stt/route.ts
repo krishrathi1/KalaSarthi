@@ -60,7 +60,6 @@ export async function POST(request: NextRequest) {
 
         // Convert file to buffer
         const audioBuffer = await audioFile.arrayBuffer();
-        const audioBytes = new Uint8Array(audioBuffer);
 
         // Configure STT options
         const sttOptions: EnhancedSpeechToTextOptions = {
@@ -87,7 +86,7 @@ export async function POST(request: NextRequest) {
 
         // Process audio
         const startTime = Date.now();
-        const result = await sttService.transcribeAudio(audioBytes, sttOptions);
+        const result = await sttService.speechToText(audioBuffer, sttOptions);
         const processingTime = Date.now() - startTime;
 
         // Return successful response

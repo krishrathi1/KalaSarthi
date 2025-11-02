@@ -4,8 +4,11 @@
  * Integrates with Google Cloud services for STT, TTS, and Dialogflow
  */
 
-import { EnhancedSpeechToTextService } from '../service/EnhancedSpeechToTextService';
-import { EnhancedTextToSpeechService } from '../service/EnhancedTextToSpeechService';
+// Dynamic imports to avoid bundling Google Cloud services on client
+// import { EnhancedSpeechToTextService } from '../service/EnhancedSpeechToTextService';
+// import { EnhancedTextToSpeechService } from '../service/EnhancedTextToSpeechService';
+type EnhancedSpeechToTextService = any;
+type EnhancedTextToSpeechService = any;
 import { VoiceNavigationErrorHandler, VoiceNavigationError, ErrorContext, RecoveryResult } from './VoiceNavigationErrorHandler';
 import { VoiceNavigationLogger, LogLevel, LogCategory } from './VoiceNavigationLogger';
 import { VoiceNavigationFallback, FallbackResult } from './VoiceNavigationFallback';

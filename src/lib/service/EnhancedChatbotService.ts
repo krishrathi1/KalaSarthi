@@ -221,10 +221,13 @@ Please provide a helpful, contextual response as an Artisan Buddy:`;
         if (context.artisanId) {
             const profile = this.vectorStore.getArtisanProfile(context.artisanId);
             if (profile) {
+                const name = profile.personalInfo?.name ?? 'the artisan';
+                const location = profile.personalInfo?.location ?? 'their area';
+                const experience = profile.personalInfo?.experience ?? 'some';
                 if (context.language === 'hi') {
-                    prompt += `आप ${profile.name} का प्रतिनिधित्व कर रहे हैं, जो ${profile.location} से ${profile.craft} के क्षेत्र में ${profile.experience} साल का अनुभव रखते हैं। `;
+                    prompt += `आप ${name} का प्रतिनिधित्व कर रहे हैं, जो ${location} से हैं और ${experience} वर्षों का अनुभव रखते हैं। `;
                 } else {
-                    prompt += `You are representing ${profile.name}, a ${profile.craft} artisan from ${profile.location} with ${profile.experience} years of experience. `;
+                    prompt += `You are representing ${name}, an artisan from ${location} with ${experience} years of experience. `;
                 }
             }
         }

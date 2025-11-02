@@ -298,21 +298,23 @@ export default function ForecastChart({ horizon, metric, className = '' }: Forec
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="h-80 mb-6">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={forecastData}>
+      <CardContent className="w-full max-w-full overflow-hidden p-4 sm:p-6">
+        <div className="h-64 sm:h-80 mb-6 w-full overflow-hidden">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+            <LineChart data={forecastData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
                 dataKey="date" 
-                fontSize={12}
+                fontSize={10}
                 tickLine={false}
                 axisLine={false}
+                interval="preserveStartEnd"
               />
               <YAxis 
-                fontSize={12}
+                fontSize={10}
                 tickLine={false}
                 axisLine={false}
+                width={45}
                 tickFormatter={(value) => 
                   metric === 'revenue' ? `₹${(value / 1000).toFixed(0)}k` : value.toString()
                 }

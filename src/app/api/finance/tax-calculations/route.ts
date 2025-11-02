@@ -276,10 +276,8 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
           success: true,
-          data: {
-            current: currentTaxData,
-            projection,
-          },
+          current: currentTaxData,
+          projection,
           metadata: {
             calculatedAt: new Date(),
             processingTime: Date.now() - startTime,
@@ -338,16 +336,14 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
           success: true,
-          data: {
-            current: optimizationTaxData,
-            optimization: {
-              targetReduction: targetTaxReduction,
-              targetSavingAmount: targetReduction,
-              potentialSavingAmount: totalPotentialSaving,
-              achievabilityScore: Math.min(100, (totalPotentialSaving / targetReduction) * 100),
-              strategies: optimizationStrategies,
-              timeline: '6-12 months for full implementation',
-            },
+          current: optimizationTaxData,
+          optimization: {
+            targetReduction: targetTaxReduction,
+            targetSavingAmount: targetReduction,
+            potentialSavingAmount: totalPotentialSaving,
+            achievabilityScore: Math.min(100, (totalPotentialSaving / targetReduction) * 100),
+            strategies: optimizationStrategies,
+            timeline: '6-12 months for full implementation',
           },
           metadata: {
             calculatedAt: new Date(),
@@ -402,14 +398,12 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
           success: true,
-          data: {
-            taxData: complianceTaxData,
-            compliance: {
-              overallScore: complianceScore,
-              checks: complianceChecks,
-              criticalActions: complianceChecks.filter(check => check.required && check.status === 'Required'),
-              recommendations: complianceTaxData.recommendations,
-            },
+          taxData: complianceTaxData,
+          compliance: {
+            overallScore: complianceScore,
+            checks: complianceChecks,
+            criticalActions: complianceChecks.filter(check => check.required && check.status === 'Required'),
+            recommendations: complianceTaxData.recommendations,
           },
           metadata: {
             calculatedAt: new Date(),
@@ -421,7 +415,7 @@ export async function POST(request: NextRequest) {
             },
             financialYear: complianceTaxData.period.financialYear,
           },
-        } as TaxResponse);
+        });
 
       default:
         return NextResponse.json(

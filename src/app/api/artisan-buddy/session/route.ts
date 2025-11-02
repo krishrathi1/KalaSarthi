@@ -68,10 +68,10 @@ async function handlePost(request: NextRequest, authContext: AuthContext) {
           lastActivityAt: session.lastActivityAt,
         },
         profile: {
-          name: session.artisanProfile.name,
-          profession: session.artisanProfile.profession,
-          specializations: session.artisanProfile.specializations,
-          location: session.artisanProfile.location,
+          name: session.artisanProfile.personalInfo.name,
+          profession: session.artisanProfile.skills.primary.join(', '),
+          specializations: session.artisanProfile.skills.secondary,
+          location: session.artisanProfile.personalInfo.location,
         },
         contextSummary,
         message: 'Session created successfully',
@@ -110,15 +110,16 @@ async function handlePost(request: NextRequest, authContext: AuthContext) {
           lastActivityAt: session.lastActivityAt,
         },
         profile: {
-          name: session.artisanProfile.name,
-          profession: session.artisanProfile.profession,
-          specializations: session.artisanProfile.specializations,
-          location: session.artisanProfile.location,
+          name: session.artisanProfile.personalInfo.name,
+          profession: session.artisanProfile.skills.primary.join(', '),
+          specializations: session.artisanProfile.skills.secondary,
+          location: session.artisanProfile.personalInfo.location,
         },
         statistics: stats,
         context: {
-          recentTopics: session.context.recentTopics,
-          pendingActions: session.context.pendingActions,
+          currentIntent: session.context.currentIntent,
+          entities: session.context.entities,
+          conversationHistory: session.context.conversationHistory.slice(-5), // Last 5 messages
         },
       });
     }

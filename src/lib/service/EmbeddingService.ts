@@ -248,11 +248,12 @@ export class EmbeddingService {
                 const value = this.getNestedValue(profile, field.field);
                 if (value) {
                     const textValue = Array.isArray(value) ? value.join(', ') : String(value);
-                    return `${field.field.split('.').pop()}: ${textValue}`;
+                    const fieldName = field.field.split('.').pop() || field.field;
+                    return `${fieldName}: ${textValue}`;
                 }
                 return null;
             })
-            .filter(Boolean);
+            .filter((item): item is string => item !== null);
 
         enhancements.push(...weightedFields);
 
@@ -369,8 +370,10 @@ export class EmbeddingService {
 
         // Implement LRU eviction if cache is full
         if (this.cache.size >= this.config.cache.maxSize) {
-            const firstKey = this.cache.keys().next().value;
-            this.cache.delete(firstKey);
+            const firstKey = this.cache.keys().next().value as string | undefined;
+            if (firstKey !== undefined) {
+                this.cache.delete(firstKey);
+            }
         }
 
         this.cache.set(key, {

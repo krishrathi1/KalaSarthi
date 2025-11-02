@@ -132,25 +132,26 @@ export default function WishlistPage() {
     }
 
     return (
-        <div className="min-h-screen ">
-            <div className="container mx-auto px-4 py-8">
+        <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-red-50 w-full overflow-x-hidden">
+            <div className="container mx-auto px-3 sm:px-4 md:px-6 py-6 sm:py-8 max-w-full">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8 bg-white/80 backdrop-blur-sm border rounded-xl p-4 sm:p-6 shadow-sm">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 min-w-0 flex-1">
                         <Link href="/marketplace">
-                            <Button variant="ghost" size="sm">
+                            <Button variant="ghost" size="sm" className="flex-shrink-0">
                                 <ArrowLeft className="h-4 w-4 mr-2" />
-                                Continue Shopping
+                                <span className="hidden sm:inline">Continue Shopping</span>
+                                <span className="sm:hidden">Shop</span>
                             </Button>
                         </Link>
-                        <div>
-                            <h1 className="text-3xl font-bold">Your Wishlist</h1>
-                            <p className="text-gray-600">{wishlist.products.length} items saved</p>
+                        <div className="min-w-0 flex-1">
+                            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-pink-600 to-red-600 bg-clip-text text-transparent truncate">Your Wishlist</h1>
+                            <p className="text-sm sm:text-base text-gray-600 truncate">{wishlist.products.length} items saved</p>
                         </div>
                     </div>
 
                     {wishlist.products.length > 0 && (
-                        <Button variant="outline" onClick={handleClearWishlist}>
+                        <Button variant="outline" onClick={handleClearWishlist} className="flex-shrink-0 w-full sm:w-auto">
                             <Trash2 className="h-4 w-4 mr-2" />
                             Clear Wishlist
                         </Button>
@@ -158,9 +159,9 @@ export default function WishlistPage() {
                 </div>
 
                 {/* Wishlist Items Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 w-full">
                     {wishlist.products.map((item) => (
-                        <Card key={item.productId} className="group hover:shadow-lg transition-shadow">
+                        <Card key={item.productId} className="group hover:shadow-xl hover:scale-[1.02] transition-all duration-300 bg-white/80 backdrop-blur-sm border-pink-100 w-full max-w-full">
                             <CardContent className="p-0">
                                 {/* Product Image */}
                                 <div className="relative aspect-square bg-white overflow-hidden rounded-t-lg">
@@ -169,12 +170,12 @@ export default function WishlistPage() {
                                             src={item.product.images[0]}
                                             alt={item.product.name}
                                             fill
-                                            className="object-cover group-hover:scale-105 transition-transform"
-                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                                            className="object-cover group-hover:scale-110 transition-transform duration-300"
+                                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                                         />
                                     ) : (
-                                        <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                                            <Package className="h-12 w-12 text-gray-400" />
+                                        <div className="w-full h-full bg-gradient-to-br from-pink-50 to-rose-50 flex items-center justify-center">
+                                            <Package className="h-12 w-12 text-pink-300" />
                                         </div>
                                     )}
 
@@ -182,7 +183,7 @@ export default function WishlistPage() {
                                     <Button
                                         variant="secondary"
                                         size="sm"
-                                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur-sm hover:bg-white"
                                         onClick={() => handleRemoveItem(item.productId)}
                                         disabled={removingItems.has(item.productId)}
                                     >
@@ -193,7 +194,7 @@ export default function WishlistPage() {
                                     {item.product?.inventory && !item.product.inventory.isAvailable && (
                                         <Badge
                                             variant="secondary"
-                                            className="absolute top-2 left-2 bg-gray-900/80 text-white"
+                                            className="absolute top-2 left-2 bg-gray-900/90 text-white backdrop-blur-sm"
                                         >
                                             Out of Stock
                                         </Badge>
@@ -201,29 +202,30 @@ export default function WishlistPage() {
                                 </div>
 
                                 {/* Product Details */}
-                                <div className="p-4">
-                                    <Badge variant="outline" className="mb-2">
+                                <div className="p-3 sm:p-4">
+                                    <Badge variant="outline" className="mb-2 text-xs border-pink-200 text-pink-700">
                                         {item.product?.category}
                                     </Badge>
 
-                                    <h3 className="font-semibold text-lg mb-2 line-clamp-2">
+                                    <h3 className="font-semibold text-base sm:text-lg mb-2 line-clamp-2 min-h-[3rem]">
                                         {item.product?.name}
                                     </h3>
 
-                                    <div className="flex items-center mb-3">
-                                        <span className="text-xl font-bold text-orange-600">
+                                    <div className="flex items-center mb-2 sm:mb-3">
+                                        <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-pink-600 to-red-600 bg-clip-text text-transparent">
                                             {formatPrice(item.product?.price || 0)}
                                         </span>
                                     </div>
 
-                                    <p className="text-sm text-gray-500 mb-4">
+                                    <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4 truncate">
                                         Added {formatDate(item.addedAt)}
                                     </p>
 
                                     {/* Action Buttons */}
                                     <div className="space-y-2">
                                         <Button
-                                            className="w-full bg-orange-600 hover:bg-orange-700"
+                                            className="w-full bg-gradient-to-r from-pink-600 to-red-600 hover:from-pink-700 hover:to-red-700 text-xs sm:text-sm"
+                                            size="sm"
                                             onClick={() => handleAddToCart(item.productId)}
                                             disabled={
                                                 !item.product?.inventory?.isAvailable ||
@@ -234,14 +236,14 @@ export default function WishlistPage() {
                                                 'Adding...'
                                             ) : (
                                                 <>
-                                                    <ShoppingBag className="h-4 w-4 mr-2" />
+                                                    <ShoppingBag className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
                                                     Move to Cart
                                                 </>
                                             )}
                                         </Button>
 
-                                        <Link href={`/marketplace/product/${item.productId}`}>
-                                            <Button variant="outline" className="w-full">
+                                        <Link href={`/marketplace/product/${item.productId}`} className="block">
+                                            <Button variant="outline" className="w-full text-xs sm:text-sm border-pink-200 hover:bg-pink-50" size="sm">
                                                 View Details
                                             </Button>
                                         </Link>
@@ -254,19 +256,20 @@ export default function WishlistPage() {
 
                 {/* Quick Actions */}
                 {wishlist.products.length > 0 && (
-                    <Card className="mt-8">
-                        <CardContent className="p-6">
-                            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-                                <div>
-                                    <h3 className="font-semibold mb-1">Quick Actions</h3>
-                                    <p className="text-sm text-gray-600">
+                    <Card className="mt-6 sm:mt-8 bg-white/80 backdrop-blur-sm border-pink-100 shadow-sm w-full">
+                        <CardContent className="p-4 sm:p-6">
+                            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between w-full">
+                                <div className="min-w-0 flex-1">
+                                    <h3 className="font-semibold text-base sm:text-lg mb-1">Quick Actions</h3>
+                                    <p className="text-xs sm:text-sm text-gray-600">
                                         Manage all your wishlist items at once
                                     </p>
                                 </div>
 
-                                <div className="flex gap-3">
+                                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
                                     <Button
                                         variant="outline"
+                                        size="sm"
                                         onClick={async () => {
                                             const availableItems = wishlist.products.filter(
                                                 item => item.product?.inventory?.isAvailable
@@ -280,12 +283,13 @@ export default function WishlistPage() {
                                                 item => item.product?.inventory?.isAvailable
                                             )
                                         }
+                                        className="w-full sm:w-auto border-pink-200 hover:bg-pink-50"
                                     >
                                         <ShoppingBag className="h-4 w-4 mr-2" />
                                         Add All to Cart
                                     </Button>
 
-                                    <Button variant="outline" onClick={handleClearWishlist}>
+                                    <Button variant="outline" size="sm" onClick={handleClearWishlist} className="w-full sm:w-auto border-pink-200 hover:bg-pink-50">
                                         <Trash2 className="h-4 w-4 mr-2" />
                                         Clear All
                                     </Button>

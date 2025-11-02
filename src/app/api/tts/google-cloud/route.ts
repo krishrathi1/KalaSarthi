@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
         console.error('Google Cloud TTS error:', error);
         return NextResponse.json({
             success: false,
-            error: error.message,
+            error: error instanceof Error ? error.message : 'Unknown error',
             service: 'google-cloud'
         }, { status: 500 });
     }

@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     const endDate = new Date('2024-11-30');
     const totalEvents = randomInt(150, 200);
     
-    const salesEvents = [];
+    const salesEvents: any[] = [];
     
     for (let i = 0; i < totalEvents; i++) {
       // Random date in November

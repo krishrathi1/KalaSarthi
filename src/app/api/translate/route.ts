@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       text,
       sourceLanguage,
       targetLanguage,
-      craftCategory,
+      context: 'craft',
       userId,
       preserveCulturalTerms
     });

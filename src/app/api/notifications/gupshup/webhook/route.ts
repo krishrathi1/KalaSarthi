@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
   
   try {
     // Extract source IP for security and rate limiting
-    const sourceIP = request.ip || 
+    const sourceIP = (request as any).ip || 
                     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
                     request.headers.get('x-real-ip') ||
                     'unknown';

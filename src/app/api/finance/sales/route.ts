@@ -44,11 +44,14 @@ export async function GET(request: NextRequest) {
     );
 
     const querySnapshot = await getDocs(q);
-    const salesEvents = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      eventTimestamp: doc.data().eventTimestamp.toDate()
-    }));
+    const salesEvents = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        eventTimestamp: data.eventTimestamp?.toDate ? data.eventTimestamp.toDate() : new Date()
+      };
+    });
 
     console.log(`📈 Found ${salesEvents.length} sales events`);
 
@@ -56,9 +59,9 @@ export async function GET(request: NextRequest) {
     const aggregatedData = aggregateSalesData(salesEvents, resolution);
     
     // Calculate summary
-    const totalRevenue = salesEvents.reduce((sum, event) => sum + (event.totalAmount || 0), 0);
+    const totalRevenue = salesEvents.reduce((sum, event) => sum + ((event as any).totalAmount || 0), 0);
     const totalOrders = salesEvents.length;
-    const totalUnits = salesEvents.reduce((sum, event) => sum + (event.quantity || 0), 0);
+    const totalUnits = salesEvents.reduce((sum, event) => sum + ((event as any).quantity || 0), 0);
     const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
     // Calculate growth rate (simplified - compare with previous period)

@@ -450,6 +450,9 @@ export class VoiceInteractionStateService {
             this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
 
             // Create analyser for voice detection
+            if (!this.audioContext) {
+                throw new Error('Failed to create audio context');
+            }
             this.analyser = this.audioContext.createAnalyser();
             this.analyser.fftSize = 256;
 
