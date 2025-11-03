@@ -208,20 +208,6 @@ const AuthPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Regular Test Credentials */}
-              <div className="p-3 sm:p-4 bg-muted rounded-lg max-w-sm sm:max-w-md mx-auto">
-                <h3 className="text-sm sm:text-base font-semibold mb-3 text-center">Or Use Regular Login</h3>
-                <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm text-muted-foreground text-center">
-                  <div>
-                    <span className="block mb-1">Phone Number:</span>
-                    <code className="bg-background px-2 py-1 rounded text-xs sm:text-sm">+919876543210</code>
-                  </div>
-                  <div>
-                    <span className="block mb-1">OTP:</span>
-                    <code className="bg-background px-2 py-1 rounded text-xs sm:text-sm">123456</code>
-                  </div>
-                </div>
-              </div>
             </div>
           </>
         )}

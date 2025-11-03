@@ -8,12 +8,12 @@ const { getFirestore, doc, setDoc, collection, writeBatch, Timestamp } = require
 
 // Firebase config from environment
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyCaVVcXYZPb1vWgwB8epGh8SI2BqNnnwAE",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "kalabandhu-a93b0.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "kalabandhu-a93b0",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "kalabandhu-a93b0.firebasestorage.app",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "819900934773",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:819900934773:web:1b44a376a5394fbb09e63c"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
 // Initialize Firebase

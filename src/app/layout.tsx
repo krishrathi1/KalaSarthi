@@ -6,7 +6,6 @@ import { TranslationProvider } from "@/context/TranslationContext";
 import { AuthProvider } from "@/context/auth-context";
 import LayoutWrapper from "@/components/layout/LayoutWrapper";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { PerformanceMonitor } from "@/components/PerformanceMonitor";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import "./globals.css";
 
@@ -49,21 +48,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   console.log('₹'.charCodeAt(0)); // Should show 8377
-console.log('₽'.charCodeAt(0)); // Should show 8381
+  console.log('₽'.charCodeAt(0)); // Should show 8381
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="UTF-8" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        
+
         {/* Your existing fonts */}
         <link href="https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />
-        
+
         {/* Add Noto Sans for better currency symbol support */}
         <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-        
+
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -85,7 +84,6 @@ console.log('₽'.charCodeAt(0)); // Should show 8381
           </AuthProvider>
         </ErrorBoundary>
         <Toaster />
-        <PerformanceMonitor />
         <ServiceWorkerRegistration />
       </body>
     </html>
