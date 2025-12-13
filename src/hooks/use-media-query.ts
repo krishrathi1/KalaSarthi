@@ -1,4 +1,5 @@
 // Custom hook for responsive design and media queries
+// Enhanced with better browser compatibility
 
 import { useState, useEffect } from 'react';
 

@@ -1,6 +1,7 @@
 "use client"
 
 // Inspired by react-hot-toast library
+// Enhanced toast notification system
 import * as React from "react"
 
 import type {
