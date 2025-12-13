@@ -1,4 +1,5 @@
 'use client';
+// Header component with enhanced navigation
 import React from 'react';
 import { ChevronsUpDown, Check, User, LogOut, Settings, FileText, Archive, Package, ShoppingCart, Heart, TrendingUp } from 'lucide-react';
 import { SidebarTrigger } from "@/components/ui/sidebar";

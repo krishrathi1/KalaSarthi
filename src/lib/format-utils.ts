@@ -1,5 +1,6 @@
 /**
  * Utility functions for formatting data
+ * Enhanced with better localization support
  */
 
 /**

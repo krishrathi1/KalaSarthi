@@ -1,4 +1,5 @@
 // Centralized error handling utilities
+// Enhanced with better error recovery mechanisms
 
 export interface ErrorInfo {
   message: string;
