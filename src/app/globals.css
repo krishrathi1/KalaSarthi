@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global styles with enhanced theming support */
+
 @layer base {
   :root {
     --background: 43 56% 92%;

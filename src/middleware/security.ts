@@ -9,6 +9,7 @@ import type { NextRequest } from 'next/server';
 
 /**
  * Security headers to be applied to all responses
+ * Enhanced security configuration
  */
 const SECURITY_HEADERS = {
   // Enforce HTTPS with HSTS
