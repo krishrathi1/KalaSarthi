@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2017",
+    // TypeScript configuration for optimal performance
     "lib": [
       "dom",
       "dom.iterable",
