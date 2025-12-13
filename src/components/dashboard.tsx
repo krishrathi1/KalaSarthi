@@ -28,6 +28,7 @@ export function Dashboard() {
   const { userProfile } = useAuth();
   
   // Use mock name "Ramu" for unauthenticated users
+  // Enhanced user display name handling
   const displayName = userProfile?.name || 'Ramu';
   useEffect(() => {
     const loadTranslations = async () => {

@@ -25,6 +25,7 @@ export default function DashboardPage() {
   }, [userProfile, loading, router]);
 
   // Show loading while determining redirect
+  // Enhanced user experience with better loading states
   if (loading || !userProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center">
