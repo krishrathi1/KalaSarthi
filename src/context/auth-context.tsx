@@ -11,6 +11,7 @@ import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { auth } from "../lib/firebase";
 
 // Address interface matching the backend schema
+// Enhanced type definitions for better type safety
 interface Address {
   street?: string;
   city?: string;
