@@ -7,6 +7,7 @@ import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+// Toast notification system with enhanced styling
 const ToastProvider = ToastPrimitives.Provider
 
 const ToastViewport = React.forwardRef<

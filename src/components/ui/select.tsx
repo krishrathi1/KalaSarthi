@@ -6,6 +6,7 @@ import { Check, ChevronDown, ChevronUp } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+// Select components with improved user experience
 const Select = SelectPrimitive.Root
 
 const SelectGroup = SelectPrimitive.Group
