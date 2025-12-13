@@ -111,7 +111,7 @@ KalaSarthi is an AI-driven platform revolutionizing India's handicraft industry 
 
 ```bash
 # Clone the repository
-git clone https://github.com/ArnavGoel28/KalaSarthi.git
+git clone https://github.com/krishrathi1/KalaSarthi.git
 cd KalaSarthi
 
 # Install dependencies
