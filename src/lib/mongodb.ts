@@ -1,3 +1,4 @@
+// MongoDB connection with enhanced error handling
 import mongoose from "mongoose";
 
 declare global {

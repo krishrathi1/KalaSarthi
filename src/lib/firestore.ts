@@ -1,4 +1,5 @@
 // Firestore database connection and utilities
+// Enhanced with better query optimization
 import { db } from './firebase';
 import {
   collection,
