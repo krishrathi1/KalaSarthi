@@ -24,6 +24,7 @@ export default function Home() {
   }, [userProfile, loading, router]);
 
   // Show loading while determining redirect
+  // Improved loading state handling
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">

@@ -11,7 +11,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "KalaSarthi - Your Artisan Digital Twin",
-  description: "AI-Powered Marketplace-as-a-Service to empower artisans.",
+  description: "AI-Powered Marketplace-as-a-Service to empower artisans with modern technology.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
