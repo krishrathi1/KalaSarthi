@@ -13,6 +13,7 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
+// Enhanced configuration validation
 if (!firebaseConfig.apiKey || !firebaseConfig.authDomain || !firebaseConfig.projectId || !firebaseConfig.storageBucket || !firebaseConfig.messagingSenderId || !firebaseConfig.appId) {
   throw new Error("Missing Firebase configuration in environment variables");
 }

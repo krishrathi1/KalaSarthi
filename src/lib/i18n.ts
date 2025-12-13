@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { translationService } from './translation-service';
 
+// Language configuration with comprehensive Indian language support
 export const languages: Record<string, { name: string; region: string }> = {
   // Indian Languages
   en: { name: 'English', region: 'indian' },
