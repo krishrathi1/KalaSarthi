@@ -5,6 +5,7 @@ import * as TabsPrimitive from "@radix-ui/react-tabs"
 
 import { cn } from "@/lib/utils"
 
+// Tabs component with enhanced navigation
 const Tabs = TabsPrimitive.Root
 
 const TabsList = React.forwardRef<
