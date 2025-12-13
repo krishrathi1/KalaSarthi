@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Development optimizations
+  // Updated configuration for better performance
   compress: process.env.NODE_ENV === 'production',
   poweredByHeader: false,
 
