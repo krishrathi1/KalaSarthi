@@ -21,6 +21,7 @@ interface Cart {
     updatedAt: Date;
 }
 
+// Cart hook with enhanced state management
 export const useCart = (userId: string | null) => {
     const [cart, setCart] = useState<Cart | null>(null);
     const [loading, setLoading] = useState(false);
