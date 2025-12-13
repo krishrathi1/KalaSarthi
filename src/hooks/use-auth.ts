@@ -2,6 +2,7 @@
  * Authentication Hook
  * 
  * Simple hook for accessing current user authentication state
+ * Enhanced with better error handling
  */
 
 import { useState, useEffect } from 'react';

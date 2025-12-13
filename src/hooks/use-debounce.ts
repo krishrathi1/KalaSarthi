@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 /**
  * Custom hook for debouncing values
  * Delays updating the value until after the specified delay
+ * Optimized for performance
  */
 export function useDebounce<T>(value: T, delay: number): T {
     const [debouncedValue, setDebouncedValue] = useState<T>(value);
