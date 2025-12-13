@@ -1,4 +1,5 @@
 // Simple Cloudinary upload utilities
+// Enhanced with better error handling and configuration
 export interface CloudinaryUploadResult {
     public_id: string;
     secure_url: string;
