@@ -7,13 +7,15 @@
  * Format price with Indian Rupee symbol
  */
 export function formatPrice(price: number): string {
+    if (typeof price !== 'number' || isNaN(price)) {
+        return '\u20B90';
+    }
     // Format the number part
     const formatted = new Intl.NumberFormat("en-IN", {
         style: "decimal",
         minimumFractionDigits: 0,
         maximumFractionDigits: 2,
     }).format(price);
-    console.log(`\u20B9${formatted}`);
     // Use explicit Unicode for rupee symbol
     return `\u20B9${formatted}`;
 }
