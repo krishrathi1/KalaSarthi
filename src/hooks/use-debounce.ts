@@ -9,9 +9,14 @@ export function useDebounce<T>(value: T, delay: number): T {
     const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
     useEffect(() => {
+        if (delay < 0) {
+            console.warn('useDebounce: delay should be non-negative');
+            return;
+        }
+
         const handler = setTimeout(() => {
             setDebouncedValue(value);
-        }, delay);
+        }, Math.max(0, delay));
 
         return () => {
             clearTimeout(handler);
