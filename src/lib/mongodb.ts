@@ -20,7 +20,7 @@ if (!global.mongooseGlobal) {
 }
 
 async function connectDB() {
-  if (!MONGODB_URI) {
+  if (!MONGODB_URI || MONGODB_URI.trim() === '') {
     throw new Error("Please define the MONGODB_URI environment variable");
   }
 
@@ -31,7 +31,8 @@ async function connectDB() {
   if (!global.mongooseGlobal.promise) {
     global.mongooseGlobal.promise = mongoose.connect(MONGODB_URI, {
       bufferCommands: false,
-      serverSelectionTimeoutMS: 5000, // fail fast in Cloud Run
+      serverSelectionTimeoutMS: 5000,
+      maxPoolSize: 10,
     }).then((mongoose) => mongoose);
   }
 
@@ -39,6 +40,7 @@ async function connectDB() {
     global.mongooseGlobal.conn = await global.mongooseGlobal.promise;
   } catch (e) {
     global.mongooseGlobal.promise = null;
+    global.mongooseGlobal.conn = null;
     throw e;
   }
 

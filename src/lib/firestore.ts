@@ -44,9 +44,16 @@ export const COLLECTIONS = {
 // Helper to convert Firestore timestamp to Date
 export function timestampToDate(timestamp: any): Date {
   if (!timestamp) return new Date();
-  if (timestamp instanceof Date) return timestamp;
+  if (timestamp instanceof Date) {
+    if (isNaN(timestamp.getTime())) return new Date();
+    return timestamp;
+  }
   if (timestamp?.toDate && typeof timestamp.toDate === 'function') {
-    return timestamp.toDate();
+    try {
+      return timestamp.toDate();
+    } catch {
+      return new Date();
+    }
   }
   if (timestamp?.seconds !== undefined) {
     return new Date(timestamp.seconds * 1000);
