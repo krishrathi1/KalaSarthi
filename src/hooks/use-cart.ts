@@ -28,8 +28,8 @@ export const useCart = (userId: string | null) => {
     const [error, setError] = useState<string | null>(null);
 
     const fetchCart = useCallback(async () => {
-        if (!userId) {
-            console.log('useCart: No userId provided');
+        if (!userId || userId.trim() === '') {
+            setCart(null);
             return;
         }
         
