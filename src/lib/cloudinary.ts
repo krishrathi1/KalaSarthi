@@ -25,16 +25,17 @@ export interface UploadOptions {
 // Get Cloudinary configuration from environment variables
 export const getCloudinaryConfig = (): CloudinaryConfig => {
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'demo';
-    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || '';
 
-    // For development, use demo cloud if no cloud name is provided
-    if (!process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) {
-        console.warn('No Cloudinary cloud name found. Using demo cloud for development.');
+    if (!cloudName || cloudName === 'demo') {
+        if (process.env.NODE_ENV === 'production') {
+            throw new Error('Cloudinary cloud name is required in production');
+        }
     }
 
     return {
         cloudName,
-        uploadPreset: uploadPreset || ''
+        uploadPreset
     };
 };
 
