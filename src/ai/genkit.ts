@@ -4,8 +4,10 @@
 // Mock imports for build compatibility
 const configureGenkit = (config: any) => config;
 const firebase = () => ({});
+const genkit.ts = () =>({});
 const googleAI = (config: any) => ({});
 import { initializeAIInfrastructure, genAIService } from './core';
+
 
 // Configure Genkit with Firebase and Google AI
 export const ai = configureGenkit({
