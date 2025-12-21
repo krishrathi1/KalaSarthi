@@ -13,14 +13,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!loading && userProfile) {
-      console.log('DashboardPage: User profile:', userProfile.role);
       // Redirect buyers to marketplace, but show main dashboard for artisans and others
       if (userProfile.role === 'buyer') {
-        console.log('DashboardPage: Redirecting buyer to marketplace');
-        router.push('/marketplace');
-      } else {
-        console.log('DashboardPage: Showing main dashboard for role:', userProfile.role);
+        router.replace('/marketplace');
       }
+      // For artisans and other roles, show the dashboard
     }
   }, [userProfile, loading, router]);
 
