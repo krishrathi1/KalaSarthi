@@ -74,19 +74,30 @@ export class ErrorHandler {
   async handleFetchError(
     url: string,
     options: RequestInit = {},
-    retries: number = 3
+    retries: number = this.maxRetries
   ): Promise<Response> {
+    if (!url || typeof url !== 'string') {
+      throw new Error('Invalid URL provided to handleFetchError');
+    }
+
     // Longer timeout for image processing endpoints
     const isImageProcessing = url.includes('/api/image-enhance') || url.includes('/api/upload');
     const timeout = isImageProcessing ? 60000 : 30000; // 60s for images, 30s for others
     let lastError: Error | null = null;
 
-    for (let attempt = 1; attempt <= retries; attempt++) {
+    const maxRetries = Math.max(1, Math.min(retries, 5)); // Limit between 1-5
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
         const response = await fetch(url, {
           ...options,
-          signal: AbortSignal.timeout(timeout),
+          signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -94,6 +105,7 @@ export class ErrorHandler {
 
         return response;
       } catch (error) {
+        clearTimeout(timeoutId);
         lastError = error instanceof Error ? error : new Error('Unknown fetch error');
 
         this.logError({
