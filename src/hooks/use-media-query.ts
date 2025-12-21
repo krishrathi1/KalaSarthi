@@ -12,7 +12,18 @@ export function useMediaQuery(query: string): boolean {
       return;
     }
 
-    const media = window.matchMedia(query);
+    if (!query || typeof query !== 'string') {
+      console.warn('useMediaQuery: Invalid query string');
+      return;
+    }
+
+    let media: MediaQueryList;
+    try {
+      media = window.matchMedia(query);
+    } catch (error) {
+      console.error('useMediaQuery: Invalid media query', error);
+      return;
+    }
     
     // Set initial value
     setMatches(media.matches);
