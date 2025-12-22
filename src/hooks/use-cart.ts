@@ -208,8 +208,13 @@ export const useCart = (userId: string | null) => {
     }, [cart]);
 
     const getCartTotal = useCallback(() => {
-        const total = cart?.totalAmount || 0;
-        console.log('useCart getCartTotal: returning total:', total);
+        const apiTotal = cart?.totalAmount ?? 0;
+        const derivedTotal = cart?.items?.reduce((sum, item) => {
+            const price = typeof item.subtotal === 'number' ? item.subtotal : 0;
+            return sum + price;
+        }, 0) ?? 0;
+        const total = apiTotal || derivedTotal;
+        console.log('useCart getCartTotal: apiTotal:', apiTotal, 'derivedTotal:', derivedTotal, 'final:', total);
         return total;
     }, [cart]);
 

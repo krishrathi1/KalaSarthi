@@ -113,6 +113,23 @@ export const formatNumberCompact = (num: number): string => {
     }).format(num);
 };
 
+// Format duration in ms to human readable (e.g., 1h 3m 2s)
+export const formatDuration = (ms: number): string => {
+    if (typeof ms !== 'number' || isNaN(ms) || ms < 0) return '0s';
+
+    const seconds = Math.floor(ms / 1000);
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    const parts: string[] = [];
+    if (hours) parts.push(`${hours}h`);
+    if (minutes) parts.push(`${minutes}m`);
+    parts.push(`${secs}s`);
+
+    return parts.join(' ');
+};
+
 /**
  * Format file size in bytes to human readable format
  */
