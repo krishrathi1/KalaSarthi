@@ -14,3 +14,12 @@ export function isEmpty(value: unknown): boolean {
   if (typeof value === 'object') return Object.keys(value).length === 0;
   return false;
 }
+
+// Safe JSON parse with fallback
+export function safeJsonParse<T>(value: string, fallback: T): T {
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}

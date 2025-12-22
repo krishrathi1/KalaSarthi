@@ -101,6 +101,18 @@ export const formatNumber = (num: number): string => {
     return new Intl.NumberFormat('en-IN').format(num);
 };
 
+// Format number in compact notation (e.g., 1.2K, 3.4M)
+export const formatNumberCompact = (num: number): string => {
+    if (typeof num !== 'number' || isNaN(num)) {
+        return '0';
+    }
+
+    return new Intl.NumberFormat('en', {
+        notation: 'compact',
+        maximumFractionDigits: 1
+    }).format(num);
+};
+
 /**
  * Format file size in bytes to human readable format
  */

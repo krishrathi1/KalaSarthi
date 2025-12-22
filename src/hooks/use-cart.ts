@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface CartItem {
     productId: string;
@@ -26,6 +26,7 @@ export const useCart = (userId: string | null) => {
     const [cart, setCart] = useState<Cart | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const controllerRef = useRef<AbortController | null>(null);
 
     const fetchCart = useCallback(async () => {
         if (!userId || userId.trim() === '') {
@@ -33,12 +34,22 @@ export const useCart = (userId: string | null) => {
             return;
         }
         
+        controllerRef.current?.abort();
+        controllerRef.current = new AbortController();
+
         setLoading(true);
         setError(null);
 
         try {
             console.log('useCart: Fetching cart for userId:', userId);
-            const response = await fetch(`/api/cart?userId=${userId}`);
+            const response = await fetch(`/api/cart?userId=${userId}`, {
+                signal: controllerRef.current.signal,
+            });
+
+            if (!response.ok) {
+                throw new Error(`Cart fetch failed with status ${response.status}`);
+            }
+
             const data = await response.json();
 
             console.log('useCart: API response:', data);
@@ -52,9 +63,12 @@ export const useCart = (userId: string | null) => {
                 setError(data.error || 'Failed to fetch cart');
                 console.error('useCart: API error:', data.error);
             }
-        } catch (err) {
+        } catch (err: any) {
+            if (err?.name === 'AbortError') {
+                return;
+            }
             console.error('useCart: Network error:', err);
-            setError('Network error occurred');
+            setError(err?.message || 'Network error occurred');
         } finally {
             setLoading(false);
         }
@@ -205,8 +219,10 @@ export const useCart = (userId: string | null) => {
             fetchCart();
         } else {
             console.log('useCart useEffect: clearing cart state (no userId)');
+            controllerRef.current?.abort();
             setCart(null);
         }
+        return () => controllerRef.current?.abort();
     }, [userId, fetchCart]);
 
     return {
