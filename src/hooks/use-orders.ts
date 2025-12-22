@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface OrderItem {
     productId: string;
@@ -90,6 +90,7 @@ export const useOrders = (userId: string | undefined) => {
     const [orderStats, setOrderStats] = useState<OrderStats | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const fetchControllerRef = useRef<AbortController | null>(null);
 
     // Fetch user's orders
     const fetchOrders = useCallback(async (status?: string) => {
@@ -98,27 +99,38 @@ export const useOrders = (userId: string | undefined) => {
             return;
         }
 
+        fetchControllerRef.current?.abort();
+        fetchControllerRef.current = new AbortController();
+
         setLoading(true);
         setError(null);
 
         try {
             console.log('useOrders: Fetching orders for userId:', userId);
-            const url = `/api/orders?userId=${userId}${status ? `&status=${status}` : ''}`;
-            const response = await fetch(url);
+            const url = `/api/orders?userId=${userId}${status ? `&status=${encodeURIComponent(
+                status
+            )}` : ''}`;
+            const response = await fetch(url, {
+                signal: fetchControllerRef.current.signal,
+            });
             const data = await response.json();
 
             console.log('useOrders: API response:', data);
 
             if (data.success) {
-                setOrders(data.data);
-                console.log('useOrders: Orders set:', data.data.length);
+                const orders: Order[] = data.data;
+                setOrders(orders);
+                console.log('useOrders: Orders set:', orders.length);
             } else {
                 setError(data.error || 'Failed to fetch orders');
                 console.error('useOrders: API error:', data.error);
             }
-        } catch (err) {
+        } catch (err: any) {
+            if (err?.name === 'AbortError') {
+                return;
+            }
             console.error('useOrders: Network error:', err);
-            setError('Network error occurred');
+            setError(err?.message || 'Network error occurred');
         } finally {
             setLoading(false);
         }
@@ -349,10 +361,12 @@ export const useOrders = (userId: string | undefined) => {
             fetchOrders();
         } else {
             console.log('useOrders useEffect: clearing orders state (no userId)');
+            fetchControllerRef.current?.abort();
             setOrders([]);
             setCurrentOrder(null);
             setOrderStats(null);
         }
+        return () => fetchControllerRef.current?.abort();
     }, [userId, fetchOrders]);
 
     return {

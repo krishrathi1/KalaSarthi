@@ -14,6 +14,7 @@ export interface OfflineState {
     isSyncing: boolean;
     lastSync?: number;
     hasOfflineData: boolean;
+    offlineItemCount?: number;
     storageUsage: { used: number; available: number };
 }
 
@@ -22,6 +23,7 @@ export function useOffline() {
         isOnline: true,
         isSyncing: false,
         hasOfflineData: false,
+        offlineItemCount: 0,
         storageUsage: { used: 0, available: 0 }
     });
 
@@ -38,13 +40,16 @@ export function useOffline() {
         const cart = await offlineStorage.getCartItems();
         const wishlist = await offlineStorage.getWishlistItems();
 
-        const hasOfflineData = products.length > 0 || trends.length > 0 || cart.length > 0 || wishlist.length > 0;
+        const offlineItemCount =
+            products.length + trends.length + cart.length + wishlist.length;
+        const hasOfflineData = offlineItemCount > 0;
 
         setState(prev => ({
             ...prev,
             isOnline: onlineStatus.online,
             lastSync: onlineStatus.lastSync,
             hasOfflineData,
+            offlineItemCount,
             storageUsage
         }));
     }, []);

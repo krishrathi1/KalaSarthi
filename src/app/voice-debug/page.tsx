@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 export default function VoiceDebugPage() {
     const [debugInfo, setDebugInfo] = useState<any>({});
     const [loading, setLoading] = useState(false);
+    const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
 
     const checkServices = async () => {
         setLoading(true);
@@ -78,21 +79,26 @@ export default function VoiceDebugPage() {
                 apiTest = `error: ${e.message}`;
             }
 
-            setDebugInfo({
+            const payload = {
                 browserInfo,
                 micPermission,
                 getUserMediaTest,
                 speechSynthesisTest,
                 apiTest,
                 timestamp: new Date().toISOString()
-            });
+            };
+
+            setDebugInfo(payload);
+            setLastCheckedAt(payload.timestamp);
 
         } catch (error : any) {
             console.error('Debug check failed:', error);
-            setDebugInfo({
+            const payload = {
                 error: error.message,
                 timestamp: new Date().toISOString()
-            });
+            };
+            setDebugInfo(payload);
+            setLastCheckedAt(payload.timestamp);
         }
         setLoading(false);
     };
@@ -158,6 +164,12 @@ export default function VoiceDebugPage() {
                         <div className="p-4 bg-red-50 border border-red-200 rounded">
                             <strong className="text-red-800">Error:</strong>
                             <pre className="text-red-700 mt-2">{debugInfo.error}</pre>
+                        </div>
+                    )}
+
+                    {lastCheckedAt && (
+                        <div className="text-xs text-muted-foreground">
+                            Last checked at: {new Date(lastCheckedAt).toLocaleString()}
                         </div>
                     )}
 
